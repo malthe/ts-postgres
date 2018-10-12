@@ -324,7 +324,7 @@ export class Client {
         let offset = 0;
 
         while (offset < length) {
-            let next = buffer.indexOf('\0', offset);
+            let next = buffer.indexOf(0, offset);
             if (next < 0) break;
 
             const value = buffer.slice(offset + 1, next).toString();
