@@ -130,7 +130,7 @@ describe('Events', withClient([
 
 describe('Query', withClient([
     (client) => {
-        test(`Without parameters`, async () => {
+        test('Without parameters', async () => {
             expect.assertions(1);
             const query = pgTypeQuery.unsafeToSimpleQuery();
             const rows = await client.execute(query);
@@ -138,14 +138,14 @@ describe('Query', withClient([
         });
     },
     (client) => {
-        test(`With parameters`, async () => {
+        test('With parameters', async () => {
             expect.assertions(1);
             const rows = await client.execute(pgTypeQuery);
             expect(rows.length).toBeGreaterThan(100);
         });
     },
     (client) => {
-        test(`Custom value type reader`, async () => {
+        test('Custom value type reader', async () => {
             expect.assertions(2);
             client.config.types = new Map([
                 [DataType.Int4, (
@@ -163,7 +163,7 @@ describe('Query', withClient([
         });
     },
     (client) => {
-        test(`Prepared statement`, async () => {
+        test('Prepared statement', async () => {
             const count = 5;
             expect.assertions(count * 2);
             await client.query('prepare test (int) as select $1');
