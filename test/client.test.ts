@@ -174,6 +174,17 @@ describe('Query', withClient([
             }
         });
     },
+    (client) => {
+        test('Listen/notify', async () => {
+            await client.query('listen foo');
+            expect.assertions(2);
+            client.on('notification', (msg) => {
+                expect(msg.channel).toEqual('foo');
+                expect(msg.payload).toEqual('bar');
+            });
+            await client.query('notify foo, \'bar\'');
+        })
+    },
     (client) => { testSelect(client, pgTypeQuery, 1, false) },
     (client) => { testSelect(client, pgTypeQuery, 5, false) },
     (client) => { testSelect(client, pgTypeQuery, 1, true) },

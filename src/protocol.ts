@@ -46,6 +46,7 @@ export const enum Message {
     Error = 0x45,
     Notice = 0x4e,
     ParseComplete = 0x31,
+    NotificationResponse = 0x41,
     ParameterStatus = 0x53,
     ReadyForQuery = 0x5a,
     RowDescription = 0x54,
@@ -349,6 +350,24 @@ export function readRowData(
     }
 
     return row;
+}
+
+export class Reader {
+    constructor(private readonly buffer: Buffer, private offset: number) { }
+
+    readInt32BE() {
+        const n = this.buffer.readInt32BE(this.offset);
+        this.offset += 4;
+        return n;
+    }
+
+    readCString(encoding: string) {
+        const offset = this.offset;
+        const i = this.buffer.indexOf(0, offset);
+        const s = this.buffer.toString(encoding, offset, i);
+        this.offset = i + 1;
+        return s;
+    }
 }
 
 export class Writer {

@@ -16,6 +16,7 @@ import {
     readRowDescription,
     ErrorLevel,
     Message,
+    Reader,
     RowDescription,
     TransactionStatus,
     Writer
@@ -71,6 +72,12 @@ export interface Configuration {
     preparedStatementPrefix?: string
 }
 
+export interface Notification {
+    processId: number,
+    channel: string,
+    payload?: string
+}
+
 type Callback<T> = (data: T) => void;
 
 type EventCallback = (
@@ -78,7 +85,8 @@ type EventCallback = (
     Callback<Connect> |
     Callback<DatabaseError> |
     Callback<End> |
-    Callback<Parameter>
+    Callback<Parameter> |
+    Callback<Notification>
 );
 
 type RowDataHandler = DataHandler<Row>;
@@ -106,7 +114,8 @@ export class Client {
         end: new TypedEvent<End>(),
         parameter: new TypedEvent<Parameter>(),
         error: new TypedEvent<DatabaseError>(),
-        notice: new TypedEvent<ClientNotice>()
+        notice: new TypedEvent<ClientNotice>(),
+        notification: new TypedEvent<Notification>()
     });
 
     private ending = false;
@@ -264,6 +273,7 @@ export class Client {
     on(event: 'connect', callback: Callback<Connect>): void;
     on(event: 'end', callback: Callback<End>): void;
     on(event: 'parameter', callback: Callback<Parameter>): void;
+    on(event: 'notification', callback: Callback<Notification>): void;
     on(event: 'error', callback: Callback<DatabaseError>): void;
     on(event: 'notice', callback: Callback<ClientNotice>): void;
     on(event: string, callback: EventCallback): void {
@@ -282,6 +292,10 @@ export class Client {
             }
             case 'notice': {
                 this.events.notice.on(callback as Callback<ClientNotice>);
+                break
+            }
+            case 'notification': {
+                this.events.notification.on(callback as Callback<Notification>);
                 break
             }
         }
@@ -482,6 +496,18 @@ export class Client {
                     this.events.notice.emit(notice);
                     break;
                 }
+                case Message.NotificationResponse: {
+                    const reader = new Reader(buffer, start);
+                    const processId = reader.readInt32BE();
+                    const channel = reader.readCString(this.encoding);
+                    const payload = reader.readCString(this.encoding);
+                    this.events.notification.emit({
+                        processId: processId,
+                        channel: channel,
+                        payload: payload
+                    });
+                    break;
+                }
                 case Message.ParseComplete: {
                     break;
                 };
@@ -510,10 +536,9 @@ export class Client {
                     break;
                 }
                 case Message.ParameterStatus: {
-                    const i = buffer.indexOf('\0', start);
-                    const j = buffer.indexOf('\0', i + 1);
-                    const name = buffer.slice(start, i).toString();
-                    const value = buffer.slice(i + 1, j).toString();
+                    const reader = new Reader(buffer, start);
+                    const name = reader.readCString(this.encoding);
+                    const value = reader.readCString(this.encoding);
                     this.events.parameter.emit({
                         name: name,
                         value: value
