@@ -36,7 +36,7 @@ function make<T extends Value>(
                     expect(rows[0].length).toEqual(1);
                     expect(rows[0][0]).toEqual(true)
                 });
-        }, 125)
+        })
     };
 
     const testValue = (client: Client) => {
@@ -49,7 +49,7 @@ function make<T extends Value>(
                     expect(rows[0].length).toEqual(1);
                     expect(rows[0][0]).toEqual(expected)
                 });
-        }, 125)
+        })
     };
 
     return [
