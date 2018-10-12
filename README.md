@@ -1,3 +1,65 @@
+# ts-postgres
+
+[![Build Status](https://secure.travis-ci.org/malthe/ts-postgres.svg?branch=master)](http://travis-ci.org/malthe/ts-postgres)
+<span class="badge-npmversion"><a href="https://npmjs.org/package/ts-postgres" title="View this project on NPM"><img src="https://img.shields.io/npm/v/ts-postgres.svg" alt="NPM version" /></a></span>
+<span class="badge-npmdownloads"><a href="https://npmjs.org/package/ts-postgres" title="View this project on NPM"><img src="https://img.shields.io/npm/dm/ts-postgres.svg" alt="NPM downloads" /></a></span>
+
+Non-blocking PostgreSQL client for Node.js written in TypeScript.
+
+### Install
+
+```sh
+$ npm install ts-postgres
+```
+
+### Features
+
+* Binary protocol
+* Pipelined queries
+* Extensible value model
+* Flexible query result
+  * Asynchronous iteration or all-at-once
+  * Result data is available in either array or map form
+
+---
+
+## Usage
+
+The client uses an async/await-based programming model.
+
+The default result value is simply "arrays of arrays" (rows and columns). To get each row as a map from column names to values use the ``asMapArray()`` method as illustrated in the following example.
+
+```typescript
+import { Client } from 'ts-postgres';
+const client = new Client();
+
+await client.connect()
+
+const query = client.query('SELECT $1::text as message', ['Hello world!']);
+const result = await query.asMapArray();
+console.log(result[0].get('message'));
+
+await client.end()
+```
+
+## Notes
+
+Queries are sent using the prepared statement variant of the extended query protocol. In this variant, the type of each parameter is determined prior to parameter binding, ensuring that values are encoded in the correct format.
+
+Multiple queries can be sent at once, without waiting for results. The client automatically manages the pipeline and maps the result data to the corresponding promise. Note that each client opens exactly one connection to the database and thus, concurrent queries ultimately execute "first in, first out" on the database side.
+
+## Benchmarking
+
+Use the following environment variable to run tests in "benchmark" mode.
+
+```bash
+$ NODE_ENV=benchmark npm run test
+```
+
+## Support
+
+ts-postgres is free software.  If you encounter a bug with the library please open an issue on the [GitHub repo](https://github.com/malthe/ts-postgres).
+
 ## License
 
 Copyright (c) 2018 Malthe Borch (mborch@gmail.com)

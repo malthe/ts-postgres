@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+      "moduleResolution": "node",
+      "target": "es6",
+      "module":"es2015",
+      "lib": [
+          "es2017",
+          "esnext.asynciterable"
+      ],
+      "strict": true,
+      "sourceMap": true,
+      "inlineSourceMap": false,
+      "declaration": true,
+      "allowSyntheticDefaultImports": true,
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true,
+      "declarationDir": "dist",
+      "outDir": "dist",
+      "typeRoots": [
+          "node_modules/@types"
+      ]
+  },
+    "include": [
+        "src",
+        "test"
+    ]
+}

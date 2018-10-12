@@ -1,0 +1,12 @@
+{
+    "extends": [
+        "tslint-config-standard",
+        "tslint-config-prettier"
+    ],
+    "rules": {
+        "no-unused-variable": false,
+        "no-use-before-declare": false,
+        "await-promise": false,
+        "max-line-length": [true, 79]
+    }
+}
