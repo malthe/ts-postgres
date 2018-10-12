@@ -298,6 +298,10 @@ export class Client {
                 this.events.notification.on(callback as Callback<Notification>);
                 break
             }
+            case 'parameter': {
+                this.events.parameter.on(callback as Callback<Parameter>);
+                break
+            }
         }
     }
 
