@@ -279,27 +279,33 @@ export class Client {
     on(event: string, callback: EventCallback): void {
         switch (event) {
             case 'connect': {
-                this.events.connect.on(callback as Callback<Connect>);
+                this.events.connect.on(
+                    callback as Callback<Connect>);
                 break;
             }
             case 'end': {
-                this.events.end.on(callback as Callback<End>);
+                this.events.end.on(
+                    callback as Callback<End>);
                 break;
             }
             case 'error': {
-                this.events.error.on(callback as Callback<DatabaseError>);
+                this.events.error.on(
+                    callback as Callback<DatabaseError>);
                 break;
             }
             case 'notice': {
-                this.events.notice.on(callback as Callback<ClientNotice>);
+                this.events.notice.on(
+                    callback as Callback<ClientNotice>);
                 break
             }
             case 'notification': {
-                this.events.notification.on(callback as Callback<Notification>);
+                this.events.notification.on(
+                    callback as Callback<Notification>);
                 break
             }
             case 'parameter': {
-                this.events.parameter.on(callback as Callback<Parameter>);
+                this.events.parameter.on(
+                    callback as Callback<Parameter>);
                 break
             }
         }
