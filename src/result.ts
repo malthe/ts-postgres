@@ -1,20 +1,28 @@
 import { zip } from './utils';
 
-type ResolveType<T> = (resolve: (value: T) => void) => void;
-
+type ResultHandler<T> = (resolve: () => void) => void;
 type Callback<T> = (item: T) => void;
 
-export class Result<T> extends Promise<T[][]> implements AsyncIterable<T[]> {
+export interface Result<T> {
+    names: string[];
+    rows: T[][];
+};
+
+export class ResultIterator<T> extends Promise<Result<T>>
+    implements AsyncIterable<T[]> {
     private subscribers: ((done: boolean) => void)[] = [];
     private done = false;
 
     public rows: T[][] | null = null;
     public names: string[] | null = null;
 
-    constructor(private container: T[][], executor: ResolveType<T[][]>) {
+    constructor(private container: T[][], executor: ResultHandler<T>) {
         super((resolve, reject) => {
-            executor((value: T[][]) => {
-                resolve(value)
+            executor(() => {
+                resolve({
+                    names: this.names || [],
+                    rows: this.rows || []
+                });
             });
         });
     };
@@ -23,23 +31,6 @@ export class Result<T> extends Promise<T[][]> implements AsyncIterable<T[]> {
         if (done) this.done = true;
         for (let subscriber of this.subscribers) subscriber(done);
     };
-
-    asMapArray() {
-        if (this.done) {
-            return Promise.resolve(this.toMapArray());
-        };
-
-        return this.then((rows) => {
-            return this.toMapArray(rows);
-        });
-    }
-
-    private toMapArray(rows = this.rows || []) {
-        const names = this.names || [];
-        return rows.map((values: T[]) => {
-            return zip(names, values);
-        });
-    }
 
     [Symbol.asyncIterator](): AsyncIterator<T[]> {
         let i = 0;
@@ -77,17 +68,17 @@ export type DataHandler<T> = Callback<T | null>;
 
 export type NameHandler = Callback<string[]>;
 
-Result.prototype.constructor = Promise
+ResultIterator.prototype.constructor = Promise
 
 export function makeResult<T>(
     registerDataHandler: (handler: DataHandler<T[] | null>) => void,
     registerNameHandler: (handler: NameHandler) => void):
-    Result<T> {
-    let finish: ((value: T[][]) => void) | null = null;
+    ResultIterator<T> {
+    let finish: (() => void) | null = null;
 
     const rows: T[][] = [];
 
-    let p = new Result<T>(rows, (resolve) => {
+    let p = new ResultIterator<T>(rows, (resolve) => {
         finish = resolve;
     });
 
@@ -95,7 +86,7 @@ export function makeResult<T>(
         if (row === null) {
             if (finish) {
                 p.rows = rows;
-                finish(rows);
+                finish();
             }
             p.notify(true);
         } else {

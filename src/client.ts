@@ -9,7 +9,7 @@ import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
 import { sum } from './utils';
-import { DataHandler, NameHandler, Result, makeResult } from './result';
+import { DataHandler, NameHandler, ResultIterator, makeResult } from './result';
 
 import {
     readRowData,
@@ -273,8 +273,9 @@ export class Client {
         }
     }
 
-    query(query: Query): Result<Value>;
-    query(text: string, args?: Value[], types?: DataType[]): Result<Value>;
+    query(query: Query): ResultIterator<Value>;
+    query(text: string, args?: Value[], types?: DataType[]):
+        ResultIterator<Value>;
     query(text: string | Query, args?: Value[], types?: DataType[]) {
         const query =
             (typeof text === 'string') ?
@@ -287,7 +288,7 @@ export class Client {
         return Buffer.byteLength(value, this.encoding);
     }
 
-    private execute(query: Query): Result<Value> {
+    private execute(query: Query): ResultIterator<Value> {
         const text = query.text;
         const values = query.values;
         const types = query.types;

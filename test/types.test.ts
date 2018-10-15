@@ -31,7 +31,8 @@ function make<T extends Value>(
             expect.assertions(3);
             const query = getComparisonQueryFor(dataType, expression);
             await client.query(query, [expected], [dataType]).then(
-                (rows) => {
+                (result) => {
+                    const rows = result.rows;
                     expect(rows.length).toEqual(1);
                     expect(rows[0].length).toEqual(1);
                     expect(rows[0][0]).toEqual(true)
@@ -44,7 +45,8 @@ function make<T extends Value>(
             expect.assertions(3);
             const query = 'select ' + expression;
             await client.query(query, []).then(
-                (rows) => {
+                (result) => {
+                    const rows = result.rows;
                     expect(rows.length).toEqual(1);
                     expect(rows[0].length).toEqual(1);
                     expect(rows[0][0]).toEqual(expected)

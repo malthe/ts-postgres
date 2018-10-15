@@ -1,19 +1,8 @@
-import {
-    withClient
-} from './helper';
-
-import {
-    Client
-} from '../src/client';
-
-import {
-    Query
-} from '../src/query';
-
-import {
-    DataType,
-    Builtin
-} from '../src/types';
+import { withClient } from './helper';
+import { Client } from '../src/client';
+import { Query } from '../src/query';
+import { Result } from '../src/result';
+import { DataType, Builtin } from '../src/types';
 
 const pgTypeQuery = new Query(
     // tslint:disable-next-line
@@ -69,9 +58,9 @@ function testSelect(
 
                 while (i--) {
                     const p = client.query(query).then(
-                        (rows: any[]) => {
+                        (result: Result<any>) => {
                             acknowledged += 1;
-                            results += rows.length;
+                            results += result.rows.length;
                         });
 
                     queries++;
@@ -133,15 +122,15 @@ describe('Query', withClient([
         test('Without parameters', async () => {
             expect.assertions(1);
             const query = pgTypeQuery.unsafeToSimpleQuery();
-            const rows = await client.query(query);
-            expect(rows.length).toBeGreaterThan(100);
+            const result = await client.query(query);
+            expect(result.rows.length).toBeGreaterThan(100);
         });
     },
     (client) => {
         test('With parameters', async () => {
             expect.assertions(1);
-            const rows = await client.query(pgTypeQuery);
-            expect(rows.length).toBeGreaterThan(100);
+            const result = await client.query(pgTypeQuery);
+            expect(result.rows.length).toBeGreaterThan(100);
         });
     },
     (client) => {
@@ -158,8 +147,8 @@ describe('Query', withClient([
                     return 1;
                 }]
             ]);
-            const rows = await client.query('select 1::int4');
-            expect(rows.length).toEqual(1);
+            const result = await client.query('select 1::int4');
+            expect(result.rows.length).toEqual(1);
         });
     },
     (client) => {
@@ -168,7 +157,8 @@ describe('Query', withClient([
             expect.assertions(count * 2);
             await client.query('prepare test (int) as select $1');
             for (let i = 0; i < count; i++) {
-                const rows = await client.query('execute test(1)');
+                const result = await client.query('execute test(1)');
+                const rows = result.rows;
                 expect(rows.length).toEqual(1);
                 expect(rows[0]).toEqual([1]);
             }

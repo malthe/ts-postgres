@@ -29,17 +29,14 @@ $ npm install ts-postgres@next
 
 The client uses an async/await-based programming model.
 
-The default result value is simply "arrays of arrays" (rows and columns). To get each row as a map from column names to values use the ``asMapArray()`` method as illustrated in the following example.
-
 ```typescript
 import { Client } from 'ts-postgres';
 const client = new Client();
 
 await client.connect()
 
-const query = client.query('SELECT $1::text as message', ['Hello world!']);
-const result = await query.asMapArray();
-console.log(result[0].get('message'));
+const result = await client.query('SELECT $1::text as message', ['Hello world!']);
+console.log(result.rows[0].get('message'));
 
 await client.end()
 ```

@@ -4,13 +4,13 @@ import { Result } from '../src/result';
 
 describe('Result', withClient([
     (client) => {
-        test('Row map', async () => {
+        test('Names', async () => {
             expect.assertions(2);
             let result = await client.query(
                 'select $1::text as message', ['Hello world!']
-            ).asMapArray();
-            expect(result.length).toEqual(1);
-            expect(result[0].get('message')).toEqual('Hello world!');
+            );
+            expect(result.names.length).toEqual(1);
+            expect(result.names[0]).toEqual('message');
         });
     },
     (client) => {
