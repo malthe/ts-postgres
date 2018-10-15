@@ -232,44 +232,6 @@ export class Client {
         return this.events.end.once();
     }
 
-    execute(query: Query): Result<Value> {
-        const text = query.text;
-        const values = query.values;
-        const types = query.types;
-        const portal = query.portal || '';
-
-        if (values.length) {
-            const name = query.name || (
-                (this.config.preparedStatementPrefix ||
-                    defaults.preparedStatementPrefix) + (
-                    this.nextPreparedStatementId++
-                ));
-            this.writer.parse(name, text, types);
-            this.writer.describe(name, 'S');
-            this.writer.sync();
-            this.preparedStatements.push({
-                name: name,
-                portal: portal,
-                values: values
-            });
-        } else {
-            const name = query.name || '';
-            this.writer.parse(name, text);
-            this.writer.bind(name, portal);
-            this.writer.describe(portal, 'P');
-            this.writer.execute(portal);
-            this.writer.sync();
-        }
-
-        const result = makeResult<Value>(
-            (handler) => { this.dataHandlers.push(handler) },
-            (handler) => { this.nameHandlers.push(handler) }
-        );
-
-        this.flush();
-        return result;
-    }
-
     on(event: 'connect', callback: Callback<Connect>): void;
     on(event: 'end', callback: Callback<End>): void;
     on(event: 'parameter', callback: Callback<Parameter>): void;
@@ -311,13 +273,56 @@ export class Client {
         }
     }
 
-    query(text: string, args?: Value[], types?: DataType[]): Result<Value> {
-        const query = new Query(text, args || [], types || []);
+    query(query: Query): Result<Value>;
+    query(text: string, args?: Value[], types?: DataType[]): Result<Value>;
+    query(text: string | Query, args?: Value[], types?: DataType[]) {
+        const query =
+            (typeof text === 'string') ?
+                new Query(text, args || [], types || []) :
+                text;
         return this.execute(query);
     }
 
     private encodedStringLength(value: string) {
         return Buffer.byteLength(value, this.encoding);
+    }
+
+    private execute(query: Query): Result<Value> {
+        const text = query.text;
+        const values = query.values;
+        const types = query.types;
+        const portal = query.portal || '';
+
+        if (values.length) {
+            const name = query.name || (
+                (this.config.preparedStatementPrefix ||
+                    defaults.preparedStatementPrefix) + (
+                    this.nextPreparedStatementId++
+                ));
+            this.writer.parse(name, text, types);
+            this.writer.describe(name, 'S');
+            this.writer.sync();
+            this.preparedStatements.push({
+                name: name,
+                portal: portal,
+                values: values
+            });
+        } else {
+            const name = query.name || '';
+            this.writer.parse(name, text);
+            this.writer.bind(name, portal);
+            this.writer.describe(portal, 'P');
+            this.writer.execute(portal);
+            this.writer.sync();
+        }
+
+        const result = makeResult<Value>(
+            (handler) => { this.dataHandlers.push(handler) },
+            (handler) => { this.nameHandlers.push(handler) }
+        );
+
+        this.flush();
+        return result;
     }
 
     private flush() {

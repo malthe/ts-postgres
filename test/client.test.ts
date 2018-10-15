@@ -68,7 +68,7 @@ function testSelect(
                 let promises: Promise<void>[] = [];
 
                 while (i--) {
-                    const p = client.execute(query).then(
+                    const p = client.query(query).then(
                         (rows: any[]) => {
                             acknowledged += 1;
                             results += rows.length;
@@ -133,14 +133,14 @@ describe('Query', withClient([
         test('Without parameters', async () => {
             expect.assertions(1);
             const query = pgTypeQuery.unsafeToSimpleQuery();
-            const rows = await client.execute(query);
+            const rows = await client.query(query);
             expect(rows.length).toBeGreaterThan(100);
         });
     },
     (client) => {
         test('With parameters', async () => {
             expect.assertions(1);
-            const rows = await client.execute(pgTypeQuery);
+            const rows = await client.query(pgTypeQuery);
             expect(rows.length).toBeGreaterThan(100);
         });
     },
