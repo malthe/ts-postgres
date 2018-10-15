@@ -98,7 +98,7 @@ interface SystemError extends Error {
 interface PreparedStatement {
     name: string;
     portal: string;
-    args: Value[];
+    values: Value[];
 }
 
 interface RowDataHandlerInfo {
@@ -234,11 +234,11 @@ export class Client {
 
     execute(query: Query): Result<Value> {
         const text = query.text;
-        const args = query.args;
+        const values = query.values;
         const types = query.types;
         const portal = query.portal || '';
 
-        if (args.length) {
+        if (values.length) {
             const name = query.name || (
                 (this.config.preparedStatementPrefix ||
                     defaults.preparedStatementPrefix) + (
@@ -250,7 +250,7 @@ export class Client {
             this.preparedStatements.push({
                 name: name,
                 portal: portal,
-                args: args
+                values: values
             });
         } else {
             const name = query.name || '';
@@ -534,7 +534,7 @@ export class Client {
                             types[i] = dataType;
                         }
 
-                        this.writer.bind(ps.name, ps.portal, ps.args, types);
+                        this.writer.bind(ps.name, ps.portal, ps.values, types);
                         this.writer.execute(ps.portal);
                         this.writer.close(ps.name, 'S');
                         if (ps.portal) {
