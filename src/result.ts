@@ -3,13 +3,33 @@ import { zip } from './utils';
 type ResultHandler<T> = (resolve: () => void) => void;
 type Callback<T> = (item: T) => void;
 
-export interface Result<T> {
-    names: string[];
-    rows: T[][];
-};
+export class Result<T> {
+    constructor(public names: string[], public rows: T[][]) { }
+
+    [Symbol.iterator](): Iterator<Map<string, T>> {
+        let i = 0;
+
+        const rows = this.rows;
+        const length = rows.length;
+
+        const shift = () => {
+            const names = this.names;
+            const values = rows[i];
+            i++;
+            return zip(names, values);
+        };
+
+        return {
+            next: () => {
+                if (i === length) return { done: true, value: undefined! };
+                return { done: false, value: shift() };
+            }
+        }
+    }
+}
 
 export class ResultIterator<T> extends Promise<Result<T>>
-    implements AsyncIterable<T[]> {
+    implements AsyncIterable<Map<string, T>> {
     private subscribers: ((done: boolean) => void)[] = [];
     private done = false;
 
@@ -19,10 +39,9 @@ export class ResultIterator<T> extends Promise<Result<T>>
     constructor(private container: T[][], executor: ResultHandler<T>) {
         super((resolve, reject) => {
             executor(() => {
-                resolve({
-                    names: this.names || [],
-                    rows: this.rows || []
-                });
+                const names = this.names || [];
+                const rows = this.rows || [];
+                resolve(new Result(names, rows));
             });
         });
     };
@@ -32,19 +51,25 @@ export class ResultIterator<T> extends Promise<Result<T>>
         for (let subscriber of this.subscribers) subscriber(done);
     };
 
-    [Symbol.asyncIterator](): AsyncIterator<T[]> {
+    [Symbol.asyncIterator](): AsyncIterator<Map<string, T>> {
         let i = 0;
 
         const container = this.container;
 
         const shift = () => {
-            let item = container[i];
+            const names = this.names;
+            const values = container[i];
             i++;
-            return item;
+
+            if (names === null) {
+                throw new Error("Column name mapping missing.");
+            }
+
+            return zip(names, values);
         };
 
         return {
-            next: async (): Promise<IteratorResult<T[]>> => {
+            next: async () => {
                 if (container.length <= i) {
                     if (this.done) {
                         return { done: true, value: undefined! };

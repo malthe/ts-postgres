@@ -3,7 +3,7 @@ export function sum(...nums: number[]): number {
 };
 
 export function zip<K, V>(keys: K[], values: V[]) {
-    const length = keys.length;
+    const length = Math.min(keys.length, values.length);
     const map: Map<K, V> = new Map();
     for (let i = 0; i < length; i++) {
         map.set(keys[i], values[i]);

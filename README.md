@@ -31,12 +31,14 @@ The client uses an async/await-based programming model.
 
 ```typescript
 import { Client } from 'ts-postgres';
-const client = new Client();
 
+const client = new Client();
 await client.connect()
 
-const result = await client.query('SELECT $1::text as message', ['Hello world!']);
-console.log(result.rows[0].get('message'));
+const iterator = client.query('SELECT $1::text AS message', ['Hello world!']);
+for await (const item in iterator) {
+  console.log(item.get('message'));
+}
 
 await client.end()
 ```

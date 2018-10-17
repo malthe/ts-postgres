@@ -2,14 +2,20 @@ import { ECONNRESET } from 'constants';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
 
-import { ElasticBuffer } from './buffer';
 import * as defaults from './defaults';
 import * as logger from './logging';
+
+import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
-import { sum } from './utils';
-import { DataHandler, NameHandler, ResultIterator, makeResult } from './result';
+
+import {
+    DataHandler,
+    NameHandler,
+    ResultIterator,
+    makeResult
+} from './result';
 
 import {
     readRowData,
