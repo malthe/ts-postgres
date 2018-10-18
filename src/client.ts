@@ -410,6 +410,7 @@ export class Client {
                     // description.
                     if (isNoData) {
                         handler(null);
+                        this.nameHandlers.shift();
                     } else {
                         const description = this.rowDescriptions.shift();
                         if (description) {

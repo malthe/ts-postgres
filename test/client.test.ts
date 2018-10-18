@@ -175,6 +175,15 @@ describe('Query', withClient([
             await client.query('notify foo, \'bar\'');
         })
     },
+    (client) => {
+        test('Cursor', async () => {
+            await client.query('begin');
+            await client.query('declare foo cursor for select $1::int4', [1]);
+            const result = await client.query('fetch next from foo');
+            expect(result.names).toEqual(['int4']);
+            expect(result.rows).toEqual([[1]]);
+        })
+    },
     (client) => { testSelect(client, pgTypeQuery, 1, false) },
     (client) => { testSelect(client, pgTypeQuery, 5, false) },
     (client) => { testSelect(client, pgTypeQuery, 1, true) },
