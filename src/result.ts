@@ -103,7 +103,7 @@ export function makeResult<T>(
 
     const rows: T[][] = [];
 
-    let p = new ResultIterator<T>(rows, (resolve) => {
+    const p = new ResultIterator<T>(rows, (resolve) => {
         finish = resolve;
     });
 
