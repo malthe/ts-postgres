@@ -35,9 +35,13 @@ import { Client } from 'ts-postgres';
 const client = new Client();
 await client.connect()
 
-const iterator = client.query('SELECT $1::text AS message', ['Hello world!']);
+const iterator = client.query(
+  'SELECT $1::text AS message',
+  ['Hello world!']
+);
+
 for await (const item in iterator) {
-  console.log(item.get('message'));
+  console.log(item.get('message')); // 'Hello world!'
 }
 
 await client.end()
