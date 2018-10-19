@@ -16,12 +16,13 @@ $ npm install ts-postgres@next
 
 ### Features
 
+* Fast!
 * Binary protocol
-* Pipelined queries
+* Multiple queries can be sent at once (pipeline)
 * Extensible value model
-* Flexible query result
-  * Asynchronous iteration or all-at-once
-  * Result data is available in either array or map form
+* Hybrid query result object
+  * Iteration (synchronous or asynchronous, yields one map per row);
+  * All-at-once, when promise completes; result data is available in array form
 
 ---
 
@@ -32,26 +33,59 @@ The client uses an async/await-based programming model.
 ```typescript
 import { Client } from 'ts-postgres';
 
-const client = new Client();
-await client.connect()
+async function main() {
+    const client = new Client();
+    await client.connect();
 
-const iterator = client.query(
-  'SELECT $1::text AS message',
-  ['Hello world!']
-);
+    // The query result is an asynchronous iterator.
+    const iterator = client.query(
+        `SELECT 'Hello ' || $1 || '!' AS message`,
+        ['world']
+    );
 
-for await (const item in iterator) {
-  console.log(item.get('message')); // 'Hello world!'
+    for await (const item of iterator) {
+        console.log(item.get('message')); // 'Hello world!'
+    }
+
+    await client.end();
 }
 
-await client.end()
+main()
 ```
+We often want to just wait for the entire result set to arrive and subsequently process the data:
+```typescript
+const result = await client.query('select generate_series(1, 10)');
+```
+The iterator interface yields one map object per row (from column names to values). The spread operator is a convenient way to turn a result into an array of such maps:
+```typescript
+const items = [...result];
+for (let item of items) {
+  console.log('The number is: ' + item.get('i')); // 1, 2, 3, ...
+}
+```
+Using the ``rows`` attribute is the most efficient way to work with result data. It contains the raw result data as an array of arrays.
+```typescript
+for (let row of result.rows) {
+  console.log('The number is: ' + row[0]); // 1, 2, 3, ...
+}
+```
+Column names are available as the ``names`` attribute of a result.
+
+### Multiple queries
+
+The query command accepts a single query only. If you need to send multiple queries, just call the method multiple times. For example, to send an update command in a transaction:
+```typescript
+client.query('begin');
+client.query('update ...');
+await client.query('commit');
+```
+The queries are sent back to back over the wire, but PostgreSQL still processes them one at a time, in the order they were sent (first in, first out).
 
 ## Notes
 
 Queries are sent using the prepared statement variant of the extended query protocol. In this variant, the type of each parameter is determined prior to parameter binding, ensuring that values are encoded in the correct format.
 
-Multiple queries can be sent at once, without waiting for results. The client automatically manages the pipeline and maps the result data to the corresponding promise. Note that each client opens exactly one connection to the database and thus, concurrent queries ultimately execute "first in, first out" on the database side.
+The copy commands are not supported.
 
 ## Benchmarking
 
