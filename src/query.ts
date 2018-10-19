@@ -11,14 +11,4 @@ export class Query {
         public readonly name: string | null = null,
         public readonly portal: string | null = null
     ) { }
-
-    public unsafeToSimpleQuery() {
-        let text = this.text;
-        const params = this.values.map(String);
-        for (let i = 0; i < params.length; i++) {
-            const param = params[i];
-            text = text.replace('$' + (i + 1), param);
-        };
-        return new Query(text);
-    }
 }

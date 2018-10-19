@@ -4,36 +4,58 @@ import { Query } from '../src/query';
 import { Result } from '../src/result';
 import { DataType, Builtin } from '../src/types';
 
-const pgTypeQuery = new Query(
-    // tslint:disable-next-line
-    'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
-    [-1, true]
-);
-
-const arrayQuery = new Query(
-    // tslint:disable-next-line
-    'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)'
-);
-
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
 const [maxTime, WarmupTime] = (benchmarkEnabled) ?
     [5000, 1000] : [50, 10];
+
+const enum TestQuery {
+    PgType,
+    Array
+};
 
 function secondsFromHrTime(time: [number, number]) {
     const d = process.hrtime(time);
     return d[0] + d[1] / (10 ** 9);
 }
 
+function unsafeToSimpleQuery(query: Query) {
+    let text = query.text;
+    const params = query.values.map(String);
+    for (let i = 0; i < params.length; i++) {
+        const param = params[i];
+        text = text.replace('$' + (i + 1), param);
+    };
+    return new Query(text);
+}
+
 function testSelect(
     client: Client,
-    query: Query,
+    testQuery: TestQuery,
     batchSize: number,
     doReplaceArgs: boolean) {
-    let mode: string;
+    let { name, query } = (() => {
+        switch (testQuery) {
+            case TestQuery.Array: return {
+                name: 'Array',
+                query: new Query(
+                    // tslint:disable-next-line
+                    'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)'
+                )
+            };
+            case TestQuery.PgType: return {
+                name: 'PgType',
+                query: new Query(
+                    // tslint:disable-next-line
+                    'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
+                    [-1, true]
+                )
+            };
+        };
+    })();
 
     if (doReplaceArgs) {
-        query = query.unsafeToSimpleQuery();
+        query = unsafeToSimpleQuery(query);
     };
 
     test(`SQL: Select (batch size: ${batchSize})`, async () => {
@@ -83,7 +105,9 @@ function testSelect(
             const secs = (Math.round(time * 100) / 100).toFixed(2) + ' secs';
             const q = round(queries);
             const r = round(rows);
-            console.log(`Q/sec: ${q}; R/sec: ${r} (${secs}); B: ${batchSize}`);
+            console.log(
+                `[${name}] Q/sec: ${q}; R/sec: ${r} (${secs}); B: ${batchSize}`
+            );
         }
 
         expect(diff).toEqual(0);
@@ -121,16 +145,17 @@ describe('Query', withClient([
     (client) => {
         test('Without parameters', async () => {
             expect.assertions(1);
-            const query = pgTypeQuery.unsafeToSimpleQuery();
+            const query = new Query('select 1');
             const result = await client.query(query);
-            expect(result.rows.length).toBeGreaterThan(100);
+            expect(result.rows.length).toEqual(1);
         });
     },
     (client) => {
         test('With parameters', async () => {
             expect.assertions(1);
-            const result = await client.query(pgTypeQuery);
-            expect(result.rows.length).toBeGreaterThan(100);
+            const query = new Query('select $1::int', [1]);
+            const result = await client.query(query);
+            expect(result.rows.length).toEqual(1);
         });
     },
     (client) => {
@@ -184,8 +209,12 @@ describe('Query', withClient([
             expect(result.rows).toEqual([[1]]);
         })
     },
-    (client) => { testSelect(client, pgTypeQuery, 1, false) },
-    (client) => { testSelect(client, pgTypeQuery, 5, false) },
-    (client) => { testSelect(client, pgTypeQuery, 1, true) },
-    (client) => { testSelect(client, pgTypeQuery, 5, true) },
+    (client) => { testSelect(client, TestQuery.PgType, 1, false) },
+    (client) => { testSelect(client, TestQuery.PgType, 5, false) },
+    (client) => { testSelect(client, TestQuery.PgType, 1, true) },
+    (client) => { testSelect(client, TestQuery.PgType, 5, true) },
+    (client) => { testSelect(client, TestQuery.Array, 1, false) },
+    (client) => { testSelect(client, TestQuery.Array, 5, false) },
+    (client) => { testSelect(client, TestQuery.Array, 1, true) },
+    (client) => { testSelect(client, TestQuery.Array, 5, true) },
 ]));
