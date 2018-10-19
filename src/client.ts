@@ -511,6 +511,13 @@ export class Client {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
                     this.events.error.emit(error);
+                    const handleData = this.dataHandlers.shift();
+                    const handleNames = this.nameHandlers.shift();
+                    const message = error.message;
+                    if (!handleData || !handleNames) {
+                        throw new Error('Unexpected error: ' + message);
+                    };
+                    handleData(message);
                     break;
                 }
                 case Message.Notice: {

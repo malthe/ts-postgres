@@ -1,6 +1,6 @@
 import { zip } from './utils';
 
-type ResultHandler<T> = (resolve: () => void) => void;
+type ResultHandler<T> = (resolve: (error: null | string) => void) => void;
 type Callback<T> = (item: T) => void;
 
 export class Result<T> {
@@ -38,10 +38,14 @@ export class ResultIterator<T> extends Promise<Result<T>>
 
     constructor(private container: T[][], executor: ResultHandler<T>) {
         super((resolve, reject) => {
-            executor(() => {
-                const names = this.names || [];
-                const rows = this.rows || [];
-                resolve(new Result(names, rows));
+            executor((error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    const names = this.names || [];
+                    const rows = this.rows || [];
+                    resolve(new Result(names, rows));
+                }
             });
         });
     };
@@ -89,7 +93,7 @@ export class ResultIterator<T> extends Promise<Result<T>>
     };
 }
 
-export type DataHandler<T> = Callback<T | null>;
+export type DataHandler<T> = Callback<T | null | string>;
 
 export type NameHandler = Callback<string[]>;
 
@@ -99,32 +103,27 @@ export function makeResult<T>(
     registerDataHandler: (handler: DataHandler<T[] | null>) => void,
     registerNameHandler: (handler: NameHandler) => void):
     ResultIterator<T> {
-    let finish: (() => void) | null = null;
-
     const rows: T[][] = [];
 
     const p = new ResultIterator<T>(rows, (resolve) => {
-        finish = resolve;
-    });
-
-    const onData = (row: T[] | null) => {
-        if (row === null) {
-            if (finish) {
+        registerDataHandler((row: T[] | null | string) => {
+            if (row === null) {
                 p.rows = rows;
-                finish();
+                resolve(null);
+                p.notify(true);
+            } else if (typeof row === 'string') {
+                resolve(row);
+            } else {
+                rows.push(row);
+                p.notify(false);
             }
-            p.notify(true);
-        } else {
-            rows.push(row);
-            p.notify(false);
-        };
-    };
+        });
+    });
 
     const onNames = (names: string[]) => {
         p.names = names;
     }
 
-    registerDataHandler(onData);
     registerNameHandler(onNames);
 
     return p;

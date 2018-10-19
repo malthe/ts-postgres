@@ -33,7 +33,6 @@ export function withClient(fns: Test[]): jest.EmptyFunction {
                 extraFloatDigits: 2
             });
             let _ = conn.connect();
-            conn.on('error', console.log);
             conn.on('notice', console.log);
             conn.on('end', () => { closed.push(conn); });
             clients.push(conn);

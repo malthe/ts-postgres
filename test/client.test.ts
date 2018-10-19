@@ -209,6 +209,21 @@ describe('Query', withClient([
             expect(result.rows).toEqual([[1]]);
         })
     },
+    (client) => {
+        test('Query errors become promise rejection', async () => {
+            await expect(client.query('select foo')).rejects.toThrow(/foo/);
+        });
+    },
+    (client) => {
+        test('Query errors plays nicely with pipeline', async () => {
+            let p1 = client.query('select foo');
+            let p2 = client.query('select 1 as i');
+            await expect(p1).rejects.toThrow(/foo/);
+            await expect(p2).resolves.toEqual(
+                { "names": ['i'], "rows": [[1]] }
+            );
+        });
+    },
     (client) => { testSelect(client, TestQuery.PgType, 1, false) },
     (client) => { testSelect(client, TestQuery.PgType, 5, false) },
     (client) => { testSelect(client, TestQuery.PgType, 1, true) },
