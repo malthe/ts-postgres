@@ -29,8 +29,12 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     for await (const row of result) {
         count += 1;
     };
-
     expect(count).toEqual(10);
+
+    // Or use the spread operator.
+    const rows = [...await result];
+    expect(rows.length).toEqual(10);
+    expect(rows[0].get('i')).toEqual(0);
 
     // The result is also available in the public rows attribute.
     expect(result.rows).toEqual(
@@ -52,7 +56,7 @@ describe('Result', withClient([
     },
     (client) => {
         test('Synchronous iteration', async () => {
-            expect.assertions(5);
+            expect.assertions(7);
             await testIteratorResult(
                 client,
                 (p) => {
@@ -68,7 +72,7 @@ describe('Result', withClient([
     },
     (client) => {
         test('Asynchronous iteration', async () => {
-            expect.assertions(5);
+            expect.assertions(7);
             await testIteratorResult(
                 client,
                 async (result) => {
