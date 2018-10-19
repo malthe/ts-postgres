@@ -282,7 +282,8 @@ export class Client {
     query(query: Query): ResultIterator<Value>;
     query(text: string, args?: Value[], types?: DataType[]):
         ResultIterator<Value>;
-    query(text: string | Query, args?: Value[], types?: DataType[]) {
+    query(text: string | Query, args?: Value[], types?: DataType[]):
+        ResultIterator<Value> {
         const query =
             (typeof text === 'string') ?
                 new Query(text, args || [], types || []) :
