@@ -21,7 +21,7 @@ function secondsFromHrTime(time: [number, number]) {
 
 function unsafeToSimpleQuery(query: Query) {
     let text = query.text;
-    const params = query.values.map(String);
+    const params = (query.values || []).map(String);
     for (let i = 0; i < params.length; i++) {
         const param = params[i];
         text = text.replace('$' + (i + 1), param);

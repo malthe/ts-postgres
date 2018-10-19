@@ -300,13 +300,13 @@ export class Client {
         const types = query.types;
         const portal = query.portal || '';
 
-        if (values.length) {
+        if (values && values.length) {
             const name = query.name || (
                 (this.config.preparedStatementPrefix ||
                     defaults.preparedStatementPrefix) + (
                     this.nextPreparedStatementId++
                 ));
-            this.writer.parse(name, text, types);
+            this.writer.parse(name, text, types || []);
             this.writer.describe(name, 'S');
             this.writer.sync();
             this.preparedStatements.push({
