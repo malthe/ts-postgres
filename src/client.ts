@@ -320,6 +320,10 @@ export class Client {
             this.writer.bind(name, portal);
             this.writer.describe(portal, 'P');
             this.writer.execute(portal);
+            this.writer.close(name, 'S');
+            if (portal) {
+                this.writer.close(portal, 'P');
+            }
             this.writer.sync();
         }
 
