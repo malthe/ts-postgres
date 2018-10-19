@@ -8,10 +8,10 @@ type ResultFunction =
         Promise<Map<string, Value>[]>;
 
 async function testIteratorResult(client: Client, f: ResultFunction) {
-    const result = client.query(
+    const query = () => client.query(
         'select generate_series($1::int, $2::int) as i', [0, 9]
     );
-    const maps = await f(result);
+    const maps = await f(query());
 
     expect(maps.length).toEqual(10);
     let expectation = [...Array(10).keys()];
@@ -24,15 +24,21 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     // Values are row values.
     expect(values).toEqual(expectation.map((i) => [i]));
 
-    // We could iterate once again over the same set of data.
     let count = 0;
+    const result = query();
     for await (const row of result) {
         count += 1;
     };
     expect(count).toEqual(10);
 
+    // We could iterate once again over the same set of data.
+    for await (const row of result) {
+        count += 1;
+    };
+    expect(count).toEqual(20);
+
     // Or use the spread operator.
-    const rows = [...await result];
+    const rows = [...await query()];
     expect(rows.length).toEqual(10);
     expect(rows[0].get('i')).toEqual(0);
 
@@ -56,7 +62,7 @@ describe('Result', withClient([
     },
     (client) => {
         test('Synchronous iteration', async () => {
-            expect.assertions(7);
+            expect.assertions(8);
             await testIteratorResult(
                 client,
                 (p) => {
@@ -72,7 +78,7 @@ describe('Result', withClient([
     },
     (client) => {
         test('Asynchronous iteration', async () => {
-            expect.assertions(7);
+            expect.assertions(8);
             await testIteratorResult(
                 client,
                 async (result) => {
