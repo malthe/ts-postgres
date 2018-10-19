@@ -224,6 +224,13 @@ describe('Query', withClient([
             );
         });
     },
+    (client) => {
+        test('Empty query', async () => {
+            await expect(client.query('')).resolves.toEqual(
+                { names: [], rows: [] }
+            );
+        });
+    },
     (client) => { testSelect(client, TestQuery.PgType, 1, false) },
     (client) => { testSelect(client, TestQuery.PgType, 5, false) },
     (client) => { testSelect(client, TestQuery.PgType, 1, true) },

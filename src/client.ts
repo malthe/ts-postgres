@@ -511,6 +511,9 @@ export class Client {
                 case Message.CloseComplete: {
                     break;
                 };
+                case Message.EmptyQueryResponse: {
+                    break;
+                };
                 case Message.Error: {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
