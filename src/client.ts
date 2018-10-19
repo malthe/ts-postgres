@@ -515,13 +515,14 @@ export class Client {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
                     this.events.error.emit(error);
-                    const handleData = this.dataHandlers.shift();
-                    const handleNames = this.nameHandlers.shift();
                     const message = error.message;
-                    if (!handleData || !handleNames) {
+                    try {
+                        const handleData = this.dataHandlers.shift(true);
+                        this.nameHandlers.shift(true);
+                        handleData(message);
+                    } catch (err) {
                         throw new Error('Unexpected error: ' + message);
-                    };
-                    handleData(message);
+                    }
                     break;
                 }
                 case Message.Notice: {
