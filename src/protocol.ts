@@ -42,16 +42,16 @@ export const enum Message {
     BindComplete = 0x32,
     Close = 0x43,
     CloseComplete = 0x33,
-    RowData = 0x44,
     Error = 0x45,
+    NoData = 0x6e,
     Notice = 0x4e,
-    ParseComplete = 0x31,
     NotificationResponse = 0x41,
+    ParseComplete = 0x31,
+    ParameterDescription = 0x74
     ParameterStatus = 0x53,
     ReadyForQuery = 0x5a,
-    RowDescription = 0x54,
-    NoData = 0x6e,
-    ParameterDescription = 0x74
+    RowData = 0x44,
+    RowDescription = 0x54
 }
 
 export const enum TransactionStatus {
