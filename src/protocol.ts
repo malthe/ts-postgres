@@ -249,6 +249,8 @@ export function readRowData(
                     case DataType.Text:
                     case DataType.Varchar:
                         return buffer.toString(encoding, start, end);
+                    case DataType.Bytea:
+                        return buffer.slice(start, end);
                     case DataType.Json:
                         return JSON.parse(buffer.toString(
                             encoding, start, end));
@@ -461,12 +463,17 @@ export class Writer {
                     break;
                 };
                 case DataType.Bpchar:
+                case DataType.Bytea:
                 case DataType.Char:
                 case DataType.Name:
                 case DataType.Text:
                 case DataType.Varchar: {
-                    const s = String(value);
-                    size = add(SegmentType.String, s);
+                    if (value instanceof Buffer) {
+                        size = add(SegmentType.Buffer, value);
+                    } else {
+                        const s = String(value);
+                        size = add(SegmentType.String, s);
+                    }
                     break;
                 }
                 case DataType.Float4: {
@@ -714,7 +721,10 @@ export class Writer {
             const [segment, value] = segments[i];
             switch (segment) {
                 case SegmentType.Buffer: {
-                    if (value instanceof Buffer) value.copy(buffer, offset);
+                    const b = (value instanceof Buffer) ?
+                        value : Buffer.from(String(value), this.encoding);
+                    b.copy(buffer, offset);
+                    offset += b.length;
                     break;
                 }
                 case SegmentType.CString: {

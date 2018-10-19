@@ -37,6 +37,7 @@ export enum DataType {
     Money = 790,
     Macaddr = 829,
     Inet = 869,
+    ArrayBytea = 1001,
     ArrayChar = 1002,
     ArrayInt4 = 1007,
     ArrayRegprocedure = 1008,
@@ -102,6 +103,7 @@ export enum DataType {
 
 export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayBpchar, DataType.Bpchar],
+    [DataType.ArrayBytea, DataType.Bytea],
     [DataType.ArrayChar, DataType.Char],
     [DataType.ArrayDate, DataType.Date],
     [DataType.ArrayFloat4, DataType.Float4],

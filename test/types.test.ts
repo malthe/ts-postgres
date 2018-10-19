@@ -69,6 +69,7 @@ describe('Types', withClient(
         make<boolean>(DataType.Bool, 'true', true),
         make<boolean>(DataType.Bool, 'false', false),
         make<string>(DataType.Bpchar, '\'abc\'::char(3)', 'abc'),
+        make<Buffer>(DataType.Bytea, '\'abc\'::bytea', Buffer.from('abc')),
         make<string>(DataType.Char, '\'a\'::char(1)', 'a'),
         make<string>(DataType.Text, '\'a\'::text', 'a'),
         make<number>(DataType.Int2, '1::int2', 1),
@@ -180,6 +181,8 @@ describe('Types', withClient(
             DataType.ArrayVarchar, '\'{"Ŝќ⽜"}\'::varchar[]', ['Ŝќ⽜']),
         make<string[]>(
             DataType.ArrayBpchar, '\'{a}\'::bpchar[]', ['a']),
+        make<Buffer[]>(
+            DataType.ArrayBytea, '\'{abc}\'::bytea[]', [Buffer.from('abc')]),
         make<string[]>(
             DataType.ArrayText, '\'{a}\'::text[]', ['a']),
         make<Date[]>(
