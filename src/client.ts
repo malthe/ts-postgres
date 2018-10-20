@@ -220,10 +220,14 @@ export class Client {
         this.connecting = true;
 
         let p = this.events.connect.once();
-        this.stream.connect(
-            this.config.port || defaults.port,
-            this.config.host || defaults.host
-        );
+        const port = this.config.port || defaults.port;
+        const host = this.config.host || defaults.host;
+
+        if (host.indexOf('/') === 0) {
+            this.stream.connect(host + '/.s.PGSQL.' + port);
+        } else {
+            this.stream.connect(port, host);
+        }
 
         return p;
     }
