@@ -21,8 +21,8 @@ $ npm install ts-postgres@next
 * Multiple queries can be sent at once (pipeline)
 * Extensible value model
 * Hybrid query result object
-  * Iteration (synchronous or asynchronous, yields one map per row);
-  * All-at-once, when promise completes; result data is available in array form
+  * Iterable (synchronous or asynchronous; one row at a time)
+  * Promise-based
 
 ---
 
@@ -37,14 +37,13 @@ async function main() {
     const client = new Client();
     await client.connect();
 
-    // The query result is an asynchronous iterator.
-    const iterator = client.query(
+    const stream = client.query(
         `SELECT 'Hello ' || $1 || '!' AS message`,
         ['world']
     );
 
-    for await (const item of iterator) {
-        console.log(item.get('message')); // 'Hello world!'
+    for await (const row of stream) {
+        console.log(row.get('message')); // 'Hello world!'
     }
 
     await client.end();
@@ -52,24 +51,39 @@ async function main() {
 
 main()
 ```
-We often want to just wait for the entire result set to arrive and subsequently process the data:
+The example above uses the variable ``stream`` to indicate that the result set is made available as it arrives on the connection. But we'll often want to just wait for the entire result set to arrive before starting to process the data.
+
 ```typescript
 const result = await client.query('select generate_series(1, 10)');
 ```
-The iterator interface yields one map object per row (from column names to values). The spread operator is a convenient way to turn a result into an array of such maps:
+If the query fails, waiting for the result will throw an exception.
+
+### Iterator interface
+
+Whether we're operating on a stream or an already waited for result set, the iterator interface provides the most high-level row interface. This also applies when using the _spread_ operator:
+
 ```typescript
-const items = [...result];
-for (let item of items) {
-  console.log('The number is: ' + item.get('i')); // 1, 2, 3, ...
+const rows = [...result];
+```
+
+Each row provides direct access to values through its ``data`` attribute, but we can also get a value by name using the ``get(name)`` method.
+
+```typescript
+for (let row of rows) {
+  console.log('The number is: ' + row.get('i')); // 1, 2, 3, ...
 }
 ```
-Using the ``rows`` attribute is the most efficient way to work with result data. It contains the raw result data as an array of arrays.
+Note that values are polymorphic and need to be explicitly cast to a concrete type such as ``number`` or ``string``.
+
+### Result interface
+
+This interface is available on the already waited for result object. It makes data available in the ``rows`` attribute as an array of arrays (of values).
 ```typescript
 for (let row of result.rows) {
   console.log('The number is: ' + row[0]); // 1, 2, 3, ...
 }
 ```
-Column names are available as the ``names`` attribute of a result.
+This is the most efficient way to work with result data. Column names are available as the ``names`` attribute of a result.
 
 ### Multiple queries
 

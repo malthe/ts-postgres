@@ -1,22 +1,25 @@
 import { withClient } from './helper';
 import { Client } from '../src/client';
 import { DataType, Row, Value } from '../src/types';
-import { Result, ResultIterator } from '../src/result';
+import { Result, ResultIterator, ResultRow } from '../src/result';
 
 type ResultFunction =
     (result: ResultIterator<Value>) =>
-        Promise<Map<string, Value>[]>;
+        Promise<ResultRow<Value>[]>;
 
 async function testIteratorResult(client: Client, f: ResultFunction) {
     const query = () => client.query(
         'select generate_series($1::int, $2::int) as i', [0, 9]
     );
-    const maps = await f(query());
+    const rows = await f(query());
 
-    expect(maps.length).toEqual(10);
+    expect(rows.length).toEqual(10);
     let expectation = [...Array(10).keys()];
-    const keys = maps.map((map) => [...map.keys()]);
-    const values = maps.map((map) => [...map.values()]);
+    const keys = rows.map((row) => [...row.names]);
+    const values = rows.map((row) => [...row.data]);
+
+    // The get method returns a column using name lookup.
+    expect(values).toEqual(rows.map((row) => [row.get('i')]));
 
     // Keys are column names.
     expect(keys).toEqual(expectation.map(() => ['i']));
@@ -24,6 +27,7 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     // Values are row values.
     expect(values).toEqual(expectation.map((i) => [i]));
 
+    // We could iterate multiple times over the same result.
     let count = 0;
     const result = query();
     for await (const row of result) {
@@ -31,16 +35,10 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     };
     expect(count).toEqual(10);
 
-    // We could iterate once again over the same set of data.
     for await (const row of result) {
         count += 1;
     };
     expect(count).toEqual(20);
-
-    // Or use the spread operator.
-    const rows = [...await query()];
-    expect(rows.length).toEqual(10);
-    expect(rows[0].get('i')).toEqual(0);
 
     // The result is also available in the public rows attribute.
     expect(result.rows).toEqual(
@@ -62,31 +60,29 @@ describe('Result', withClient([
     },
     (client) => {
         test('Synchronous iteration', async () => {
-            expect.assertions(8);
             await testIteratorResult(
                 client,
                 (p) => {
                     return p.then((result) => {
-                        const maps: Map<string, Value>[] = [];
-                        for (const map of result) {
-                            maps.push(map);
+                        const rows: ResultRow<Value>[] = [];
+                        for (const row of result) {
+                            rows.push(row);
                         };
-                        return maps;
+                        return rows;
                     });
                 });
         });
     },
     (client) => {
         test('Asynchronous iteration', async () => {
-            expect.assertions(8);
             await testIteratorResult(
                 client,
                 async (result) => {
-                    const maps: Map<string, Value>[] = [];
-                    for await (const map of result) {
-                        maps.push(map);
+                    const rows: ResultRow<Value>[] = [];
+                    for await (const row of result) {
+                        rows.push(row);
                     };
-                    return maps;
+                    return rows;
                 });
         });
     }

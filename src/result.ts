@@ -1,12 +1,27 @@
-import { zip } from './utils';
-
 type ResultHandler<T> = (resolve: (error: null | string) => void) => void;
 type Callback<T> = (item: T) => void;
+
+export class ResultRow<T> {
+    private readonly length: number;
+
+    constructor(public readonly names: string[], public readonly data: T[]) {
+        this.length = names.length;
+    }
+
+    get(name: string): T {
+        for (let i = 0; this.length; i++) {
+            if (this.names[i] === name) {
+                return this.data[i];
+            }
+        }
+        throw new Error(`Key not found: ${name}`);
+    }
+}
 
 export class Result<T> {
     constructor(public names: string[], public rows: T[][]) { }
 
-    [Symbol.iterator](): Iterator<Map<string, T>> {
+    [Symbol.iterator](): Iterator<ResultRow<T>> {
         let i = 0;
 
         const rows = this.rows;
@@ -16,7 +31,7 @@ export class Result<T> {
             const names = this.names;
             const values = rows[i];
             i++;
-            return zip(names, values);
+            return new ResultRow<T>(names, values);
         };
 
         return {
@@ -28,8 +43,7 @@ export class Result<T> {
     }
 }
 
-export class ResultIterator<T> extends Promise<Result<T>>
-    implements AsyncIterable<Map<string, T>> {
+export class ResultIterator<T> extends Promise<Result<T>> {
     private subscribers: ((done: boolean) => void)[] = [];
     private done = false;
 
@@ -55,7 +69,7 @@ export class ResultIterator<T> extends Promise<Result<T>>
         for (let subscriber of this.subscribers) subscriber(done);
     };
 
-    [Symbol.asyncIterator](): AsyncIterator<Map<string, T>> {
+    [Symbol.asyncIterator](): AsyncIterator<ResultRow<T>> {
         let i = 0;
 
         const container = this.container;
@@ -69,7 +83,7 @@ export class ResultIterator<T> extends Promise<Result<T>>
                 throw new Error("Column name mapping missing.");
             }
 
-            return zip(names, values);
+            return new ResultRow<T>(names, values);
         };
 
         return {
