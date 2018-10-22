@@ -61,11 +61,6 @@ export interface DataTypeError {
     value: Value
 }
 
-export enum DataFormat {
-    Text,
-    Binary,
-};
-
 export interface Configuration {
     host?: string,
     port?: number,

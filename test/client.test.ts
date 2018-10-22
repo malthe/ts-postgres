@@ -2,7 +2,7 @@ import { withClient } from './helper';
 import { Client } from '../src/client';
 import { Query } from '../src/query';
 import { Result } from '../src/result';
-import { DataType, Builtin } from '../src/types';
+import { DataFormat, DataType, Builtin } from '../src/types';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
@@ -160,15 +160,17 @@ describe('Query', withClient([
     },
     (client) => {
         test('Custom value type reader', async () => {
-            expect.assertions(2);
+            expect.assertions(3);
             client.config.types = new Map([
                 [DataType.Int4, (
                     buffer: Buffer,
                     start: number,
                     end: number,
+                    format: DataFormat,
                     encoding?: string) => {
                     const value = buffer.readInt32BE(start);
                     expect(value).toEqual(1);
+                    expect(format).toEqual(DataFormat.Binary);
                     return 1;
                 }]
             ]);

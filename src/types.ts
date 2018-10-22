@@ -116,10 +116,16 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayVarchar, DataType.Varchar]
 ]);
 
+export enum DataFormat {
+    Text,
+    Binary,
+};
+
 export type ValueTypeReader = (
     buffer: Buffer,
     start: number,
     end: number,
+    format: DataFormat,
     encoding: string | undefined
 ) => Value;
 

@@ -5,6 +5,7 @@ import {
     arrayDataTypeMapping,
     isPoint,
     ArrayValue,
+    DataFormat,
     DataType,
     Primitive,
     Value,
@@ -199,6 +200,7 @@ export function readRowData(
                     buffer,
                     start,
                     end,
+                    DataFormat.Binary,
                     encoding
                 );
             }
