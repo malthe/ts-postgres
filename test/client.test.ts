@@ -136,7 +136,7 @@ describe('Events', withClient([
         });
         test('Connect', () => {
             expect.assertions(1);
-            return p;
+            return Promise.all([client.connect(), p]);
         });
     },
 ]));
