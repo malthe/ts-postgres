@@ -1,4 +1,4 @@
-import { withClient } from './helper';
+import { testWithClient } from './helper';
 import { Client } from '../src/client';
 import { DataType, Row, Value } from '../src/types';
 import { Result, ResultIterator, ResultRow } from '../src/result';
@@ -47,43 +47,39 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
 
 }
 
-describe('Result', withClient([
-    (client) => {
-        test('Names', async () => {
-            expect.assertions(2);
-            let result = await client.query(
-                'select $1::text as message', ['Hello world!']
-            );
-            expect(result.names.length).toEqual(1);
-            expect(result.names[0]).toEqual('message');
-        });
-    },
-    (client) => {
-        test('Synchronous iteration', async () => {
-            await testIteratorResult(
-                client,
-                (p) => {
-                    return p.then((result) => {
-                        const rows: ResultRow<Value>[] = [];
-                        for (const row of result) {
-                            rows.push(row);
-                        };
-                        return rows;
-                    });
-                });
-        });
-    },
-    (client) => {
-        test('Asynchronous iteration', async () => {
-            await testIteratorResult(
-                client,
-                async (result) => {
+describe('Result', () => {
+    testWithClient('Names', async (client) => {
+        expect.assertions(2);
+        let result = await client.query(
+            'select $1::text as message', ['Hello world!']
+        );
+        expect(result.names.length).toEqual(1);
+        expect(result.names[0]).toEqual('message');
+    });
+
+    testWithClient('Synchronous iteration', async (client) => {
+        await testIteratorResult(
+            client,
+            (p) => {
+                return p.then((result) => {
                     const rows: ResultRow<Value>[] = [];
-                    for await (const row of result) {
+                    for (const row of result) {
                         rows.push(row);
                     };
                     return rows;
                 });
-        });
-    }
-]));
+            });
+    });
+
+    testWithClient('Asynchronous iteration', async (client) => {
+        await testIteratorResult(
+            client,
+            async (result) => {
+                const rows: ResultRow<Value>[] = [];
+                for await (const row of result) {
+                    rows.push(row);
+                };
+                return rows;
+            });
+    });
+});

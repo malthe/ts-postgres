@@ -3,40 +3,21 @@ import {
     End
 } from '../src/client';
 
-export type Test = (client: Client) => void;
+type Test = (client: Client) => Promise<any>;
 
-export function withClient(fns: Test[]): jest.EmptyFunction {
-    return () => {
-        let clients: Client[] = [];
-        let promises: Promise<End>[] = [];
-        let closed: Client[] = [];
-
-        afterEach(() => {
-            const conn = clients.shift();
-            if (!conn) return;
-
-            // Some of the tests close the clients prior to
-            // stopping.
-            if (closed.indexOf(conn) === -1) {
-                const p = conn.end();
-                promises.push(p);
-            }
-        });
-
-        afterAll(async () => {
-            return Promise.all(promises);
-        });
-
-        for (let fn of fns) {
-            const conn = new Client({
-                suppressDataTypeNotSupportedWarning: true,
-                extraFloatDigits: 2
-            });
-            let _ = conn.connect();
-            conn.on('notice', console.log);
-            conn.on('end', () => { closed.push(conn); });
-            clients.push(conn);
-            fn(conn)
-        }
-    }
+export function testWithClient(name: string, fn: Test, timeout?: number) {
+    const client = new Client({
+        extraFloatDigits: 2
+    });
+    client.on('notice', console.log);
+    test(name, async () => {
+        const p1 = fn(client);
+        const p2 = client.connect();
+        let closed = false;
+        client.on('end', () => { closed = true; });
+        await Promise.all([p1, p2]);
+        if (!closed) {
+            await client.end();
+        };
+    }, timeout);
 }

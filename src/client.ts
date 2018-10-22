@@ -120,6 +120,7 @@ export class Client {
     });
 
     private ending = false;
+    private connected = false;
     private connecting = false;
     private readonly encoding = 'utf-8';
     private readonly stream = new Socket();
@@ -163,6 +164,7 @@ export class Client {
 
         this.stream.on('close', () => {
             this.ready = false;
+            this.connected = false;
         });
 
         this.stream.on('drain', () => {
@@ -212,6 +214,10 @@ export class Client {
     }
 
     connect() {
+        if (this.connecting) {
+            throw new Error('Already connecting');
+        }
+
         this.connecting = true;
 
         let p = this.events.connect.once();
@@ -333,7 +339,7 @@ export class Client {
         );
 
         this.flush();
-        return result;
+        return result
     }
 
     private flush() {
@@ -398,11 +404,7 @@ export class Client {
             let info = this.activeDataHandlerInfo;
             while (true) {
                 mtype = buffer.readInt8(frame);
-
-                const isRowData = mtype === Message.RowData;
-                const isNoData = mtype === Message.NoData;
-
-                if (!isRowData && !isNoData) break;
+                if (mtype !== Message.RowData) break;
 
                 if (!info) {
                     const handler = this.dataHandlers.shift();
@@ -410,22 +412,15 @@ export class Client {
                         throw new Error('Unexpected data received.');
                     }
 
-                    // If there is no data then there is also no row
-                    // description.
-                    if (isNoData) {
-                        handler(null);
-                        this.nameHandlers.shift();
-                    } else {
-                        const description = this.rowDescriptions.shift();
-                        if (description) {
-                            info = {
-                                handler: handler,
-                                description: description
-                            }
-                            this.activeDataHandlerInfo = info;
-                        } else {
-                            throw new Error('Row description expected.');
+                    const description = this.rowDescriptions.shift();
+                    if (description) {
+                        info = {
+                            handler: handler,
+                            description: description
                         }
+                        this.activeDataHandlerInfo = info;
+                    } else {
+                        throw new Error('Row description expected.');
                     }
                 }
 
@@ -481,6 +476,7 @@ export class Client {
                         case 0: {
                             this.transactionStatus = TransactionStatus.Idle;
                             this.connecting = false;
+                            this.connected = true;
                             process.nextTick(() => {
                                 this.events.connect.emit({});
                             });
@@ -500,18 +496,23 @@ export class Client {
                 case Message.BindComplete: {
                     break;
                 };
-                case Message.Close: {
+                case Message.NoData: {
+                    this.nameHandlers.shift(true);
+                    break;
+                }
+                case Message.EmptyQueryResponse:
+                case Message.CommandComplete: {
                     const info = this.activeDataHandlerInfo;
                     if (info) {
                         info.handler(null);
                         this.activeDataHandlerInfo = null;
+                    } else {
+                        const handler = this.dataHandlers.shift(true);
+                        handler(null);
                     }
                     break;
                 }
                 case Message.CloseComplete: {
-                    break;
-                };
-                case Message.EmptyQueryResponse: {
                     break;
                 };
                 case Message.Error: {
