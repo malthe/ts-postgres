@@ -1,6 +1,6 @@
 {
     "name": "ts-postgres",
-    "version": "1.0.0-beta3",
+    "version": "1.0.0-beta4",
     "description": "PostgreSQL client in TypeScript",
     "declaration": true,
     "keywords": [
