@@ -70,7 +70,7 @@ const rows = [...result];
 Each row provides direct access to values through its ``data`` attribute, but we can also get a value by name using the ``get(name)`` method.
 
 ```typescript
-for (let row of rows) {
+for (const row of rows) {
   console.log('The number is: ' + row.get('i')); // 1, 2, 3, ...
 }
 ```
@@ -80,7 +80,7 @@ Note that values are polymorphic and need to be explicitly cast to a concrete ty
 
 This interface is available on the already waited for result object. It makes data available in the ``rows`` attribute as an array of arrays (of values).
 ```typescript
-for (let row of result.rows) {
+for (const row of result.rows) {
   console.log('The number is: ' + row[0]); // 1, 2, 3, ...
 }
 ```
@@ -96,9 +96,28 @@ await client.query('commit');
 ```
 The queries are sent back to back over the wire, but PostgreSQL still processes them one at a time, in the order they were sent (first in, first out).
 
+### Prepared statements
+
+You can prepare a query and subsequently execute it multiple times. This is also known as a "prepared statement".
+```typescript
+const statement = await client.prepare(
+    `SELECT 'Hello ' || $1 || '!' AS message`
+);
+for await (const row of statement.execute(['world'])) {
+    console.log(row.get('message')); // 'Hello world!'
+}
+```
+When the prepared statement is no longer needed, it should be closed to release the resource.
+```typescript
+await statement.close();
+```
+Prepared statements can be used (executed) multiple times, even concurrently.
+
 ## Notes
 
-Queries are sent using the prepared statement variant of the extended query protocol. In this variant, the type of each parameter is determined prior to parameter binding, ensuring that values are encoded in the correct format.
+Queries with parameters are sent using the prepared statement variant of the extended query protocol. In this variant, the type of each parameter is determined prior to parameter binding, ensuring that values are encoded in the correct format.
+
+If a query has no parameters, it uses the portal variant which saves a round trip.
 
 The copy commands are not supported.
 

@@ -282,6 +282,18 @@ describe('Query', () => {
         );
     });
 
+    testWithClient(
+        'Prepare and execute',
+        async (client) => {
+            const stmt = await client.prepare('select $1::int as i');
+            await expect(stmt.execute([1])).resolves.toEqual(
+                { "names": ['i'], "rows": [[1]] }
+            );
+            const result = await stmt.execute([2]);
+            expect(result.rows).toEqual([[2]]);
+            await stmt.close();
+        });
+
     testSelect(TestQuery.PgType, 1, false);
     testSelect(TestQuery.PgType, 5, false);
     testSelect(TestQuery.PgType, 1, true);

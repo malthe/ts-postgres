@@ -81,6 +81,15 @@ export interface Notification {
     payload?: string
 }
 
+export interface PreparedStatement {
+    close: (portal?: string) => Promise<void>;
+    execute: (
+        values?: Value[],
+        portal?: string,
+        format?: DataFormat | DataFormat[]
+    ) => ResultIterator<Value>
+}
+
 type Callback<T> = (data: T) => void;
 
 type CallbackOf<U> = U extends any ? Callback<U> : never;
@@ -94,7 +103,11 @@ type Event = (
     Notification
 );
 
+type CloseHandler = () => void;
+
 type RowDataHandler = DataHandler<Row>;
+
+type DescriptionHandler = (description: RowDescription) => void;
 
 interface SystemError extends Error {
     errno: string | number
@@ -110,23 +123,28 @@ type ErrorHandler = (message: string) => void;
 
 const enum Cleanup {
     Bind,
+    Close,
     ErrorHandler,
     ParameterDescription,
     PreFlight,
     RowDescription,
 };
 
-interface PreparedStatement {
+interface Bind {
     name: string;
+    format: DataFormat | DataFormat[]
     portal: string;
-    format: DataFormat | DataFormat[];
-    values: Value[]
+    values: Value[],
+    close: boolean
+};
+
+interface BindData {
 };
 
 interface PreFlightQueue {
-    nameHandler: NameHandler;
-    dataHandler: RowDataHandler;
-    preparedStatement: PreparedStatement | null;
+    descriptionHandler: DescriptionHandler;
+    dataHandler: RowDataHandler | null;
+    bind: Bind | null;
 };
 
 export class Client {
@@ -144,6 +162,7 @@ export class Client {
     private connected = false;
     private connecting = false;
     private ready = false;
+    private error = false;
 
     private readonly encoding = 'utf-8';
     private readonly stream = new Socket();
@@ -156,6 +175,7 @@ export class Client {
     private remaining = 0;
 
     private bindQueue = new Queue<RowDataHandlerInfo | null>();
+    private closeHandlerQueue = new Queue<CloseHandler | null>();
     private cleanupQueue = new Queue<Cleanup>();
     private errorHandlerQueue = new Queue<ErrorHandler>();
     private preFlightQueue = new Queue<PreFlightQueue>();
@@ -315,6 +335,77 @@ export class Client {
         }
     }
 
+    prepare(
+        text: string,
+        name?: string,
+        types?: DataType[]): Promise<PreparedStatement> {
+        const providedNameOrGenerated = (name) || (
+            (this.config.preparedStatementPrefix ||
+                defaults.preparedStatementPrefix) + (
+                this.nextPreparedStatementId++
+            ));
+
+        return new Promise<PreparedStatement>(
+            (resolve, reject) => {
+                const errorHandler = (message: string) => reject(message);
+                this.errorHandlerQueue.push(errorHandler);
+                this.writer.parse(providedNameOrGenerated, text, types || []);
+                this.writer.describe(providedNameOrGenerated, 'S');
+                this.preFlightQueue.push({
+                    descriptionHandler: (description: RowDescription) => {
+                        const types = this.parameterDescriptionQueue.shift();
+                        this.cleanupQueue.shift(Cleanup.ParameterDescription);
+
+                        resolve({
+                            close: (portal?: string) => {
+                                return new Promise<void>(
+                                    (resolve, reject) => {
+                                        let remaining = 1;
+                                        this.writer.close(
+                                            providedNameOrGenerated, 'S');
+                                        this.closeHandlerQueue.push(resolve);
+                                        this.cleanupQueue.push(
+                                            Cleanup.Close
+                                        );
+                                        this.writer.flush();
+                                        this.flush();
+                                    }
+                                );
+                            },
+                            execute: (
+                                values?: Value[],
+                                portal?: string,
+                                format?: DataFormat | DataFormat[]
+                            ) => {
+                                const result = makeResult<Value>();
+                                result.nameHandler(description.names);
+                                const info = {
+                                    handler: result.dataHandler,
+                                    description: description
+                                };
+                                this.bindAndExecute(info, {
+                                    name: providedNameOrGenerated,
+                                    portal: portal || '',
+                                    format: format || DataFormat.Binary,
+                                    values: values || [],
+                                    close: false
+                                }, types);
+
+                                return result.iterator
+                            }
+                        })
+                    },
+                    dataHandler: null,
+                    bind: null
+                });
+                this.writer.sync();
+                this.cleanupQueue.push(Cleanup.PreFlight);
+                this.cleanupQueue.push(Cleanup.ParameterDescription);
+                this.cleanupQueue.push(Cleanup.ErrorHandler);
+                this.flush();
+            });
+    }
+
     // Query object interface.
     query(query: Query): ResultIterator<Value>;
 
@@ -344,34 +435,34 @@ export class Client {
         return this.execute(query);
     }
 
-    private bindAndExecute(info: RowDataHandlerInfo, ps: PreparedStatement) {
-        const types = this.parameterDescriptionQueue.shift();
-
-        this.cleanupQueue.shift();
-        this.cleanupQueue.shift();
-
+    private bindAndExecute(
+        info: RowDataHandlerInfo,
+        bind: Bind,
+        types: DataType[]) {
         this.writer.bind(
-            ps.name,
-            ps.portal,
-            ps.format,
-            ps.values,
+            bind.name,
+            bind.portal,
+            bind.format,
+            bind.values,
             types
         );
 
         this.bindQueue.push(info);
+        this.writer.execute(bind.portal);
         this.cleanupQueue.push(Cleanup.Bind);
+
+        if (bind.close) {
+            this.writer.close(bind.name, 'S');
+            this.closeHandlerQueue.push(null);
+            this.cleanupQueue.push(Cleanup.Close);
+        }
+
+        this.writer.sync();
+        this.errorHandlerQueue.push(
+            (message: string) => { info.handler(message); }
+        );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
-        this.errorHandlerQueue.push(
-            this.errorHandlerQueue.shift()
-        );
-
-        this.writer.execute(ps.portal);
-        this.writer.close(ps.name, 'S');
-        if (ps.portal) {
-            this.writer.close(ps.portal, 'P');
-        }
-        this.writer.sync();
         this.flush();
     }
 
@@ -388,6 +479,9 @@ export class Client {
         const portal = (options ? options.portal : undefined) || '';
         const result = makeResult<Value>();
 
+        const descriptionHandler = (description: RowDescription) => {
+            result.nameHandler(description.names);
+        };
 
         if (values && values.length) {
             const name = (options ? options.name : undefined) || (
@@ -399,13 +493,14 @@ export class Client {
             this.writer.parse(name, text, types || []);
             this.writer.describe(name, 'S');
             this.preFlightQueue.push({
-                nameHandler: result.nameHandler,
+                descriptionHandler: descriptionHandler,
                 dataHandler: result.dataHandler,
-                preparedStatement: {
+                bind: {
                     name: name,
                     portal: portal,
                     format: format || DataFormat.Binary,
-                    values: values
+                    values: values,
+                    close: true
                 }
             });
             this.cleanupQueue.push(Cleanup.PreFlight);
@@ -417,17 +512,16 @@ export class Client {
             this.bindQueue.push(null);
             this.writer.describe(portal, 'P');
             this.preFlightQueue.push({
-                nameHandler: result.nameHandler,
+                descriptionHandler: descriptionHandler,
                 dataHandler: result.dataHandler,
-                preparedStatement: null
+                bind: null
             });
             this.writer.execute(portal);
             this.writer.close(name, 'S');
-            if (portal) {
-                this.writer.close(portal, 'P');
-            }
-            this.cleanupQueue.push(Cleanup.PreFlight);
             this.cleanupQueue.push(Cleanup.Bind);
+            this.cleanupQueue.push(Cleanup.PreFlight);
+            this.closeHandlerQueue.push(null);
+            this.cleanupQueue.push(Cleanup.Close);
         }
 
         this.errorHandlerQueue.push(
@@ -563,9 +657,6 @@ export class Client {
                     const code = buffer.readInt32BE(start);
                     switch (code) {
                         case 0: {
-                            this.transactionStatus = TransactionStatus.Idle;
-                            this.connecting = false;
-                            this.connected = true;
                             process.nextTick(() => {
                                 this.events.connect.emit({});
                             });
@@ -588,30 +679,38 @@ export class Client {
                 }
                 case Message.BindComplete: {
                     const info = this.bindQueue.shift();
-                    this.cleanupQueue.shift();
+                    this.cleanupQueue.shift(Cleanup.Bind);
                     if (info) {
                         this.activeDataHandlerInfo = info;
                     }
                     break;
                 };
                 case Message.NoData: {
-                    this.cleanupQueue.shift();
+                    this.cleanupQueue.shift(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
-                    if (preflight.preparedStatement) {
-                        this.bindAndExecute({
-                            handler: preflight.dataHandler,
-                            description: null
-                        }, preflight.preparedStatement)
+                    if (preflight.dataHandler) {
+                        if (preflight.bind) {
+                            this.cleanupQueue.shift(
+                                Cleanup.ParameterDescription);
+                            const info = {
+                                handler: preflight.dataHandler,
+                                description: null,
+                            };
+                            this.bindAndExecute(
+                                info,
+                                preflight.bind,
+                                this.parameterDescriptionQueue.shift()
+                            );
+                        } else {
+                            preflight.dataHandler(null);
+                        }
                     } else {
-                        preflight.dataHandler(null);
+                        throw new Error('Data handler not set');
                     }
                     break;
                 }
                 case Message.EmptyQueryResponse:
                 case Message.CommandComplete: {
-                    this.errorHandlerQueue.shift();
-                    this.cleanupQueue.shift();
-
                     // This is unset if the query had no row data.
                     const info = this.activeDataHandlerInfo;
                     if (info) {
@@ -621,6 +720,11 @@ export class Client {
                     break;
                 }
                 case Message.CloseComplete: {
+                    const handler = this.closeHandlerQueue.shift();
+                    this.cleanupQueue.shift(Cleanup.Close);
+                    if (handler) {
+                        handler();
+                    }
                     break;
                 };
                 case Message.ErrorResponse: {
@@ -637,9 +741,14 @@ export class Client {
                                 this.bindQueue.shift();
                                 break;
                             }
+                            case Cleanup.Close: {
+                                this.closeHandlerQueue.shift();
+                                break;
+                            }
                             case Cleanup.ErrorHandler: {
                                 const handler = this.errorHandlerQueue.shift();
                                 handler(message);
+                                this.error = true;
                                 break loop;
                             }
                             case Cleanup.ParameterDescription: {
@@ -704,6 +813,16 @@ export class Client {
                     break;
                 };
                 case Message.ReadyForQuery: {
+                    if (this.error) {
+                        this.error = false
+                    } else if (this.connected) {
+                        this.errorHandlerQueue.shift();
+                        this.cleanupQueue.shift(Cleanup.ErrorHandler);
+                    } else {
+                        this.transactionStatus = TransactionStatus.Idle;
+                        this.connecting = false;
+                        this.connected = true;
+                    }
                     const status = buffer.readInt8(start);
                     this.transactionStatus = status as TransactionStatus;
                     this.ready = true;
@@ -711,23 +830,31 @@ export class Client {
                     break;
                 };
                 case Message.RowDescription: {
-                    this.cleanupQueue.shift();
+                    this.cleanupQueue.shift(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     const description = readRowDescription(
                         buffer, start, this.config.types
                     );
 
-                    preflight.nameHandler(description.names);
+                    preflight.descriptionHandler(description);
 
-                    const info = {
-                        handler: preflight.dataHandler,
-                        description: description
-                    };
+                    if (preflight.dataHandler) {
+                        const info = {
+                            handler: preflight.dataHandler,
+                            description: description
+                        };
 
-                    if (preflight.preparedStatement) {
-                        this.bindAndExecute(info, preflight.preparedStatement);
-                    } else {
-                        this.activeDataHandlerInfo = info;
+                        if (preflight.bind) {
+                            this.cleanupQueue.shift(
+                                Cleanup.ParameterDescription);
+                            this.bindAndExecute(
+                                info,
+                                preflight.bind,
+                                this.parameterDescriptionQueue.shift()
+                            );
+                        } else {
+                            this.activeDataHandlerInfo = info;
+                        }
                     }
                     break;
                 };

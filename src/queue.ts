@@ -19,9 +19,13 @@ export class Queue<T extends any = undefined> {
         if (this.tail === this.size) this.tail = 0;
     }
 
-    shift(): T {
+    shift(expected?: T): T {
         const item = this.container[this.head];
         this.container[this.head] = undefined;
+
+        if (typeof expected !== 'undefined' && expected !== item) {
+            throw new Error(`Unexpected item: ${expected} !== ${item}`);
+        }
 
         this.head++;
         this.length--;
