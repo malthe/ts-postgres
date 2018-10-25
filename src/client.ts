@@ -553,8 +553,13 @@ export class Client {
             if (next < 0) break;
 
             const value = buffer.slice(offset + 1, next).toString();
-
             switch (buffer[offset]) {
+                case 0x53: {
+                    if (level === null) {
+                        level = value as DatabaseError['level'];
+                    }
+                    break;
+                }
                 case 0x56: {
                     level = value as DatabaseError['level'];
                     break;
