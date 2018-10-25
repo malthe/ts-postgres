@@ -156,6 +156,13 @@ describe('Query', () => {
         expect(result.rows.length).toEqual(1);
     });
 
+    testWithClient('Named portal', async (client) => {
+        expect.assertions(1);
+        const query = new Query('select $1::int', [1]);
+        const result = await client.query(query);
+        expect(result.rows.length).toEqual(1);
+    });
+
     testWithClient('Custom value type reader', async (client) => {
         expect.assertions(3);
         client.config.types = new Map([
@@ -215,13 +222,58 @@ describe('Query', () => {
     testWithClient(
         'Query errors plays nicely with pipeline',
         async (client) => {
-            let p1 = client.query('select foo');
-            let p2 = client.query('select 1 as i');
-            await expect(p1).rejects.toThrow(/foo/);
-            await expect(p2).resolves.toEqual(
-                { "names": ['i'], "rows": [[1]] }
-            );
-        }
+            const random = (n: number) =>
+                Math.floor(Math.random() * Math.floor(n));
+
+            const make = (n: number): Promise<void> | undefined => {
+                switch (n) {
+                    case 0: {
+                        const p = client.query('select foo');
+                        return expect(p).rejects.toThrow(/foo/);
+                    };
+                    case 1: {
+                        const p = client.query('select 1 as i');
+                        return expect(p).resolves.toEqual(
+                            { "names": ['i'], "rows": [[1]] }
+                        );
+                    }
+                    case 2: {
+                        const p = client.query('select 1 / $1 as j', [0]);
+                        return expect(p).rejects.toThrow(/division by zero/);
+                    }
+                    case 3: {
+                        const p = client.query('select $1::int as k', [2]);
+                        return expect(p).resolves.toEqual(
+                            { "names": ['k'], "rows": [[2]] }
+                        );
+                    }
+                };
+            };
+
+            const go = (remaining: number): Promise<void> => {
+                if (remaining === 0) return Promise.resolve();
+                const i = Math.min(
+                    Math.max(random(remaining), 1),
+                    remaining / 2
+                );
+                const promises: Promise<void>[] = [];
+                for (let j = 0; j < i; j++) {
+                    const n = random(2) * 2 + 1;
+                    const p = make(n);
+                    if (p) promises.push(p);
+                }
+                return Promise.all(promises).then(
+                    () => {
+                        return go(remaining - promises.length)
+                    }
+                );
+            }
+
+            for (let i = 0; i < 10; i++) {
+                await go(500);
+            }
+        },
+        5000
     );
 
     testWithClient('Empty query', async (client) => {

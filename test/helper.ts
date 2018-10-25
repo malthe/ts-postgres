@@ -11,13 +11,16 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
     });
     client.on('notice', console.log);
     test(name, async () => {
-        const p1 = fn(client);
-        const p2 = client.connect();
+        const p = fn(client);
+        await client.connect();
         let closed = false;
         client.on('end', () => { closed = true; });
-        await Promise.all([p1, p2]);
-        if (!closed) {
-            await client.end();
-        };
+        try {
+            await p
+        } finally {
+            if (!closed) {
+                await client.end();
+            };
+        }
     }, timeout);
-}
+};

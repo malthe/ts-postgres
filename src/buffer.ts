@@ -34,8 +34,8 @@ export class ElasticBuffer {
         return this.buffer.slice(offset, offset + size);
     }
 
-    slice(start?: number, end?: number) {
-        if (typeof end === 'undefined') end = this.offset;
-        return this.buffer.slice(start, end)
+    slice() {
+        const end = this.offset;
+        return this.buffer.slice(0, end)
     }
 }

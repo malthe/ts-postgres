@@ -21,6 +21,7 @@ function make(f: (data: any) => void) {
 }
 
 export const debug = make(console.debug);
+export const error = make(console.error);
 export const info = make(console.info);
 export const log = make(console.log);
 export const warn = make(console.warn);

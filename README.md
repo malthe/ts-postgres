@@ -17,7 +17,8 @@ $ npm install ts-postgres@next
 ### Features
 
 * Fast!
-* Binary protocol
+* Supports both binary and text value formats
+  * Result data is currently sent in binary format only
 * Multiple queries can be sent at once (pipeline)
 * Extensible value model
 * Hybrid query result object

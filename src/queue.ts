@@ -19,16 +19,7 @@ export class Queue<T extends any = undefined> {
         if (this.tail === this.size) this.tail = 0;
     }
 
-    shift(): T | null;
-    shift(required: true): T;
-    shift(required?: boolean) {
-        if (this.length === 0) {
-            if (required) {
-                throw new Error("Queue empty");
-            }
-            return null;
-        }
-
+    shift(): T {
         const item = this.container[this.head];
 
         this.head++;

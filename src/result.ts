@@ -1,4 +1,5 @@
-type ResultHandler<T> = (resolve: (error: null | string) => void) => void;
+type Resolver = (error: null | string) => void;
+type ResultHandler<T> = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
 export class ResultRow<T> {
@@ -113,14 +114,14 @@ export type NameHandler = Callback<string[]>;
 
 ResultIterator.prototype.constructor = Promise
 
-export function makeResult<T>(
-    registerDataHandler: (handler: DataHandler<T[] | null>) => void,
-    registerNameHandler: (handler: NameHandler) => void):
-    ResultIterator<T> {
+export function makeResult<T>() {
+    let dataHandler: DataHandler<T[] | null> | null = null;
+    const nameHandler = (names: string[]) => {
+        p.names = names;
+    }
     const rows: T[][] = [];
-
     const p = new ResultIterator<T>(rows, (resolve) => {
-        registerDataHandler((row: T[] | null | string) => {
+        dataHandler = ((row: T[] | null | string) => {
             if (row === null) {
                 p.rows = rows;
                 resolve(null);
@@ -134,11 +135,9 @@ export function makeResult<T>(
         });
     });
 
-    const onNames = (names: string[]) => {
-        p.names = names;
-    }
-
-    registerNameHandler(onNames);
-
-    return p;
+    return {
+        iterator: p,
+        dataHandler: dataHandler!,
+        nameHandler: nameHandler
+    };
 };

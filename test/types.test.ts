@@ -28,7 +28,8 @@ function getComparisonQueryFor(dataType: DataType, expression: string) {
 function testType<T extends Value>(
     dataType: DataType,
     expression: string,
-    expected: T) {
+    expected: T,
+    excludeTextMode = false) {
     const testParam = (format: DataFormat) => {
         testWithClient('Param', async (client) => {
             expect.assertions(3);
@@ -64,6 +65,13 @@ function testType<T extends Value>(
         testParam(DataFormat.Binary);
         testValue(DataFormat.Binary);
     });
+
+    if (!excludeTextMode) {
+        describe(`${expression} (${dataType}/text)`, () => {
+            testParam(DataFormat.Text);
+            testValue(DataFormat.Text);
+        });
+    }
 }
 
 function utc_date(...rest: number[]) {
@@ -150,7 +158,8 @@ describe('Types', () => {
     testType<Point>(
         DataType.Point,
         '\'(1,2)\'::Point',
-        { x: 1, y: 2 });
+        { x: 1, y: 2 },
+        true);
     testType<number[]>(
         DataType.ArrayInt4,
         '\'{1,2,3}\'::int4[3]',
@@ -182,7 +191,9 @@ describe('Types', () => {
     testType<string[]>(
         DataType.ArrayVarchar, '\'{abc}\'::varchar[]', ['abc']);
     testType<string[]>(
-        DataType.ArrayVarchar, '\'{"\\"abc\\""}\'::varchar[]', ['"abc"']);
+        DataType.ArrayVarchar,
+        '\'{"\\"abc\\""}\'::varchar[]',
+        ['"abc"']);
     testType<string[]>(
         DataType.ArrayVarchar, '\'{"Ŝќ⽜"}\'::varchar[]', ['Ŝќ⽜']);
     testType<string[]>(
@@ -191,6 +202,8 @@ describe('Types', () => {
         DataType.ArrayBytea, '\'{abc}\'::bytea[]', [Buffer.from('abc')]);
     testType<string[]>(
         DataType.ArrayText, '\'{a}\'::text[]', ['a']);
+    testType<string[]>(
+        DataType.ArrayText, '\'{"a,"}\'::text[]', ['a,']);
     testType<Date[]>(
         DataType.ArrayDate,
         '\'{2000-01-01}\'::date[]',
@@ -214,5 +227,6 @@ describe('Types', () => {
     testType<JsonMap[]>(
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
-        [{ 'foo': 'bar' }])
+        [{ 'foo': 'bar' }],
+        true)
 });

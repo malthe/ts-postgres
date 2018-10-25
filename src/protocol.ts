@@ -38,13 +38,13 @@ export enum ErrorLevel {
 }
 
 export const enum Message {
-    Authenticate = 0x52,
+    Authentication = 0x52,
     BackendKeyData = 0x4b,
     BindComplete = 0x32,
     CloseComplete = 0x33,
     CommandComplete = 0x43,
     EmptyQueryResponse = 0x49,
-    Error = 0x45,
+    ErrorResponse = 0x45,
     NoData = 0x6e,
     Notice = 0x4e,
     NotificationResponse = 0x41,
@@ -80,6 +80,35 @@ export const enum SegmentType {
 export interface RowDescription {
     columns: Uint32Array;
     names: string[]
+}
+
+function dateToStringUTC(date: Date, includeTime: boolean) {
+    const pad = (n: number, length: number) =>
+        n.toString().padStart(length, '0');
+
+    const year = date.getUTCFullYear();
+    const isBC = year < 0;
+
+    let result =
+        pad(isBC ? (1 - year) : year, 4) + '-' +
+        pad(date.getUTCMonth() + 1, 2) + '-' +
+        pad(date.getUTCDate(), 2);
+
+    if (includeTime) {
+        result +=
+            'T' +
+            pad(date.getUTCHours(), 2) + ':' +
+            pad(date.getUTCMinutes(), 2) + ':' +
+            pad(date.getUTCSeconds(), 2) + '.' +
+            pad(date.getUTCMilliseconds(), 3) +
+            '+00:00';
+    }
+
+    if (isBC) {
+        result += ' BC';
+    }
+
+    return result;
 }
 
 export function getMessageSize(
@@ -379,12 +408,12 @@ export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer(4096);
     constructor(
         private readonly stream: Socket,
-        private readonly encoding: string,
-        private readonly suppressDataTypeNotSupportedWarning: boolean) { }
+        private readonly encoding: string) { }
 
     bind(
         name: string,
         portal: string,
+        format: DataFormat | DataFormat[] = DataFormat.Binary,
         values: Value[] = [],
         types: DataType[] = []) {
         // We silently ignore any mismatch here, assuming that the
@@ -397,8 +426,13 @@ export class Writer {
             [SegmentType.Int16BE, length]
         ];
 
+        const getFormat =
+            (typeof format === 'number') ?
+                () => format :
+                (i: number) => format[i];
+
         for (let i = 0; i < length; i++) {
-            segments.push([SegmentType.Int16BE, 1]);
+            segments.push([SegmentType.Int16BE, getFormat(i)]);
         }
 
         segments.push([SegmentType.Int16BE, length]);
@@ -419,9 +453,9 @@ export class Writer {
             }
         };
 
-        const addValue = (value: Value, dataType: DataType): number => {
+        const addBinaryValue = (value: Value, dataType: DataType): number => {
             let size = -1;
-            let setSize = reserve(SegmentType.Int32BE);
+            const setSize = reserve(SegmentType.Int32BE);
 
             switch (dataType) {
                 case DataType.Bool: {
@@ -511,22 +545,13 @@ export class Writer {
                 };
                 default: {
                     const innerDataType = arrayDataTypeMapping.get(dataType);
-                    if (innerDataType) {
-                        if (value instanceof Array) {
-                            size = addArray(value, innerDataType);
-                        } else {
-                            throw {
-                                dataType: dataType,
-                                value: value
-                            };
-                        }
+                    if (innerDataType && value instanceof Array) {
+                        size = addBinaryArray(value, innerDataType);
                     } else {
-                        if (!this.suppressDataTypeNotSupportedWarning) {
-                            logger.warn(
-                                'Data type not supported: ' +
-                                dataType
-                            );
-                        }
+                        throw {
+                            dataType: dataType,
+                            value: value
+                        };
                     }
                 }
             }
@@ -535,7 +560,9 @@ export class Writer {
             return size;
         };
 
-        const addArray = (value: Value[], dataType: DataType): number => {
+        const addBinaryArray = (
+            value: Value[],
+            dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
             add(SegmentType.Int32BE, dataType);
@@ -560,7 +587,7 @@ export class Writer {
                     if (v instanceof Array) {
                         go(level + 1, v);
                     } else {
-                        bytes += addValue(v, dataType) + 4;
+                        bytes += addBinaryValue(v, dataType) + 4;
                     }
                 }
 
@@ -571,10 +598,110 @@ export class Writer {
             return bytes;
         }
 
+        const getTextFromValue = (
+            value: Value,
+            dataType: DataType): null | string | string[] => {
+            if (value === null) return null;
+
+            switch (dataType) {
+                case DataType.Bool:
+                    return value ? 't' : 'f';
+                case DataType.Int2:
+                case DataType.Int4:
+                case DataType.Oid:
+                case DataType.Float4:
+                case DataType.Float8:
+                    if (typeof value === 'number') {
+                        return value.toString();
+                    }
+                    break;
+                case DataType.Bpchar:
+                case DataType.Bytea:
+                case DataType.Char:
+                case DataType.Name:
+                case DataType.Text:
+                case DataType.Varchar:
+                    return (typeof value === 'string') ?
+                        value :
+                        (value instanceof Buffer) ?
+                            value.toString(this.encoding) :
+                            value.toString();
+                case DataType.Date:
+                    return (value instanceof Date) ?
+                        dateToStringUTC(value, false) :
+                        value.toString();
+                case DataType.Timestamp:
+                case DataType.Timestamptz:
+                    return (value instanceof Date) ?
+                        dateToStringUTC(value, true) :
+                        value.toString();
+                case DataType.Json:
+                    return JSON.stringify(value);
+                default: {
+                    const innerDataType = arrayDataTypeMapping.get(dataType);
+                    if (innerDataType) {
+                        if (value instanceof Array) {
+                            return getTextFromArray(value, innerDataType);
+                        };
+                    }
+
+                    throw {
+                        dataType: dataType,
+                        value: value
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        const getTextFromArray = (
+            value: Value[],
+            dataType: DataType): string[] => {
+            const strings: string[] = [];
+            strings.push('{');
+            const escape = (s: string) => {
+                return s
+                    .replace(/\\/gu, '\\\\')
+                    .replace(/"/gu, '\\"')
+                    .replace(/,/gu, '\\,');
+            };
+            const length = value.length;
+            for (let i = 0; i < value.length; i++) {
+                if (i > 0) strings.push(',');
+                const child = value[i];
+                const result =
+                    (child instanceof Array) ?
+                        getTextFromArray(child, dataType) :
+                        getTextFromValue(child, dataType);
+                if (result instanceof Array) {
+                    strings.push(...result);
+                } else {
+                    strings.push((result === null) ? 'null' : escape(result));
+                }
+            }
+            strings.push('}');
+            return strings;
+        }
+
         for (let i = 0; i < length; i++) {
             const value = values[i];
             const dataType = types[i];
-            addValue(value, dataType);
+            const format = getFormat(i);
+            if (format === DataFormat.Binary) {
+                addBinaryValue(value, dataType);
+            } else {
+                const result = getTextFromValue(value, dataType);
+                const setSize = reserve(SegmentType.Int32BE);
+                const size =
+                    (result instanceof Array) ?
+                        sum(...result.map(
+                            (s: string) =>
+                                add(SegmentType.String, s))) :
+                        add(SegmentType.String,
+                            (result === null) ? 'null' : result);
+                setSize(size);
+            }
         }
 
         add(SegmentType.Int16BE, 1);

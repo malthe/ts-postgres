@@ -6,6 +6,9 @@
     "rules": {
         "no-unused-variable": false,
         "no-use-before-declare": false,
+
+        // Ref.: https://github.com/buzinas/tslint-eslint-rules/issues/289
+        "no-empty-character-class": false,
         "await-promise": false,
         "max-line-length": [true, 79]
     }
