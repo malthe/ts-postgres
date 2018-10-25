@@ -1,5 +1,5 @@
 export class Queue<T extends any = undefined> {
-    private container: Array<T> = [];
+    private container: Array<T | undefined> = [];
 
     private head = 0;
     private tail = 0;
@@ -21,6 +21,7 @@ export class Queue<T extends any = undefined> {
 
     shift(): T {
         const item = this.container[this.head];
+        this.container[this.head] = undefined;
 
         this.head++;
         this.length--;
@@ -32,7 +33,7 @@ export class Queue<T extends any = undefined> {
             this.shrink();
         }
 
-        return item;
+        return item!;
     };
 
     isEmpty() {
