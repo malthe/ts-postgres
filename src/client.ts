@@ -390,8 +390,6 @@ export class Client {
         const portal = (options ? options.portal : undefined) || '';
         const result = makeResult<Value>();
 
-        const handleDone = () => result.dataHandler(null);
-
         this.errorHandlerQueue.push(
             (message: string) => result.dataHandler(message)
         );
