@@ -116,14 +116,7 @@ const enum Cleanup {
     ErrorHandler,
     ParameterDescription,
     PreFlight,
-    PreparedStatement,
     RowDescription,
-};
-
-interface PreFlightQueue {
-    nameHandler: NameHandler,
-    dataHandler: RowDataHandler,
-    ready: boolean
 };
 
 interface PreparedStatement {
@@ -131,6 +124,12 @@ interface PreparedStatement {
     portal: string;
     format: DataFormat | DataFormat[];
     values: Value[]
+};
+
+interface PreFlightQueue {
+    nameHandler: NameHandler;
+    dataHandler: RowDataHandler;
+    preparedStatement: PreparedStatement | null;
 };
 
 export class Client {
@@ -163,7 +162,6 @@ export class Client {
     private cleanupQueue = new Queue<Cleanup>();
     private errorHandlerQueue = new Queue<ErrorHandler>();
     private preFlightQueue = new Queue<PreFlightQueue>();
-    private preparedStatementQueue = new Queue<PreparedStatement>();
     private rowDescriptionQueue = new Queue<RowDescription>();
     private parameterDescriptionQueue = new Queue<Array<DataType>>();
 
@@ -349,8 +347,7 @@ export class Client {
         return this.execute(query);
     }
 
-    private bindAndExecute(info: RowDataHandlerInfo) {
-        const ps = this.preparedStatementQueue.shift();
+    private bindAndExecute(info: RowDataHandlerInfo, ps: PreparedStatement) {
         const types = this.parameterDescriptionQueue.shift();
 
         this.cleanupQueue.shift();
@@ -409,18 +406,16 @@ export class Client {
 
             this.writer.parse(name, text, types || []);
             this.writer.describe(name, 'S');
-            this.preparedStatementQueue.push({
-                name: name,
-                portal: portal,
-                format: format || DataFormat.Binary,
-                values: values
-            });
             this.preFlightQueue.push({
                 nameHandler: result.nameHandler,
                 dataHandler: result.dataHandler,
-                ready: false
+                preparedStatement: {
+                    name: name,
+                    portal: portal,
+                    format: format || DataFormat.Binary,
+                    values: values
+                }
             });
-            this.cleanupQueue.push(Cleanup.PreparedStatement);
             this.cleanupQueue.push(Cleanup.PreFlight);
             this.cleanupQueue.push(Cleanup.ParameterDescription);
         } else {
@@ -432,7 +427,7 @@ export class Client {
             this.preFlightQueue.push({
                 nameHandler: result.nameHandler,
                 dataHandler: result.dataHandler,
-                ready: true
+                preparedStatement: null
             });
             this.writer.execute(portal);
             this.writer.close(name, 'S');
@@ -604,13 +599,13 @@ export class Client {
                 case Message.NoData: {
                     this.cleanupQueue.shift();
                     const preflight = this.preFlightQueue.shift();
-                    if (preflight.ready) {
-                        preflight.dataHandler(null);
-                    } else {
+                    if (preflight.preparedStatement) {
                         this.bindAndExecute({
                             handler: preflight.dataHandler,
                             description: null
-                        })
+                        }, preflight.preparedStatement)
+                    } else {
+                        preflight.dataHandler(null);
                     }
                     break;
                 }
@@ -657,10 +652,6 @@ export class Client {
                                 this.preFlightQueue.shift();
                                 break;
                             };
-                            case Cleanup.PreparedStatement: {
-                                this.preparedStatementQueue.shift();
-                                break;
-                            }
                             case Cleanup.RowDescription: {
                                 this.rowDescriptionQueue.shift();
                                 break;
@@ -735,10 +726,10 @@ export class Client {
                         description: description
                     };
 
-                    if (preflight.ready) {
-                        this.activeDataHandlerInfo = info;
+                    if (preflight.preparedStatement) {
+                        this.bindAndExecute(info, preflight.preparedStatement);
                     } else {
-                        this.bindAndExecute(info);
+                        this.activeDataHandlerInfo = info;
                     }
                     break;
                 };
