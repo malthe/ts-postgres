@@ -105,9 +105,6 @@ interface RowDataHandlerInfo {
     readonly description: RowDescription | null;
 }
 
-// Indicates that we're done receiving row data.
-type DoneHandler = () => void;
-
 // Indicates that an error has occurred.
 type ErrorHandler = (message: string) => void;
 
