@@ -353,10 +353,6 @@ export class Client {
         this.cleanupQueue.shift();
         this.cleanupQueue.shift();
 
-        this.errorHandlerQueue.push(
-            this.errorHandlerQueue.shift()
-        );
-
         this.writer.bind(
             ps.name,
             ps.portal,
@@ -367,6 +363,11 @@ export class Client {
 
         this.bindQueue.push(info);
         this.cleanupQueue.push(Cleanup.Bind);
+        this.cleanupQueue.push(Cleanup.ErrorHandler);
+
+        this.errorHandlerQueue.push(
+            this.errorHandlerQueue.shift()
+        );
 
         this.writer.execute(ps.portal);
         this.writer.close(ps.name, 'S');
@@ -390,10 +391,6 @@ export class Client {
         const portal = (options ? options.portal : undefined) || '';
         const result = makeResult<Value>();
 
-        this.errorHandlerQueue.push(
-            (message: string) => result.dataHandler(message)
-        );
-        this.cleanupQueue.push(Cleanup.ErrorHandler);
 
         if (values && values.length) {
             const name = (options ? options.name : undefined) || (
@@ -432,9 +429,15 @@ export class Client {
             if (portal) {
                 this.writer.close(portal, 'P');
             }
-            this.cleanupQueue.push(Cleanup.Bind);
             this.cleanupQueue.push(Cleanup.PreFlight);
+            this.cleanupQueue.push(Cleanup.Bind);
         }
+
+        this.errorHandlerQueue.push(
+            (message: string) => result.dataHandler(message)
+        );
+
+        this.cleanupQueue.push(Cleanup.ErrorHandler);
 
         this.writer.sync();
         this.flush();

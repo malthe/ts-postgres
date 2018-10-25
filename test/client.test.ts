@@ -258,7 +258,7 @@ describe('Query', () => {
                 );
                 const promises: Promise<void>[] = [];
                 for (let j = 0; j < i; j++) {
-                    const n = random(2) * 2 + 1;
+                    const n = random(4);
                     const p = make(n);
                     if (p) promises.push(p);
                 }
