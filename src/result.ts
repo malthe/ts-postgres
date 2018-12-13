@@ -1,5 +1,5 @@
 type Resolver = (error: null | string) => void;
-type ResultHandler<T> = (resolve: Resolver) => void;
+type ResultHandler = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
 export class ResultRow<T> {
@@ -51,7 +51,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
     public rows: T[][] | null = null;
     public names: string[] | null = null;
 
-    constructor(private container: T[][], executor: ResultHandler<T>) {
+    constructor(private container: T[][], executor: ResultHandler) {
         super((resolve, reject) => {
             executor((error) => {
                 if (error) {
