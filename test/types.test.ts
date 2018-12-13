@@ -74,7 +74,14 @@ function testType<T extends Value>(
     }
 }
 
-function utc_date(...rest: number[]) {
+function utc_date(...rest: [
+    number,
+    number,
+    number?,
+    number?,
+    number?,
+    number?,
+    number?]) {
     return new Date(Date.UTC.apply(null, rest));
 }
 
