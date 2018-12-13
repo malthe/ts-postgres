@@ -290,6 +290,7 @@ export class Client {
         this.ending = true;
         this.writer.end();
         this.flush();
+        this.stream.end();
         this.ready = false;
         return this.events.end.once();
     }
