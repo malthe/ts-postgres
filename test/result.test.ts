@@ -1,7 +1,7 @@
 import { testWithClient } from './helper';
 import { Client } from '../src/client';
-import { DataType, Row, Value } from '../src/types';
-import { Result, ResultIterator, ResultRow } from '../src/result';
+import { Value } from '../src/types';
+import { ResultIterator, ResultRow } from '../src/result';
 
 type ResultFunction =
     (result: ResultIterator<Value>) =>
@@ -30,12 +30,12 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     // We could iterate multiple times over the same result.
     let count = 0;
     const result = query();
-    for await (const row of result) {
+    for await (const _ of result) {
         count += 1;
     };
     expect(count).toEqual(10);
 
-    for await (const row of result) {
+    for await (const _ of result) {
         count += 1;
     };
     expect(count).toEqual(20);
@@ -60,7 +60,7 @@ describe('Result', () => {
     testWithClient('Synchronous iteration', async (client) => {
         await testIteratorResult(
             client,
-            (p) => {
+            async (p) => {
                 return p.then((result) => {
                     const rows: ResultRow<Value>[] = [];
                     for (const row of result) {

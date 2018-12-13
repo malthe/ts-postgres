@@ -1,8 +1,7 @@
 import { testWithClient } from './helper';
-import { Client } from '../src/client';
 import { Query } from '../src/query';
 import { Result } from '../src/result';
-import { DataFormat, DataType, Builtin } from '../src/types';
+import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';

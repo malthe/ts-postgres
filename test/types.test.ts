@@ -1,5 +1,4 @@
 import { testWithClient } from './helper';
-import { Client } from '../src/client';
 
 import {
     DataType,

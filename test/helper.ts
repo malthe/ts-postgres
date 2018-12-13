@@ -1,7 +1,4 @@
-import {
-    Client,
-    End
-} from '../src/client';
+import { Client } from '../src/client';
 
 type Test = (client: Client) => Promise<any>;
 
