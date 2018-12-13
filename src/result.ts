@@ -55,7 +55,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         super((resolve, reject) => {
             executor((error) => {
                 if (error) {
-                    reject(error);
+                    reject(new Error(error));
                 } else {
                     const names = this.names || [];
                     const rows = this.rows || [];
