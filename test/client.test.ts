@@ -114,7 +114,6 @@ function testSelect(
             }
 
             expect(diff).toEqual(0);
-            return true;
         }, (WarmupTime + maxTime) + 10000);
 };
 
