@@ -121,6 +121,29 @@ If a query has no parameters, it uses the portal variant which saves a round tri
 
 The copy commands are not supported.
 
+## FAQ
+
+1. _How do I set up a pool of connections?_ You can for example use the [generic-pool](https://www.npmjs.com/package/generic-pool) library:
+
+   ```typescript
+   import { createPool } from 'generic-pool';
+
+   const pool = createPool({
+       create: async () => {
+           const client = new Client();
+           return client.connect().then(() => {
+               client.on('error', console.log);
+               return client;
+           });
+       },
+       destroy: async (client: Client) => {
+           return client.end().then(() => { })
+       }
+   });
+
+   pool.use(...)
+   ```
+
 ## Benchmarking
 
 Use the following environment variable to run tests in "benchmark" mode.
