@@ -548,10 +548,7 @@ export class Writer {
                     if (innerDataType && value instanceof Array) {
                         size = addBinaryArray(value, innerDataType);
                     } else {
-                        throw {
-                            dataType: dataType,
-                            value: value
-                        };
+                        throw new Error(`Unsupported data type: ${dataType}`);
                     }
                 }
             }
@@ -644,11 +641,7 @@ export class Writer {
                             return getTextFromArray(value, innerDataType);
                         };
                     }
-
-                    throw {
-                        dataType: dataType,
-                        value: value
-                    };
+                    throw new Error(`Unsupported data type: ${dataType}`);
                 }
             }
 

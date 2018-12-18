@@ -442,13 +442,18 @@ export class Client {
         info: RowDataHandlerInfo,
         bind: Bind,
         types: DataType[]) {
-        this.writer.bind(
-            bind.name,
-            bind.portal,
-            bind.format,
-            bind.values,
-            types
-        );
+        try {
+            this.writer.bind(
+                bind.name,
+                bind.portal,
+                bind.format,
+                bind.values,
+                types
+            );
+        } catch (error) {
+            info.handler(error.message);
+            return;
+        }
 
         this.bindQueue.push(info);
         this.writer.execute(bind.portal);

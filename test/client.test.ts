@@ -245,6 +245,10 @@ describe('Query', () => {
                             { "names": ['k'], "rows": [[2]] }
                         );
                     }
+                    case 4: {
+                        const p = client.query('select $1::uuid as l', [""]);
+                        return expect(p).rejects.toThrow(/2950/);
+                    }
                 };
             };
 
@@ -256,7 +260,7 @@ describe('Query', () => {
                 );
                 const promises: Promise<void>[] = [];
                 for (let j = 0; j < i; j++) {
-                    const n = random(4);
+                    const n = random(5);
                     const p = make(n);
                     if (p) promises.push(p);
                 }
@@ -278,6 +282,12 @@ describe('Query', () => {
         await expect(client.query('')).resolves.toEqual(
             { names: [], rows: [] }
         );
+    });
+
+    testWithClient('Unsupported type', async (client) => {
+        const text = 'select $1::uuid';
+        const uuid = '123e4567-e89b-12d3-a456-426655440000';
+        await expect(client.query(text, [uuid])).rejects.toThrow(/2950/);
     });
 
     testWithClient(
