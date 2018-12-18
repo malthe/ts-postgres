@@ -566,7 +566,9 @@ export class Writer {
                             size = add(SegmentType.Buffer, buffer);
                         }
                     } catch (err) {
-                        throw new Error(`Invalid UUID: ${value} (${err.message})`);
+                        throw new Error(
+                            `Invalid UUID: ${value} (${err.message})`
+                        );
                     }
                     break;
                 };
