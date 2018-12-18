@@ -246,7 +246,10 @@ describe('Query', () => {
                         );
                     }
                     case 4: {
-                        const p = client.query('select $1::internal as l', [""]);
+                        const p = client.query(
+                            'select $1::internal as l',
+                            [""]
+                        );
                         return expect(p).rejects.toThrow(/2281/);
                     }
                 };
