@@ -110,6 +110,24 @@ function dateToStringUTC(date: Date, includeTime: boolean) {
     return result;
 }
 
+function formatUuid(bytes: Buffer) {
+    const slice = (start: number, end: number) => {
+        return bytes.slice(start, end).toString('hex');
+    }
+
+    return [
+        slice(0, 4),
+        slice(4, 6),
+        slice(6, 8),
+        slice(8, 10),
+        slice(10, 16)
+    ].join('-');
+}
+
+function parseUuid(uuid: string) {
+    return new Buffer(uuid.replace(/-/g, ''), 'hex');
+}
+
 export function getMessageSize(
     segment: SegmentType,
     value: SegmentValue,
@@ -289,6 +307,8 @@ export function readRowData(
                             x: buffer.readDoubleBE(start),
                             y: buffer.readDoubleBE(start + 8)
                         }
+                    case DataType.Uuid:
+                        return formatUuid(buffer.slice(start, end));
                 };
                 return null;
             };
@@ -537,6 +557,17 @@ export class Writer {
                 case DataType.Json: {
                     const body = JSON.stringify(value);
                     size = add(SegmentType.String, body);
+                    break;
+                };
+                case DataType.Uuid: {
+                    try {
+                        if (typeof value === 'string') {
+                            const buffer = parseUuid(value);
+                            size = add(SegmentType.Buffer, buffer);
+                        }
+                    } catch (err) {
+                        throw new Error(`Invalid UUID: ${value} (${err.message})`);
+                    }
                     break;
                 };
                 default: {

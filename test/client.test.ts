@@ -246,8 +246,8 @@ describe('Query', () => {
                         );
                     }
                     case 4: {
-                        const p = client.query('select $1::uuid as l', [""]);
-                        return expect(p).rejects.toThrow(/2950/);
+                        const p = client.query('select $1::internal as l', [""]);
+                        return expect(p).rejects.toThrow(/2281/);
                     }
                 };
             };
@@ -285,9 +285,8 @@ describe('Query', () => {
     });
 
     testWithClient('Unsupported type', async (client) => {
-        const text = 'select $1::uuid';
-        const uuid = '123e4567-e89b-12d3-a456-426655440000';
-        await expect(client.query(text, [uuid])).rejects.toThrow(/2950/);
+        const text = 'select $1::internal';
+        await expect(client.query(text, [''])).rejects.toThrow(/2281/);
     });
 
     testWithClient(

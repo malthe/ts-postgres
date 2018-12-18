@@ -166,6 +166,11 @@ describe('Types', () => {
         '\'(1,2)\'::Point',
         { x: 1, y: 2 },
         true);
+    testType<string>(
+        DataType.Uuid,
+        '\'123e4567-e89b-12d3-a456-426655440000\'::uuid',
+        '123e4567-e89b-12d3-a456-426655440000'
+    );
     testType<number[]>(
         DataType.ArrayInt4,
         '\'{1,2,3}\'::int4[3]',
@@ -234,5 +239,5 @@ describe('Types', () => {
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
         [{ 'foo': 'bar' }],
-        true)
+        true);
 });
