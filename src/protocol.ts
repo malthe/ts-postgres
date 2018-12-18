@@ -125,7 +125,7 @@ function formatUuid(bytes: Buffer) {
 }
 
 function parseUuid(uuid: string) {
-    return new Buffer(uuid.replace(/-/g, ''), 'hex');
+    return Buffer.from(uuid.replace(/-/g, ''), 'hex');
 }
 
 export function getMessageSize(
