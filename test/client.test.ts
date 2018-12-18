@@ -126,7 +126,7 @@ describe('Events', () => {
     });
 
     testWithClient('Connect', async (client) => {
-        let p = new Promise((resolve, reject) => {
+        let p = new Promise((resolve, _) => {
             client.on('connect', () => {
                 setTimeout(() => {
                     expect(true).toBeTruthy();
@@ -252,7 +252,7 @@ describe('Query', () => {
                 };
             };
 
-            const go = (remaining: number): Promise<void> => {
+            const go = async (remaining: number): Promise<void> => {
                 if (remaining === 0) return Promise.resolve();
                 const i = Math.min(
                     Math.max(random(remaining), 1),

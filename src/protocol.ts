@@ -11,7 +11,6 @@ import {
     Value,
     ValueTypeReader
 } from './types';
-import * as logger from './logging';
 
 const arrayMask = 1 << 31;
 const readerMask = 1 << 29;
@@ -442,9 +441,6 @@ export class Writer {
             return getMessageSize(message, value, this.encoding);
         }
 
-        const addSize = (size: number) =>
-            add(SegmentType.Int32BE, size);
-
         const reserve = (message: SegmentType) => {
             let segment: Segment = [message, null];
             segments.push(segment);
@@ -659,7 +655,6 @@ export class Writer {
                     .replace(/"/gu, '\\"')
                     .replace(/,/gu, '\\,');
             };
-            const length = value.length;
             for (let i = 0; i < value.length; i++) {
                 if (i > 0) strings.push(',');
                 const child = value[i];

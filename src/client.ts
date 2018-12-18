@@ -360,10 +360,9 @@ export class Client {
                         this.cleanupQueue.shift(Cleanup.ParameterDescription);
 
                         resolve({
-                            close: (portal?: string) => {
+                            close: () => {
                                 return new Promise<void>(
-                                    (resolve, reject) => {
-                                        let remaining = 1;
+                                    (resolve) => {
                                         this.writer.close(
                                             providedNameOrGenerated, 'S');
                                         this.closeHandlerQueue.push(resolve);
@@ -472,10 +471,6 @@ export class Client {
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
         this.flush();
-    }
-
-    private encodedStringLength(value: string) {
-        return Buffer.byteLength(value, this.encoding);
     }
 
     private execute(query: Query): ResultIterator {
