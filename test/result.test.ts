@@ -1,11 +1,10 @@
 import { testWithClient } from './helper';
 import { Client } from '../src/client';
 import { Value } from '../src/types';
-import { ResultIterator, ResultRow } from '../src/result';
 
 type ResultFunction =
-    (result: ResultIterator<Value>) =>
-        Promise<ResultRow<Value>[]>;
+    (result: ResultIterator) =>
+        Promise<ResultRow[]>;
 
 async function testIteratorResult(client: Client, f: ResultFunction) {
     const query = () => client.query(
@@ -62,7 +61,7 @@ describe('Result', () => {
             client,
             async (p) => {
                 return p.then((result) => {
-                    const rows: ResultRow<Value>[] = [];
+                    const rows: ResultRow[] = [];
                     for (const row of result) {
                         rows.push(row);
                     };
@@ -75,7 +74,7 @@ describe('Result', () => {
         await testIteratorResult(
             client,
             async (result) => {
-                const rows: ResultRow<Value>[] = [];
+                const rows: ResultRow[] = [];
                 for await (const row of result) {
                     rows.push(row);
                 };

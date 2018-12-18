@@ -1,6 +1,6 @@
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
-import { Result } from '../src/result';
+import { Result } from '../src/client';
 import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
@@ -79,7 +79,7 @@ function testSelect(
 
                     while (i--) {
                         const p = client.query(query).then(
-                            (result: Result<any>) => {
+                            (result: Result) => {
                                 acknowledged += 1;
                                 results += result.rows.length;
                             });

@@ -11,7 +11,9 @@ import { Query } from './query';
 
 import {
     DataHandler,
-    ResultIterator,
+    Result as _Result,
+    ResultIterator as _ResultIterator,
+    ResultRow as _ResultRow,
     makeResult
 } from './result';
 
@@ -33,6 +35,12 @@ import {
     Value,
     ValueTypeReader
 } from './types';
+
+export type Result = _Result<Value>;
+
+export type ResultIterator = _ResultIterator<Value>;
+
+export type ResultRow = _ResultRow<Value>;
 
 export interface Connect { };
 
@@ -84,7 +92,7 @@ export interface PreparedStatement {
         values?: Value[],
         portal?: string,
         format?: DataFormat | DataFormat[]
-    ) => ResultIterator<Value>
+    ) => ResultIterator
 }
 
 type Callback<T> = (data: T) => void;
@@ -402,7 +410,7 @@ export class Client {
     }
 
     // Query object interface.
-    query(query: Query): ResultIterator<Value>;
+    query(query: Query): ResultIterator;
 
     // Argument-based query interface.
     query(
@@ -410,14 +418,14 @@ export class Client {
         args?: Value[],
         types?: DataType[],
         format?: DataFormat | DataFormat[]):
-        ResultIterator<Value>;
+        ResultIterator;
 
     query(
         text: string | Query,
         values?: Value[],
         types?: DataType[],
         format?: DataFormat | DataFormat[]):
-        ResultIterator<Value> {
+        ResultIterator {
         const query =
             (typeof text === 'string') ?
                 new Query(
@@ -465,7 +473,7 @@ export class Client {
         return Buffer.byteLength(value, this.encoding);
     }
 
-    private execute(query: Query): ResultIterator<Value> {
+    private execute(query: Query): ResultIterator {
         const text = query.text;
         const values = query.values || [];
         const options = query.options;
