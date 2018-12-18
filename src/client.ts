@@ -5,14 +5,12 @@ import { Event as TypedEvent, events } from 'ts-typed-events';
 import * as defaults from './defaults';
 import * as logger from './logging';
 
-import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
 
 import {
     DataHandler,
-    NameHandler,
     ResultIterator,
     makeResult
 } from './result';
@@ -20,7 +18,6 @@ import {
 import {
     readRowData,
     readRowDescription,
-    Command,
     ErrorLevel,
     Message,
     Reader,
@@ -136,9 +133,6 @@ interface Bind {
     portal: string;
     values: Value[],
     close: boolean
-};
-
-interface BindData {
 };
 
 interface PreFlightQueue {
