@@ -1,6 +1,5 @@
 import { testWithClient } from './helper';
 import { Client, ResultIterator, ResultRow } from '../src/client';
-import { Value } from '../src/types';
 
 type ResultFunction =
     (result: ResultIterator) =>

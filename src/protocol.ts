@@ -184,7 +184,6 @@ export function readRowDescription(
         const j = buffer.indexOf('\0', offset);
         const name = buffer.slice(offset, j).toString();
         const dataType = buffer.readInt32BE(j + 7);
-        const format = buffer.readInt16BE(j + 17);
         const innerDataType = arrayDataTypeMapping.get(dataType);
         const isArray = (typeof innerDataType !== 'undefined');
         const typeReader = (types) ? types.get(dataType) : undefined;
@@ -216,7 +215,6 @@ export function readRowData(
     const columns = buffer.readInt16BE(rowDataOffset);
     const row = new Array<Value>(columns);
     const columnSpecification = rowDescription.columns;
-    const columnNames = rowDescription.names;
 
     let dataColumnOffset = rowDataOffset + 2;
     let i = 0;
@@ -316,8 +314,7 @@ export function readRowData(
             if (isArray) {
                 let offset = start;
                 const dimCount = buffer.readInt32BE(offset) - 1;
-                const flags = buffer.readInt32BE(offset += 4);
-                const elementType = buffer.readInt32BE(offset += 4);
+                const elementType = buffer.readInt32BE(offset += 8);
 
                 offset += 4;
 

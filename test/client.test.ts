@@ -162,7 +162,7 @@ describe('Query', () => {
     });
 
     testWithClient('Custom value type reader', async (client) => {
-        expect.assertions(3);
+        expect.assertions(5);
         client.config.types = new Map([
             [DataType.Int4, (
                 buffer: Buffer,
@@ -171,8 +171,10 @@ describe('Query', () => {
                 format: DataFormat,
                 encoding?: string) => {
                 const value = buffer.readInt32BE(start);
+                expect(end - start).toEqual(4);
                 expect(value).toEqual(1);
                 expect(format).toEqual(DataFormat.Binary);
+                expect(encoding).toEqual('utf-8');
                 return 1;
             }]
         ]);

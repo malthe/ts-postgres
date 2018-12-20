@@ -95,7 +95,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                     }
 
                     if (await new Promise<boolean>(
-                        (resolve, reject) => {
+                        (resolve) => {
                             this.subscribers.push(resolve);
                         })) {
                         return { done: true, value: undefined! };
