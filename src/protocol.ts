@@ -66,13 +66,11 @@ export type Segment = [SegmentType, SegmentValue];
 
 export const enum SegmentType {
     Buffer,
-    CString,
     Float4,
     Float8,
     Int8,
     Int16BE,
     Int32BE,
-    String,
     UInt32BE
 };
 
@@ -80,6 +78,8 @@ export interface RowDescription {
     columns: Uint32Array;
     names: string[]
 }
+
+const nullBuffer = Buffer.from('null');
 
 function dateToStringUTC(date: Date, includeTime: boolean) {
     const pad = (n: number, length: number) =>
@@ -128,10 +128,15 @@ function parseUuid(uuid: string) {
     return Buffer.from(uuid.replace(/-/g, ''), 'hex');
 }
 
-export function getMessageSize(
-    segment: SegmentType,
-    value: SegmentValue,
-    encoding: string) {
+function makeBuffer(s: string, encoding?: string, nullTerminate = false): SegmentValue {
+    return Buffer.from(nullTerminate ? s + '\0' : s, encoding);
+}
+
+function makeBufferSegment(s: string, encoding?: string, nullTerminate = false): Segment {
+    return [SegmentType.Buffer, makeBuffer(s, encoding, nullTerminate)];
+}
+
+function getMessageSize(segment: SegmentType, value: SegmentValue) {
     switch (segment) {
         case SegmentType.Buffer: {
             if (value instanceof Buffer) {
@@ -139,10 +144,6 @@ export function getMessageSize(
             } else {
                 break;
             }
-        }
-        case SegmentType.CString: {
-            const s = String(value);
-            return Buffer.byteLength(s, encoding) + 1;
         }
         case SegmentType.Float8: {
             return 8;
@@ -157,13 +158,6 @@ export function getMessageSize(
         case SegmentType.Int32BE:
         case SegmentType.UInt32BE: {
             return 4;
-        }
-        case SegmentType.String: {
-            if (typeof value === 'string') {
-                return Buffer.byteLength(value, encoding);
-            } else {
-                break;
-            }
         }
     }
     return -1;
@@ -437,8 +431,8 @@ export class Writer {
         const length = Math.min(types.length, values.length);
 
         let segments: Segment[] = [
-            [SegmentType.CString, portal],
-            [SegmentType.CString, name],
+            makeBufferSegment(portal, this.encoding, true),
+            makeBufferSegment(name, this.encoding, true),
             [SegmentType.Int16BE, length]
         ];
 
@@ -455,7 +449,7 @@ export class Writer {
 
         const add = (message: SegmentType, value: SegmentValue) => {
             segments.push([message, value]);
-            return getMessageSize(message, value, this.encoding);
+            return getMessageSize(message, value);
         }
 
         const reserve = (message: SegmentType) => {
@@ -521,7 +515,10 @@ export class Writer {
                         size = add(SegmentType.Buffer, value);
                     } else {
                         const s = String(value);
-                        size = add(SegmentType.String, s);
+                        size = add(
+                            SegmentType.Buffer,
+                            makeBuffer(s, this.encoding)
+                        );
                     }
                     break;
                 }
@@ -553,7 +550,7 @@ export class Writer {
                 };
                 case DataType.Json: {
                     const body = JSON.stringify(value);
-                    size = add(SegmentType.String, body);
+                    size = add(SegmentType.Buffer, makeBuffer(body, this.encoding));
                     break;
                 };
                 case DataType.Uuid: {
@@ -715,9 +712,13 @@ export class Writer {
                     (result instanceof Array) ?
                         sum(...result.map(
                             (s: string) =>
-                                add(SegmentType.String, s))) :
-                        add(SegmentType.String,
-                            (result === null) ? 'null' : result);
+                                add(SegmentType.Buffer,
+                                    makeBuffer(s, this.encoding)))) :
+                        add(SegmentType.Buffer,
+                            (result === null) ?
+                                nullBuffer :
+                                makeBuffer(result, this.encoding)
+                        );
                 setSize(size);
             }
         }
@@ -731,14 +732,14 @@ export class Writer {
     close(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Close, [
-                [SegmentType.CString, kind + name]
+                makeBufferSegment(kind + name, this.encoding, true)
             ]);
     }
 
     describe(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Describe, [
-                [SegmentType.CString, kind + name]
+                makeBufferSegment(kind + name, this.encoding, true)
             ]);
     }
 
@@ -749,7 +750,7 @@ export class Writer {
     execute(portal: string, limit = 0) {
         this.enqueue(
             Command.Execute, [
-                [SegmentType.CString, portal],
+                makeBufferSegment(portal, this.encoding, true),
                 [SegmentType.Int32BE, limit],
             ]);
     }
@@ -764,8 +765,8 @@ export class Writer {
         types: DataType[] = []) {
         const length = types.length;
         const segments: Segment[] = [
-            [SegmentType.CString, name],
-            [SegmentType.CString, text],
+            makeBufferSegment(name, this.encoding, true),
+            makeBufferSegment(text, this.encoding, true),
             [SegmentType.Int16BE, length]
         ];
         for (let i = 0; i < length; i++) {
@@ -777,7 +778,7 @@ export class Writer {
     password(text: string) {
         this.enqueue(
             Command.Password, [
-                [SegmentType.CString, text]
+                makeBufferSegment(text, this.encoding, true)
             ]);
     }
 
@@ -809,7 +810,7 @@ export class Writer {
         ];
 
         for (let s of data) {
-            segments.push([SegmentType.CString, s]);
+            segments.push(makeBufferSegment(s, this.encoding, true));
         }
 
         this.enqueue(null, segments, true);
@@ -828,16 +829,11 @@ export class Writer {
         const length = segments.length;
         for (let i = 0; i < length; i++) {
             const [segment, value] = segments[i];
-            size += getMessageSize(segment, value, this.encoding);
+            size += Math.max(getMessageSize(segment, value), 0);
         };
 
         return size;
     };
-
-
-    private encodedStringLength(value: string) {
-        return Buffer.byteLength(value, this.encoding);
-    }
 
     private enqueue(
         code: number | null,
@@ -868,18 +864,10 @@ export class Writer {
             const [segment, value] = segments[i];
             switch (segment) {
                 case SegmentType.Buffer: {
-                    const b = (value instanceof Buffer) ?
-                        value : Buffer.from(String(value), this.encoding);
-                    b.copy(buffer, offset);
-                    offset += b.length;
-                    break;
-                }
-                case SegmentType.CString: {
-                    const s = String(value);
-                    const length = this.encodedStringLength(s);
-                    buffer.write(s, offset, length, this.encoding);
-                    offset += length + 1;
-                    buffer[offset - 1] = 0;
+                    if (value instanceof Buffer) {
+                        value.copy(buffer, offset);
+                        offset += value.length;
+                    }
                     break;
                 }
                 case SegmentType.Float4: {
@@ -912,13 +900,6 @@ export class Writer {
                     offset += 4;
                     break;
                 };
-                case SegmentType.String: {
-                    const s = String(value);
-                    const length = this.encodedStringLength(s);
-                    buffer.write(s, offset, length, this.encoding);
-                    offset += length;
-                    break;
-                }
                 case SegmentType.UInt32BE: {
                     const n = Number(value);
                     buffer.writeUInt32BE(n, offset);
