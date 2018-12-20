@@ -65,6 +65,19 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         });
     };
 
+    async first() {
+        for await (const row of this) {
+            return row;
+        }
+    }
+
+    async one() {
+        const row = await this.first();
+        if (row) return row;
+
+        throw new Error('Query returned an empty result');
+    }
+
     notify(done: boolean) {
         if (done) this.done = true;
         for (let subscriber of this.subscribers) subscriber(done);

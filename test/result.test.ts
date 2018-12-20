@@ -55,6 +55,16 @@ describe('Result', () => {
         expect(result.names[0]).toEqual('message');
     });
 
+    testWithClient('One', async (client) => {
+        expect.assertions(1);
+        let row = await client.query(
+            'select $1::text as message', ['Hello world!']
+        ).one();
+        expect(row.get('message')).toEqual('Hello world!');
+        expect(client.query('select true where false').one())
+            .rejects.toThrow(/empty/);
+    });
+
     testWithClient('Synchronous iteration', async (client) => {
         await testIteratorResult(
             client,
