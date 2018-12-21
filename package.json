@@ -34,15 +34,8 @@
         "test:prod": "npm run lint && npm run test -- --coverage --no-cache"
     },
     "jest": {
-        "transform": {
-            "^.+\\.ts$": "ts-jest"
-        },
+        "preset": "ts-jest",
         "testEnvironment": "node",
-        "testRegex": "(/__tests__/.*|\\.(test|spec))\\.ts$",
-        "moduleFileExtensions": [
-            "ts",
-            "js"
-        ],
         "coveragePathIgnorePatterns": [
             "/node_modules/",
             "/test/",
