@@ -23,8 +23,9 @@ export class Queue<T extends any = undefined> {
         const item = this.container[this.head];
         this.container[this.head] = undefined;
 
-        if (typeof expected !== 'undefined' && expected !== item) {
-            throw new Error(`Unexpected item: ${expected} !== ${item}`);
+        if (typeof item === 'undefined' || (
+            typeof expected !== 'undefined' && expected !== item)) {
+            throw new Error(`Unexpected item: ${item} !== ${expected}`);
         }
 
         this.head++;

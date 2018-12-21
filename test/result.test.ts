@@ -61,7 +61,11 @@ describe('Result', () => {
             'select $1::text as message', ['Hello world!']
         ).one();
         expect(row.get('message')).toEqual('Hello world!');
-        expect(client.query('select true where false').one())
+    });
+
+    testWithClient('One (empty query)', async (client) => {
+        expect.assertions(1);
+        await expect(client.query('select true where false').one())
             .rejects.toThrow(/empty/);
     });
 

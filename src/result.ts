@@ -45,7 +45,7 @@ export class Result<T> {
 }
 
 export class ResultIterator<T> extends Promise<Result<T>> {
-    private subscribers: ((done: boolean) => void)[] = [];
+    private subscribers: ((done: boolean, error?: string) => void)[] = [];
     private done = false;
 
     public rows: T[][] | null = null;
@@ -71,16 +71,24 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         }
     }
 
-    async one() {
-        const row = await this.first();
-        if (row) return row;
-
-        throw new Error('Query returned an empty result');
+    one() {
+        return new Promise<ResultRow<T>>(
+            (resolve, reject) => {
+                this.first().then((value?: ResultRow<T>) => {
+                    if (value) {
+                        resolve(value);
+                    } else {
+                        reject(new Error('Query returned an empty result'));
+                    }
+                }).catch(() => null);
+                this.catch(reject);
+            });
     }
 
-    notify(done: boolean) {
+    notify(done: boolean, error?: string) {
         if (done) this.done = true;
-        for (let subscriber of this.subscribers) subscriber(done);
+        for (let subscriber of this.subscribers) subscriber(done, error);
+        this.subscribers.length = 0;
     };
 
     [Symbol.asyncIterator](): AsyncIterator<ResultRow<T>> {
@@ -108,8 +116,15 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                     }
 
                     if (await new Promise<boolean>(
-                        (resolve) => {
-                            this.subscribers.push(resolve);
+                        (resolve, reject) => {
+                            this.subscribers.push(
+                                (done: boolean, error?: string) => {
+                                    if (error) {
+                                        reject(error);
+                                    } else {
+                                        resolve(done)
+                                    }
+                                });
                         })) {
                         return { done: true, value: undefined! };
                     }
@@ -141,6 +156,7 @@ export function makeResult<T>() {
                 p.notify(true);
             } else if (typeof row === 'string') {
                 resolve(row);
+                p.notify(true, row);
             } else {
                 rows.push(row);
                 p.notify(false);

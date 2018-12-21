@@ -289,6 +289,7 @@ export class Client {
         if (this.closed) {
             throw new Error('Connection already closed.');
         }
+
         this.ending = true;
         this.writer.end();
         this.flush();
@@ -507,7 +508,6 @@ export class Client {
                 }
             });
             this.cleanupQueue.push(Cleanup.PreFlight);
-            this.cleanupQueue.push(Cleanup.ParameterDescription);
         } else {
             const name = (options ? options.name : undefined) || '';
             this.writer.parse(name, text);
@@ -698,8 +698,6 @@ export class Client {
                     const preflight = this.preFlightQueue.shift();
                     if (preflight.dataHandler) {
                         if (preflight.bind) {
-                            this.cleanupQueue.shift(
-                                Cleanup.ParameterDescription);
                             const info = {
                                 handler: preflight.dataHandler,
                                 description: null,
@@ -853,8 +851,6 @@ export class Client {
                         };
 
                         if (preflight.bind) {
-                            this.cleanupQueue.shift(
-                                Cleanup.ParameterDescription);
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
