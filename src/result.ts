@@ -71,18 +71,11 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         }
     }
 
-    one() {
-        return new Promise<ResultRow<T>>(
-            (resolve, reject) => {
-                this.first().then((value?: ResultRow<T>) => {
-                    if (value) {
-                        resolve(value);
-                    } else {
-                        reject(new Error('Query returned an empty result'));
-                    }
-                }).catch(() => null);
-                this.catch(reject);
-            });
+    async one() {
+        for await (const row of this) {
+            return row;
+        }
+        throw new Error('Query returned an empty result');
     }
 
     notify(done: boolean, error?: string) {
@@ -108,8 +101,18 @@ export class ResultIterator<T> extends Promise<Result<T>> {
             return new ResultRow<T>(names, values);
         };
 
+        var error: any = null;
+
+        this.catch((reason) => {
+            error = new Error(reason);
+        });
+
         return {
             next: async () => {
+                if (error) {
+                    throw error;
+                }
+
                 if (container.length <= i) {
                     if (this.done) {
                         return { done: true, value: undefined! };

@@ -69,6 +69,16 @@ describe('Result', () => {
             .rejects.toThrow(/empty/);
     });
 
+    testWithClient('First (error)', async (client) => {
+        const query = client.query('select does-not-exist');
+        expect(query.first()).rejects.toMatch(/does not exist/);
+    });
+
+    testWithClient('One (error)', async (client) => {
+        const query = client.query('select does-not-exist');
+        expect(query.one()).rejects.toMatch(/does not exist/);
+    });
+
     testWithClient('Synchronous iteration', async (client) => {
         await testIteratorResult(
             client,
