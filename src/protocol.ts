@@ -128,11 +128,13 @@ function parseUuid(uuid: string) {
     return Buffer.from(uuid.replace(/-/g, ''), 'hex');
 }
 
-function makeBuffer(s: string, encoding?: string, nullTerminate = false): SegmentValue {
+function makeBuffer(
+    s: string, encoding?: string, nullTerminate = false): SegmentValue {
     return Buffer.from(nullTerminate ? s + '\0' : s, encoding);
 }
 
-function makeBufferSegment(s: string, encoding?: string, nullTerminate = false): Segment {
+function makeBufferSegment(
+    s: string, encoding?: string, nullTerminate = false): Segment {
     return [SegmentType.Buffer, makeBuffer(s, encoding, nullTerminate)];
 }
 
@@ -550,7 +552,10 @@ export class Writer {
                 };
                 case DataType.Json: {
                     const body = JSON.stringify(value);
-                    size = add(SegmentType.Buffer, makeBuffer(body, this.encoding));
+                    size = add(
+                        SegmentType.Buffer,
+                        makeBuffer(body, this.encoding)
+                    );
                     break;
                 };
                 case DataType.Uuid: {
