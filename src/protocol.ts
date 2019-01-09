@@ -294,8 +294,10 @@ export function readRowData(
                     case DataType.Bytea:
                         return buffer.slice(start, end);
                     case DataType.Json:
-                        return JSON.parse(buffer.toString(
-                            encoding, start, end));
+                        const document = buffer.toString(encoding, start, end);
+                        if (document) {
+                            return JSON.parse(document);
+                        }
                     case DataType.Point:
                         return {
                             x: buffer.readDoubleBE(start),
