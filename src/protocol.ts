@@ -297,7 +297,8 @@ export function readRowData(
                         const document = buffer.toString(encoding, start, end);
                         if (document) {
                             return JSON.parse(document);
-                        }
+                        };
+                        break;
                     case DataType.Point:
                         return {
                             x: buffer.readDoubleBE(start),
