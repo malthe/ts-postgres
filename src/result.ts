@@ -101,7 +101,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
             return new ResultRow<T>(names, values);
         };
 
-        var error: any = null;
+        let error: any = null;
 
         this.catch((reason) => {
             error = new Error(reason);
