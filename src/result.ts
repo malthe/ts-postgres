@@ -9,13 +9,12 @@ export class ResultRow<T> {
         this.length = names.length;
     }
 
-    get(name: string): T {
-        for (let i = 0; this.length; i++) {
+    get(name: string): T | undefined {
+        for (let i = 0; i < this.length; i++) {
             if (this.names[i] === name) {
                 return this.data[i];
             }
         }
-        throw new Error(`Key not found: ${name}`);
     }
 }
 

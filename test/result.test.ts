@@ -55,6 +55,16 @@ describe('Result', () => {
         expect(result.names[0]).toEqual('message');
     });
 
+    testWithClient('Get', async (client) => {
+        expect.assertions(2);
+        let result = await client.query(
+            'select $1::text as message', ['Hello world!']
+        );
+        const rows = [...result];
+        expect(rows[0].get('message')).toEqual('Hello world!');
+        expect(rows[0].get('bad')).toEqual(undefined);
+    });
+
     testWithClient('One', async (client) => {
         expect.assertions(1);
         let row = await client.query(
