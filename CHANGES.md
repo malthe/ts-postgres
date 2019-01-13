@@ -1,6 +1,6 @@
 # Changes
 
-1.0.1 (unreleased)
+1.0.1 (2019-01-13)
 ------------------
 
 - Parse JSON data only on non-null value.
