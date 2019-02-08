@@ -142,7 +142,7 @@ The copy commands are not supported.
        validate: (client: Client) => {
            return Promise.resolve(!client.closed);
        }
-   });
+   }, { testOnBorrow: true });
 
    pool.use(...)
    ```
