@@ -160,7 +160,6 @@ export class Client {
     });
 
     private ending = false;
-    private closed = false;
     private connected = false;
     private connecting = false;
     private ready = false;
@@ -187,6 +186,7 @@ export class Client {
     private nextPreparedStatementId = 0;
     private activeDataHandlerInfo: RowDataHandlerInfo | null = null;
 
+    public closed = false;
     public processId: number | null = null;
     public secretKey: number | null = null;
     public transactionStatus: TransactionStatus | null = null;
@@ -245,9 +245,35 @@ export class Client {
                 this.offset = 0;
             }
 
-            const read = this.receive(this.buffer, this.offset, size);
-            this.offset += read;
-            this.remaining = size - read;
+            try {
+                const read = this.receive(this.buffer, this.offset, size);
+                this.offset += read;
+                this.remaining = size - read;
+            } catch (error) {
+                const active = this.activeDataHandlerInfo;
+                if (active) {
+                    active.handler(error);
+                }
+                while (!this.bindQueue.isEmpty()) {
+                    const info = this.bindQueue.shift();
+                    if (info) {
+                        info.handler(error);
+                    }
+                }
+                while (!this.preFlightQueue.isEmpty()) {
+                    const handler = this.preFlightQueue.shift().dataHandler;
+                    if (handler) {
+                        handler(error);
+                    }
+                }
+
+                // Mark connection as not connected.
+                this.connected = false;
+                this.ready = false;
+                this.closed = true;
+                this.error = true;
+                this.stream.destroy(error);
+            }
         });
 
         this.stream.on('error', (error: SystemError) => {
@@ -268,6 +294,10 @@ export class Client {
     connect() {
         if (this.connecting) {
             throw new Error('Already connecting');
+        }
+
+        if (this.error) {
+            throw new Error('Can\'t connect in error state');
         }
 
         this.connecting = true;
@@ -475,6 +505,10 @@ export class Client {
     }
 
     private execute(query: Query): ResultIterator {
+        if (this.closed && !this.connecting) {
+            throw new Error('Connection is closed.');
+        }
+
         const text = query.text;
         const values = query.values || [];
         const options = query.options;

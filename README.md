@@ -138,6 +138,9 @@ The copy commands are not supported.
        },
        destroy: async (client: Client) => {
            return client.end().then(() => { })
+       },
+       validate: (client: Client) => {
+           return Promise.resolve(!client.closed);
        }
    });
 
