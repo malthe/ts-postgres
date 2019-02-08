@@ -1,6 +1,6 @@
 # Changes
 
-1.0.2 (unreleased)
+1.0.2 (2019-02-08)
 ------------------
 
 - Connection state variable 'closed' is now public. This should be
