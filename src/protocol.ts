@@ -218,7 +218,7 @@ export function readRowData(
     while (i < columns) {
         const length = buffer.readInt32BE(dataColumnOffset);
         const start = dataColumnOffset + 4;
-        const end = start + length;
+        const end = start + (length >= 0 ? length : 0);
 
         dataColumnOffset = end;
 
