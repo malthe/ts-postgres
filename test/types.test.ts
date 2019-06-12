@@ -15,6 +15,7 @@ function getComparisonQueryFor(dataType: DataType, expression: string) {
     switch (dataType) {
         case DataType.ArrayJson:
             return `select ($1)::jsonb[] <@ (${expression})::jsonb[]`;
+        case DataType.Jsonb:
         case DataType.Json:
             return `select ($1)::jsonb <@ (${expression})::jsonb`;
         case DataType.Point:
@@ -233,6 +234,10 @@ describe('Types', () => {
         [utc_date(1999, 11, 31, 23, 59, 59)]);
     testType<JsonMap>(
         DataType.Json,
+        '\'{"foo": "bar"}\'::json',
+        { 'foo': 'bar' });
+    testType<JsonMap>(
+        DataType.Jsonb,
         '\'{"foo": "bar"}\'::json',
         { 'foo': 'bar' });
     testType<JsonMap[]>(

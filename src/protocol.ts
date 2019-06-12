@@ -293,6 +293,7 @@ export function readRowData(
                         return buffer.toString(encoding, start, end);
                     case DataType.Bytea:
                         return buffer.slice(start, end);
+                    case DataType.Jsonb:
                     case DataType.Json:
                         const document = buffer.toString(encoding, start, end);
                         if (document) {
@@ -553,6 +554,14 @@ export class Writer {
                     };
                     break;
                 };
+                case DataType.Jsonb:
+                  const body = JSON.stringify(value);
+                  add(SegmentType.Int8, 0x01);
+                  size = 1 + add(
+                    SegmentType.Buffer,
+                    makeBuffer(body, this.encoding)
+                  );
+                  break;
                 case DataType.Json: {
                     const body = JSON.stringify(value);
                     size = add(
@@ -663,6 +672,7 @@ export class Writer {
                     return (value instanceof Date) ?
                         dateToStringUTC(value, true) :
                         value.toString();
+                case DataType.Jsonb:
                 case DataType.Json:
                     return JSON.stringify(value);
                 default: {
