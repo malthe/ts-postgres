@@ -294,10 +294,19 @@ export function readRowData(
                     case DataType.Bytea:
                         return buffer.slice(start, end);
                     case DataType.Jsonb:
+                        const jsonb = buffer.toString(
+                          encoding,
+                          start + 1, end);
+
+                        if (jsonb) {
+                          return JSON.parse(jsonb);
+                        };
+
+                        break;
                     case DataType.Json:
-                        const document = buffer.toString(encoding, start, end);
-                        if (document) {
-                            return JSON.parse(document);
+                        const json = buffer.toString(encoding, start, end);
+                        if (json) {
+                            return JSON.parse(json);
                         };
                         break;
                     case DataType.Point:
