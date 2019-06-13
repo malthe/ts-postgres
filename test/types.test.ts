@@ -248,7 +248,7 @@ describe('Types', () => {
         [{ 'foo': 'bar' }],
         true);
     // Test nulls
-    testType<string|null>(
+    testType<string | null>(
         DataType.Uuid,
         'null',
         null
