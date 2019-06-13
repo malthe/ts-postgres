@@ -3,7 +3,11 @@
 1.0.3 (unreleased)
 ------------------
 
-- In next release ...
+- Fix password authentication.
+
+- Add support for MD5 authentication.
+
+- Handle `JSONB` and null values.
 
 
 1.0.2 (2019-02-08)
