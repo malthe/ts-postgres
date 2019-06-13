@@ -34,8 +34,8 @@ function testType<T extends Value>(
         testWithClient('Param', async (client) => {
             expect.assertions(3);
             const query = expected !== null
-              ? getComparisonQueryFor(dataType, expression)
-              : 'select $1 is null';
+                ? getComparisonQueryFor(dataType, expression)
+                : 'select $1 is null';
             await client.query(
                 (expected !== null) ? query + ' where $1 is not null' : query,
                 [expected], [dataType], format)
