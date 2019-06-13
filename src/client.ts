@@ -35,6 +35,7 @@ import {
     Value,
     ValueTypeReader
 } from './types';
+import { md5 } from './utils';
 
 export type Result = _Result<Value>;
 
@@ -698,15 +699,25 @@ export class Client {
                 case Message.Authentication: {
                     const code = buffer.readInt32BE(start);
                     switch (code) {
-                        case 0: {
+                        case 0:{
                             process.nextTick(() => {
                                 this.events.connect.emit({});
                             });
                             break;
-                        };
+                        }
                         case 3:
                             this.writer.password(this.config.password || '');
                             break;
+                        case 5: {
+                            const {user = '', password = ''} = this.config;
+                            const salt = buffer.slice(start + 4, start + 8);
+
+                            const shadow = md5(`${password}${user}`);
+
+                            this.writer.password(`md5${md5(shadow, salt)}`);
+                            this.writer.send();
+                            break;
+                        }
                         default:
                             throw new Error(
                                 `Unsupported authentication scheme: ${code}`

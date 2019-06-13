@@ -6,7 +6,7 @@ import {
     Point,
     Value,
     DataFormat
-} from '../src/types';
+} from '../src';
 
 const infinity = Number('Infinity');
 
@@ -15,6 +15,7 @@ function getComparisonQueryFor(dataType: DataType, expression: string) {
     switch (dataType) {
         case DataType.ArrayJson:
             return `select ($1)::jsonb[] <@ (${expression})::jsonb[]`;
+        case DataType.Jsonb:
         case DataType.Json:
             return `select ($1)::jsonb <@ (${expression})::jsonb`;
         case DataType.Point:
@@ -32,7 +33,9 @@ function testType<T extends Value>(
     const testParam = (format: DataFormat) => {
         testWithClient('Param', async (client) => {
             expect.assertions(3);
-            const query = getComparisonQueryFor(dataType, expression);
+            const query = expected !== null
+              ? getComparisonQueryFor(dataType, expression)
+              : 'select $1 is null';
             await client.query(
                 (expected !== null) ? query + ' where $1 is not null' : query,
                 [expected], [dataType], format)
@@ -235,9 +238,19 @@ describe('Types', () => {
         DataType.Json,
         '\'{"foo": "bar"}\'::json',
         { 'foo': 'bar' });
+    testType<JsonMap>(
+        DataType.Jsonb,
+        '\'{"foo": "bar"}\'::json',
+        { 'foo': 'bar' });
     testType<JsonMap[]>(
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
         [{ 'foo': 'bar' }],
         true);
+    // Test nulls
+    testType<string|null>(
+        DataType.Uuid,
+        'null',
+        null
+    );
 });
