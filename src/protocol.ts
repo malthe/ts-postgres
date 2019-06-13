@@ -794,10 +794,10 @@ export class Writer {
     };
 
     password(text: string) {
-        this.enqueue(
-            Command.Password, [
-                makeBufferSegment(text, this.encoding, true)
-            ]);
+        this.sendMessage(
+            Command.Password,
+            [makeBufferSegment(text, this.encoding, true)],
+        );
     }
 
     send() {
@@ -831,7 +831,7 @@ export class Writer {
             segments.push(makeBufferSegment(s, this.encoding, true));
         }
 
-        this.enqueue(null, segments, true);
+        this.sendMessage(null, segments);
     }
 
     sync() {
@@ -855,17 +855,18 @@ export class Writer {
 
     private enqueue(
         code: number | null,
-        segments: Segment[],
-        writeImmediately = false) {
+        segments: Segment[]) {
         // Allocate space and write segments.
         const size = this.getMessageSize(code, segments);
-        const buffer =
-            (writeImmediately) ?
-                Buffer.allocUnsafe(size) :
-                this.outgoing.getBuffer(size);
-
+        const buffer = this.outgoing.getBuffer(size);
         this.write(code, segments, buffer, size);
-        if (writeImmediately) this.stream.write(buffer);
+    }
+
+    private sendMessage(code: number | null, segments: Segment[]) {
+        const size = this.getMessageSize(code, segments);
+        const buffer = Buffer.allocUnsafe(size);
+        this.write(code, segments, buffer, size);
+        this.stream.write(buffer);
     }
 
     private write(
