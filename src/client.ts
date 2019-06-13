@@ -715,7 +715,6 @@ export class Client {
                             const shadow = md5(`${password}${user}`);
 
                             this.writer.password(`md5${md5(shadow, salt)}`);
-                            this.writer.send();
                             break;
                         }
                         default:
