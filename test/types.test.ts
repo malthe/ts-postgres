@@ -240,7 +240,7 @@ describe('Types', () => {
         { 'foo': 'bar' });
     testType<JsonMap>(
         DataType.Jsonb,
-        '\'{"foo": "bar"}\'::json',
+        '\'{"foo": "bar"}\'::jsonb',
         { 'foo': 'bar' });
     testType<JsonMap[]>(
         DataType.ArrayJson,
