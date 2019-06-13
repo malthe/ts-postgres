@@ -294,13 +294,15 @@ export function readRowData(
                     case DataType.Bytea:
                         return buffer.slice(start, end);
                     case DataType.Jsonb:
-                        const jsonb = buffer.toString(
-                          encoding,
-                          start + 1, end);
+                        if (buffer[start] === 1) {
+                            const jsonb = buffer.toString(
+                                encoding, start + 1, end
+                            );
 
-                        if (jsonb) {
-                          return JSON.parse(jsonb);
-                        };
+                            if (jsonb) {
+                                return JSON.parse(jsonb);
+                            };
+                        }
 
                         break;
                     case DataType.Json:
@@ -564,13 +566,13 @@ export class Writer {
                     break;
                 };
                 case DataType.Jsonb:
-                  const body = JSON.stringify(value);
-                  add(SegmentType.Int8, 0x01);
-                  size = 1 + add(
-                    SegmentType.Buffer,
-                    makeBuffer(body, this.encoding)
-                  );
-                  break;
+                    const body = JSON.stringify(value);
+                    add(SegmentType.Int8, 0x01);
+                    size = 1 + add(
+                        SegmentType.Buffer,
+                        makeBuffer(body, this.encoding)
+                    );
+                    break;
                 case DataType.Json: {
                     const body = JSON.stringify(value);
                     size = add(
