@@ -56,13 +56,15 @@ describe('Result', () => {
     });
 
     testWithClient('Get', async (client) => {
-        expect.assertions(2);
+        expect.assertions(3);
         let result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
+        expect(result.status).toEqual('SELECT 1');
         const rows = [...result];
-        expect(rows[0].get('message')).toEqual('Hello world!');
-        expect(rows[0].get('bad')).toEqual(undefined);
+        const row = rows[0];
+        expect(row.get('message')).toEqual('Hello world!');
+        expect(row.get('bad')).toEqual(undefined);
     });
 
     testWithClient('One', async (client) => {
@@ -81,12 +83,16 @@ describe('Result', () => {
 
     testWithClient('First (error)', async (client) => {
         const query = client.query('select does-not-exist');
-        return expect(query.first()).rejects.toMatch(/does not exist/);
+        return expect(query.first()).rejects.toMatchObject({
+            message: 'column "does" does not exist'
+        })
     });
 
     testWithClient('One (error)', async (client) => {
         const query = client.query('select does-not-exist');
-        return expect(query.one()).rejects.toMatch(/does not exist/);
+        return expect(query.one()).rejects.toMatchObject({
+            message: 'column "does" does not exist'
+        })
     });
 
     testWithClient('Synchronous iteration', async (client) => {

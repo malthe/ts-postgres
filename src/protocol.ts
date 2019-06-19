@@ -1,5 +1,6 @@
 import { Socket } from 'net';
 import { ElasticBuffer } from './buffer';
+import { postgresqlErrorCodes } from './errors';
 import { sum } from './utils';
 import {
     arrayDataTypeMapping,
@@ -78,6 +79,23 @@ export interface RowDescription {
     columns: Uint32Array;
     names: string[]
 }
+
+export class DatabaseError extends Error {
+    constructor(
+        public level: ErrorLevel,
+        public code: keyof typeof postgresqlErrorCodes,
+        public message: string
+    ) {
+        super(message);
+        const actualProto = new.target.prototype;
+
+        if (Object.setPrototypeOf) {
+            Object.setPrototypeOf(this, actualProto);
+        } else {
+            (this as any).__proto__ = actualProto;
+        }
+    }
+};
 
 const nullBuffer = Buffer.from('null');
 

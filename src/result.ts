@@ -1,4 +1,6 @@
-type Resolver = (error: null | string) => void;
+import { DatabaseError } from './protocol';
+
+type Resolver = (error: null | string | DatabaseError) => void;
 type ResultHandler = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
@@ -19,7 +21,11 @@ export class ResultRow<T> {
 }
 
 export class Result<T> {
-    constructor(public names: string[], public rows: T[][]) { }
+    constructor(
+        public names: string[],
+        public rows: T[][],
+        public status: null | string
+    ) { }
 
     [Symbol.iterator](): Iterator<ResultRow<T>> {
         let i = 0;
@@ -44,7 +50,9 @@ export class Result<T> {
 }
 
 export class ResultIterator<T> extends Promise<Result<T>> {
-    private subscribers: ((done: boolean, error?: string) => void)[] = [];
+    private subscribers: (
+        (done: boolean, error?: (string | DatabaseError)
+        ) => void)[] = [];
     private done = false;
 
     public rows: T[][] | null = null;
@@ -52,13 +60,13 @@ export class ResultIterator<T> extends Promise<Result<T>> {
 
     constructor(private container: T[][], executor: ResultHandler) {
         super((resolve, reject) => {
-            executor((error) => {
-                if (error) {
-                    reject(new Error(error));
+            executor((status) => {
+                if (status instanceof Error) {
+                    reject(status);
                 } else {
                     const names = this.names || [];
                     const rows = this.rows || [];
-                    resolve(new Result(names, rows));
+                    resolve(new Result(names, rows, status));
                 }
             });
         });
@@ -77,9 +85,9 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         throw new Error('Query returned an empty result');
     }
 
-    notify(done: boolean, error?: string) {
+    notify(done: boolean, status?: (string | DatabaseError)) {
         if (done) this.done = true;
-        for (let subscriber of this.subscribers) subscriber(done, error);
+        for (let subscriber of this.subscribers) subscriber(done, status);
         this.subscribers.length = 0;
     };
 
@@ -120,9 +128,9 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                     if (await new Promise<boolean>(
                         (resolve, reject) => {
                             this.subscribers.push(
-                                (done: boolean, error?: string) => {
-                                    if (error) {
-                                        reject(error);
+                                (done, status) => {
+                                    if (typeof status !== 'undefined') {
+                                        reject(status);
                                     } else {
                                         resolve(done)
                                     }
@@ -138,7 +146,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
     };
 }
 
-export type DataHandler<T> = Callback<T | null | string>;
+export type DataHandler<T> = Callback<T | null | string | DatabaseError>;
 
 export type NameHandler = Callback<string[]>;
 
@@ -151,17 +159,17 @@ export function makeResult<T>() {
     }
     const rows: T[][] = [];
     const p = new ResultIterator<T>(rows, (resolve) => {
-        dataHandler = ((row: T[] | null | string) => {
-            if (row === null) {
+        dataHandler = ((row: T[] | null | string | DatabaseError) => {
+            if (row === null || typeof row === 'string') {
                 p.rows = rows;
-                resolve(null);
-                p.notify(true);
-            } else if (typeof row === 'string') {
                 resolve(row);
-                p.notify(true, row);
-            } else {
+                p.notify(true);
+            } else if (Array.isArray(row)) {
                 rows.push(row);
                 p.notify(false);
+            } else {
+                resolve(row);
+                p.notify(true, row);
             }
         });
     });

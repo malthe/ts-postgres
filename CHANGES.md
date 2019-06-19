@@ -1,7 +1,12 @@
 # Changes
 
-1.0.3 (unreleased)
+1.1.0 (unreleased)
 ------------------
+
+- The rejection value is now a `DatabaseError` object which inherits
+  from `Error`. Previously, this value was a plain string.
+
+- Add command status string to result object.
 
 - Fix password authentication.
 

@@ -235,7 +235,7 @@ describe('Query', () => {
                     case 1: {
                         const p = client.query('select 1 as i');
                         return expect(p).resolves.toEqual(
-                            { "names": ['i'], "rows": [[1]] }
+                            { names: ['i'], rows: [[1]], status: 'SELECT 1' }
                         );
                     }
                     case 2: {
@@ -245,7 +245,7 @@ describe('Query', () => {
                     case 3: {
                         const p = client.query('select $1::int as k', [2]);
                         return expect(p).resolves.toEqual(
-                            { "names": ['k'], "rows": [[2]] }
+                            { names: ['k'], rows: [[2]], status: 'SELECT 1' }
                         );
                     }
                     case 4: {
@@ -286,7 +286,7 @@ describe('Query', () => {
 
     testWithClient('Empty query', async (client) => {
         await expect(client.query('')).resolves.toEqual(
-            { names: [], rows: [] }
+            { names: [], rows: [], status: null }
         );
     });
 
@@ -300,7 +300,7 @@ describe('Query', () => {
         async (client) => {
             const stmt = await client.prepare('select $1::int as i');
             await expect(stmt.execute([1])).resolves.toEqual(
-                { "names": ['i'], "rows": [[1]] }
+                { names: ['i'], rows: [[1]], status: 'SELECT 1' }
             );
             const result = await stmt.execute([2]);
             expect(result.rows).toEqual([[2]]);

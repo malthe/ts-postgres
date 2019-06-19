@@ -20,6 +20,7 @@ import {
 import {
     readRowData,
     readRowDescription,
+    DatabaseError,
     ErrorLevel,
     Message,
     Reader,
@@ -50,12 +51,6 @@ export interface End { };
 export interface Parameter {
     name: string;
     value: string;
-};
-
-export interface DatabaseError {
-    level: ErrorLevel,
-    code: keyof typeof postgresqlErrorCodes,
-    message: string
 };
 
 export interface ClientNotice extends DatabaseError {
@@ -125,7 +120,7 @@ interface RowDataHandlerInfo {
 }
 
 // Indicates that an error has occurred.
-type ErrorHandler = (message: string) => void;
+type ErrorHandler = (error: DatabaseError) => void;
 
 const enum Cleanup {
     Bind,
@@ -382,7 +377,7 @@ export class Client {
 
         return new Promise<PreparedStatement>(
             (resolve, reject) => {
-                const errorHandler = (message: string) => reject(message);
+                const errorHandler = (error: DatabaseError) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
                 this.writer.parse(providedNameOrGenerated, text, types || []);
                 this.writer.describe(providedNameOrGenerated, 'S');
@@ -482,7 +477,7 @@ export class Client {
                 types
             );
         } catch (error) {
-            info.handler(error.message);
+            info.handler(error);
             return;
         }
 
@@ -498,7 +493,7 @@ export class Client {
 
         this.writer.sync();
         this.errorHandlerQueue.push(
-            (message: string) => { info.handler(message); }
+            (error) => { info.handler(error); }
         );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
@@ -563,7 +558,7 @@ export class Client {
         }
 
         this.errorHandlerQueue.push(
-            (message: string) => result.dataHandler(message)
+            (error) => result.dataHandler(error)
         );
 
         this.cleanupQueue.push(Cleanup.ErrorHandler);
@@ -618,11 +613,7 @@ export class Client {
         }
 
         if (level && code && message) {
-            return {
-                level: level,
-                code: code,
-                message: message
-            };
+            return new DatabaseError(level, code, message);
         }
 
         throw new Error('Unable to parse error message.');
@@ -699,7 +690,7 @@ export class Client {
                 case Message.Authentication: {
                     const code = buffer.readInt32BE(start);
                     switch (code) {
-                        case 0:{
+                        case 0: {
                             process.nextTick(() => {
                                 this.events.connect.emit({});
                             });
@@ -709,7 +700,7 @@ export class Client {
                             this.writer.password(this.config.password || '');
                             break;
                         case 5: {
-                            const {user = '', password = ''} = this.config;
+                            const { user = '', password = '' } = this.config;
                             const salt = buffer.slice(start + 4, start + 8);
 
                             const shadow = md5(`${password}${user}`);
@@ -764,7 +755,10 @@ export class Client {
                     // This is unset if the query had no row data.
                     const info = this.activeDataHandlerInfo;
                     if (info) {
-                        info.handler(null);
+                        const string = buffer.slice(
+                            start, start + length - 1
+                        ).toString();
+                        info.handler(string);
                         this.activeDataHandlerInfo = null;
                     }
                     break;
@@ -782,7 +776,6 @@ export class Client {
                         buffer.slice(start, start + length));
 
                     this.events.error.emit(error);
-                    const message = error.message;
 
                     loop:
                     while (true) {
@@ -797,7 +790,7 @@ export class Client {
                             }
                             case Cleanup.ErrorHandler: {
                                 const handler = this.errorHandlerQueue.shift();
-                                handler(message);
+                                handler(error);
                                 this.error = true;
                                 break loop;
                             }
