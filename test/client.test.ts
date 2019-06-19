@@ -316,18 +316,3 @@ describe('Query', () => {
     testSelect(TestQuery.Array, 1, true);
     testSelect(TestQuery.Array, 5, true);
 });
-
-test("",()=>{
-  const salt = new Uint8Array(4);
-  salt[0] = 46;
-  salt[1] = 226;
-  salt[2] = 27;
-  salt[3] = 67;
-  const shadow = md5('passwordflynotes');
-  const transfer = md5(
-    shadow,
-    salt);
-  console.log(shadow);
-  console.log(transfer);
-  console.log(md5(transfer));
-});
