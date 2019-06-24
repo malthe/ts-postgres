@@ -1,4 +1,3 @@
-import { md5 } from '../src/utils';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
 import { Result } from '../src/client';
