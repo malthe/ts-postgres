@@ -755,10 +755,10 @@ export class Client {
                     // This is unset if the query had no row data.
                     const info = this.activeDataHandlerInfo;
                     if (info) {
-                        const string = buffer.slice(
+                        const status = buffer.slice(
                             start, start + length - 1
                         ).toString();
-                        info.handler(string);
+                        info.handler(status);
                         this.activeDataHandlerInfo = null;
                     }
                     break;
