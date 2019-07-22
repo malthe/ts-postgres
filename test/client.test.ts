@@ -121,7 +121,13 @@ describe('Events', () => {
         expect.assertions(1);
         const f = jest.fn();
         client.on('end', f);
-        await client.end();
+        const p = new Promise((resolve, _) => {
+            client.on('connect', async () => {
+                await client.end();
+                resolve();
+            });
+        });
+        await p;
         expect(f).toBeCalled();
     });
 
