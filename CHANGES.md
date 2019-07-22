@@ -5,6 +5,8 @@ In next release ...
 1.1.1 (unreleased)
 ------------------
 
+- Encoding argument now uses `BufferEncoding` type.
+
 1.1.0 (2019-06-24)
 ------------------
 

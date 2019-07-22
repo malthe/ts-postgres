@@ -126,7 +126,7 @@ export type ValueTypeReader = (
     start: number,
     end: number,
     format: DataFormat,
-    encoding: string | undefined
+    encoding?: BufferEncoding
 ) => Value;
 
 export interface Point {

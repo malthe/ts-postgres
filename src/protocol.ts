@@ -147,12 +147,12 @@ function parseUuid(uuid: string) {
 }
 
 function makeBuffer(
-    s: string, encoding?: string, nullTerminate = false): SegmentValue {
+    s: string, encoding?: BufferEncoding, nullTerminate = false): SegmentValue {
     return Buffer.from(nullTerminate ? s + '\0' : s, encoding);
 }
 
 function makeBufferSegment(
-    s: string, encoding?: string, nullTerminate = false): Segment {
+    s: string, encoding?: BufferEncoding, nullTerminate = false): Segment {
     return [SegmentType.Buffer, makeBuffer(s, encoding, nullTerminate)];
 }
 
@@ -223,7 +223,7 @@ export function readRowData(
     buffer: Buffer,
     rowDataOffset: number,
     rowDescription: RowDescription,
-    encoding: string,
+    encoding: BufferEncoding,
     types: ReadonlyMap<DataType, ValueTypeReader> | null):
     ArrayValue<Primitive> {
     const columns = buffer.readInt16BE(rowDataOffset);
@@ -440,7 +440,7 @@ export class Reader {
         return n;
     }
 
-    readCString(encoding: string) {
+    readCString(encoding: BufferEncoding) {
         const offset = this.offset;
         const i = this.buffer.indexOf(0, offset);
         const s = this.buffer.toString(encoding, offset, i);
@@ -453,7 +453,7 @@ export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer(4096);
     constructor(
         private readonly stream: Socket,
-        private readonly encoding: string) { }
+        private readonly encoding: BufferEncoding) { }
 
     bind(
         name: string,

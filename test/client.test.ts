@@ -1,6 +1,6 @@
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
-import { Result } from '../src/client';
+import { Result, ResultIterator } from '../src/client';
 import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
@@ -225,7 +225,7 @@ describe('Query', () => {
             const random = (n: number) =>
                 Math.floor(Math.random() * Math.floor(n));
 
-            const make = (n: number): Promise<void> | undefined => {
+            const make = (n: number): Promise<ResultIterator> | undefined => {
                 switch (n) {
                     case 0: {
                         const p = client.query('select foo');
@@ -263,7 +263,7 @@ describe('Query', () => {
                     Math.max(random(remaining), 1),
                     remaining / 2
                 );
-                const promises: Promise<void>[] = [];
+                const promises: Promise<ResultIterator>[] = [];
                 for (let j = 0; j < i; j++) {
                     const n = random(5);
                     const p = make(n);
