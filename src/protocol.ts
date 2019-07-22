@@ -147,7 +147,8 @@ function parseUuid(uuid: string) {
 }
 
 function makeBuffer(
-    s: string, encoding?: BufferEncoding, nullTerminate = false): SegmentValue {
+    s: string, encoding?: BufferEncoding, nullTerminate = false):
+    SegmentValue {
     return Buffer.from(nullTerminate ? s + '\0' : s, encoding);
 }
 
