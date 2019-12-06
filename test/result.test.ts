@@ -123,7 +123,7 @@ describe('Result', () => {
 
     testWithClient('Null typed array', async (client) => {
         expect.assertions(1);
-        let row = await client.query('select null::uuid[] as value').one();
+        let row = await client.query('select null::text[] as value').one();
         expect(row.get('value')).toEqual(null);
     });
 });
