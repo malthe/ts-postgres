@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Fixed `ECONNRESET` deprecation.
+
 1.1.1 (unreleased)
 ------------------
 

@@ -1,4 +1,4 @@
-import { ECONNRESET } from 'constants';
+import { constants } from 'os';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
 
@@ -275,7 +275,7 @@ export class Client {
         this.stream.on('error', (error: SystemError) => {
             // Don't raise ECONNRESET errors - they can & should be
             // ignored during disconnect
-            if (this.ending && error.errno === ECONNRESET) {
+            if (this.ending && error.errno === constants.errno.ECONNRESET) {
                 return
             }
             this.events.end.emit({});
