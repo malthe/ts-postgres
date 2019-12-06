@@ -110,6 +110,7 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayFloat8, DataType.Float8],
     [DataType.ArrayInt4, DataType.Int4],
     [DataType.ArrayJson, DataType.Json],
+    [DataType.ArrayJsonb, DataType.Jsonb],
     [DataType.ArrayText, DataType.Text],
     [DataType.ArrayTimestamp, DataType.Timestamp],
     [DataType.ArrayTimestamptz, DataType.Timestamptz],
