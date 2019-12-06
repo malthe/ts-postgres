@@ -341,7 +341,9 @@ export function readRowData(
                 return null;
             };
 
-            if (isArray) {
+            if (start === end) {
+                value = null;
+            } else if (isArray) {
                 let offset = start;
                 const dimCount = buffer.readInt32BE(offset) - 1;
                 const elementType = buffer.readInt32BE(offset += 8);
