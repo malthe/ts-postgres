@@ -120,4 +120,10 @@ describe('Result', () => {
                 return rows;
             });
     });
+
+    testWithClient('Null typed array', async (client) => {
+        expect.assertions(1);
+        let row = await client.query('select null::uuid[] as value').one();
+        expect(row.get('value')).toEqual(null);
+    });
 });
