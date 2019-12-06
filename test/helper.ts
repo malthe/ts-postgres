@@ -13,7 +13,7 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
         let closed = false;
         client.on('end', () => { closed = true; });
         try {
-            await p
+            await p;
         } finally {
             if (!closed) {
                 await client.end();
