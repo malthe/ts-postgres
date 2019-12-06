@@ -174,6 +174,11 @@ describe('Types', () => {
         '\'123e4567-e89b-12d3-a456-426655440000\'::uuid',
         '123e4567-e89b-12d3-a456-426655440000'
     );
+    testType<string[]>(
+        DataType.ArrayUuid,
+        'ARRAY[\'123e4567-e89b-12d3-a456-426655440000\'::uuid]',
+        ['123e4567-e89b-12d3-a456-426655440000']
+    );
     testType<number[]>(
         DataType.ArrayInt4,
         '\'{1,2,3}\'::int4[3]',
