@@ -4,6 +4,8 @@ In next release ...
 
 - Fixed `ECONNRESET` deprecation.
 
+- Enable parsing of `jsonb` arrays. [matthieusieben]
+
 - Fixed error when parsing null arrays. [matthieusieben]
 
 
