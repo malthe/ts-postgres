@@ -1,16 +1,13 @@
 # Changes
 
-In next release ...
+1.1.1 (2019-12-06)
+------------------
 
 - Fixed `ECONNRESET` deprecation.
 
 - Enable parsing of `jsonb` and `uuid` arrays. [matthieusieben]
 
 - Fixed error when parsing null arrays. [matthieusieben]
-
-
-1.1.1 (unreleased)
-------------------
 
 - Encoding argument now uses `BufferEncoding` type.
 
