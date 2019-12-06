@@ -4,10 +4,14 @@ In next release ...
 
 - Fixed `ECONNRESET` deprecation.
 
+- Fixed error when parsing null arrays. [matthieusieben]
+
+
 1.1.1 (unreleased)
 ------------------
 
 - Encoding argument now uses `BufferEncoding` type.
+
 
 1.1.0 (2019-06-24)
 ------------------
@@ -33,6 +37,7 @@ In next release ...
 
 - Handle protocol errors gracefully, passing error to open data
   handlers and marking the connection as 'closed'.
+
 
 1.0.1 (2019-01-13)
 ------------------
