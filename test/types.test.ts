@@ -243,6 +243,10 @@ describe('Types', () => {
         '\'{"foo": "bar"}\'::jsonb',
         { 'foo': 'bar' });
     testType<JsonMap[]>(
+        DataType.ArrayJsonb,
+        'ARRAY[\'{"foo": "bar"}\'::jsonb, \'{"bar": "baz"}\'::jsonb]',
+        [{ 'foo': 'bar' }, { 'bar': 'baz' }]);
+    testType<JsonMap[]>(
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
         [{ 'foo': 'bar' }],
