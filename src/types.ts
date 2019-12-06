@@ -80,6 +80,7 @@ export enum DataType {
     Opaque = 2282,
     AnyElement = 2283,
     AnyNonArray = 2776,
+    ArrayUuid = 2951,
     Uuid = 2950,
     TxidSnapshot = 2970,
     FdwHandler = 3115,
@@ -113,6 +114,7 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayText, DataType.Text],
     [DataType.ArrayTimestamp, DataType.Timestamp],
     [DataType.ArrayTimestamptz, DataType.Timestamptz],
+    [DataType.ArrayUuid, DataType.Uuid],
     [DataType.ArrayVarchar, DataType.Varchar]
 ]);
 
