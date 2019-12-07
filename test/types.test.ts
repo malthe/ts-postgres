@@ -248,9 +248,24 @@ describe('Types', () => {
         [{ 'foo': 'bar' }],
         true);
     // Test nulls
+    testType<boolean | null>(
+        DataType.Bool,
+        'null::bool',
+        null
+    );
     testType<string | null>(
         DataType.Uuid,
-        'null',
+        'null::uuid',
+        null
+    );
+    testType<string | null>(
+        DataType.Text,
+        'null::text',
+        null
+    );
+    testType<string[] | null>(
+        DataType.ArrayText,
+        'null::text[]',
         null
     );
 });
