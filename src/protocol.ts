@@ -502,6 +502,11 @@ export class Writer {
             let size = -1;
             const setSize = reserve(SegmentType.Int32BE);
 
+            if (value === null) {
+                setSize(-1);
+                return 0;
+            }
+
             switch (dataType) {
                 case DataType.Bool: {
                     size = add(SegmentType.Int8, (value) ? 1 : 0);
@@ -617,8 +622,13 @@ export class Writer {
                 };
                 default: {
                     const innerDataType = arrayDataTypeMapping.get(dataType);
-                    if (innerDataType && value instanceof Array) {
-                        size = addBinaryArray(value, innerDataType);
+                    if (innerDataType) {
+                        if (value instanceof Array) {
+                            size = addBinaryArray(value, innerDataType);
+                        } else {
+                            // null or Array only
+                            throw new Error(`Invalid value for data type: ${dataType}`);
+                        }
                     } else {
                         throw new Error(`Unsupported data type: ${dataType}`);
                     }
