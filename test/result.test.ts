@@ -67,6 +67,30 @@ describe('Result', () => {
         expect(row.get('bad')).toEqual(undefined);
     });
 
+    testWithClient('Parse array containing null', async (client) => {
+        expect.assertions(1);
+        let row = await client.query(
+            'select ARRAY[null::text] as a'
+        ).one();
+        expect(row.get('a')).toEqual([null]);
+    });
+
+    testWithClient('Format array containing null value', async (client) => {
+        expect.assertions(1);
+        let row = await client.query(
+            'select $1::text[] as a', [[null]]
+        ).one();
+        expect(row.get('a')).toEqual([null]);
+    });
+
+    testWithClient('Format null-array', async (client) => {
+        expect.assertions(1);
+        let row = await client.query(
+            'select $1::text[] as a', [null]
+        ).one();
+        expect(row.get('a')).toEqual(null);
+    });
+
     testWithClient('One', async (client) => {
         expect.assertions(1);
         let row = await client.query(

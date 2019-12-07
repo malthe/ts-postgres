@@ -356,14 +356,14 @@ export function readRowData(
                     offset += 8;
                     for (let j = 0; j < size; j++) {
                         const length = buffer.readInt32BE(offset);
-                        const elementStart = offset + 4;
-                        const elementEnd = elementStart + length;
-                        offset = elementEnd;
-                        array[j] = read(
-                            elementType,
-                            elementStart,
-                            elementEnd
-                        );
+                        offset += 4;
+                        let value = null;
+                        if (length >= 0) {
+                            const elementStart = offset;
+                            offset = elementStart + length;
+                            value = read(elementType, elementStart, offset);
+                        }
+                        array[j] = value;
                     }
                     value = array;
                 } else {
@@ -622,13 +622,9 @@ export class Writer {
                 };
                 default: {
                     const innerDataType = arrayDataTypeMapping.get(dataType);
-                    if (innerDataType) {
-                        if (value instanceof Array) {
-                            size = addBinaryArray(value, innerDataType);
-                        } else {
-                            // null or Array only
-                            throw new Error(`Invalid value for data type: ${dataType}`);
-                        }
+                    if (innerDataType && (
+                        value === null || value instanceof Array)) {
+                        size = addBinaryArray(value, innerDataType);
                     } else {
                         throw new Error(`Unsupported data type: ${dataType}`);
                     }
@@ -640,7 +636,7 @@ export class Writer {
         };
 
         const addBinaryArray = (
-            value: Value[],
+            value: null | Value[],
             dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
@@ -672,7 +668,7 @@ export class Writer {
 
             };
 
-            go(0, value);
+            if (value !== null) go(0, value);
             setDimCount(dimCount);
             return bytes;
         }

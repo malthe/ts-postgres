@@ -2,7 +2,7 @@
 
 In next release ...
 
-- Allow setting null values in binary format. [matthieusieben]
+- Fixed handling of null values in arrays. [matthieusieben]
 
 1.1.1 (2019-12-06)
 ------------------
