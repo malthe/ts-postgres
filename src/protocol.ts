@@ -355,7 +355,7 @@ export function readRowData(
                     const array: ArrayValue<Primitive> = new Array(size);
                     offset += 8;
                     for (let j = 0; j < size; j++) {
-                        const length = buffer.readInt32BE(offset);   
+                        const length = buffer.readInt32BE(offset);
                         offset += 4;
                         let value = null;
                         if (length >= 0) {
@@ -622,13 +622,9 @@ export class Writer {
                 };
                 default: {
                     const innerDataType = arrayDataTypeMapping.get(dataType);
-                    if (innerDataType) {
-                        if (value instanceof Array) {
-                            size = addBinaryArray(value, innerDataType);
-                        } else {
-                            // null or Array only
-                            throw new Error(`Invalid value for data type: ${dataType}`);
-                        }
+                    if (innerDataType && (
+                        value === null || value instanceof Array)) {
+                        size = addBinaryArray(value, innerDataType);
                     } else {
                         throw new Error(`Unsupported data type: ${dataType}`);
                     }
@@ -640,7 +636,7 @@ export class Writer {
         };
 
         const addBinaryArray = (
-            value: Value[],
+            value: null | Value[],
             dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
@@ -672,7 +668,7 @@ export class Writer {
 
             };
 
-            go(0, value);
+            if (value !== null) go(0, value);
             setDimCount(dimCount);
             return bytes;
         }

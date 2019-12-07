@@ -78,9 +78,17 @@ describe('Result', () => {
     testWithClient('Format array containing null value', async (client) => {
         expect.assertions(1);
         let row = await client.query(
-            'select $1::text[] as a', [null]
+            'select $1::text[] as a', [[null]]
         ).one();
         expect(row.get('a')).toEqual([null]);
+    });
+
+    testWithClient('Format null-array', async (client) => {
+        expect.assertions(1);
+        let row = await client.query(
+            'select $1::text[] as a', [null]
+        ).one();
+        expect(row.get('a')).toEqual(null);
     });
 
     testWithClient('One', async (client) => {
