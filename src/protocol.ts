@@ -622,8 +622,7 @@ export class Writer {
                 };
                 default: {
                     const innerDataType = arrayDataTypeMapping.get(dataType);
-                    if (innerDataType && (
-                        value === null || value instanceof Array)) {
+                    if (innerDataType && value instanceof Array) {
                         size = addBinaryArray(value, innerDataType);
                     } else {
                         throw new Error(`Unsupported data type: ${dataType}`);
@@ -636,7 +635,7 @@ export class Writer {
         };
 
         const addBinaryArray = (
-            value: null | Value[],
+            value: Value[],
             dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
@@ -668,7 +667,7 @@ export class Writer {
 
             };
 
-            if (value !== null) go(0, value);
+            go(0, value);
             setDimCount(dimCount);
             return bytes;
         }
