@@ -355,15 +355,15 @@ export function readRowData(
                     const array: ArrayValue<Primitive> = new Array(size);
                     offset += 8;
                     for (let j = 0; j < size; j++) {
-                        const length = buffer.readInt32BE(offset);
-                        const elementStart = offset + 4;
-                        const elementEnd = elementStart + length;
-                        offset = elementEnd;
-                        array[j] = read(
-                            elementType,
-                            elementStart,
-                            elementEnd
-                        );
+                        const length = buffer.readInt32BE(offset);   
+                        offset += 4;
+                        let value = null;
+                        if (length >= 0) {
+                            const elementStart = offset;
+                            offset = elementStart + length;
+                            value = read(elementType, elementStart, offset);
+                        }
+                        array[j] = value;
                     }
                     value = array;
                 } else {
