@@ -502,11 +502,12 @@ export class Writer {
             let size = -1;
             const setSize = reserve(SegmentType.Int32BE);
 
-            switch (value === null ? null : dataType) {
-                case null: {
-                    size = -1;
-                    break;
-                };
+            if (value === null) {
+                setSize(-1);
+                return 0;
+            }
+
+            switch (dataType) {
                 case DataType.Bool: {
                     size = add(SegmentType.Int8, (value) ? 1 : 0);
                     break;
