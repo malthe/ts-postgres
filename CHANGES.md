@@ -2,7 +2,7 @@
 
 In next release ...
 
--
+- Allow setting null values in binary format. [matthieusieben]
 
 1.1.1 (2019-12-06)
 ------------------

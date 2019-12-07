@@ -98,7 +98,8 @@ describe('Result', () => {
     testWithClient('Multiple null params', async (client) => {
         expect.assertions(3);
         let row = await client.query(
-            'select $1::text as a, $2::text[] as b, $3::jsonb[] as c', [null, null, null]
+            'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
+            [null, null, null]
         ).one();
         expect(row.get('a')).toBeNull()
         expect(row.get('b')).toBeNull();
