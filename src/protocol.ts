@@ -346,7 +346,7 @@ export function readRowData(
             } else if (isArray) {
                 let offset = start;
 
-                function readArray(size: number) {
+                const readArray = (size: number) => {
                     const array: ArrayValue<Primitive> =
                         new Array(size);
 
