@@ -167,11 +167,11 @@ describe('Types', () => {
     testType<(Date | null)[]>(
         DataType.ArrayTimestamptz,
         'ARRAY[null,\'1999-12-31 23:59:59Z\']::timestamptz[]',
-        [null,utc_date(1999, 11, 31, 23, 59, 59)]);
+        [null, utc_date(1999, 11, 31, 23, 59, 59)]);
     testType<(Date | null)[][]>(
         DataType.ArrayTimestamptz,
         'ARRAY[ARRAY[null],ARRAY[\'1999-12-31 23:59:59Z\']]::timestamptz[][]',
-        [[null],[utc_date(1999, 11, 31, 23, 59, 59)]]);
+        [[null], [utc_date(1999, 11, 31, 23, 59, 59)]]);
     testType<Point>(
         DataType.Point,
         '\'(1,2)\'::Point',
@@ -231,20 +231,20 @@ describe('Types', () => {
         DataType.ArrayText, '\'{a}\'::text[]', ['a']);
     testType<string[]>(
         DataType.ArrayText, '\'{"a,"}\'::text[]', ['a,']);
-    testType<(string|null)[]>(
+    testType<(string | null)[]>(
         DataType.ArrayText,
         'ARRAY[null]::text[]',
         [null]
     );
-    testType<(string|null)[]>(
+    testType<(string | null)[]>(
         DataType.ArrayText,
         `ARRAY['a', null, 'b', null]::text[]`,
         ['a', null, 'b', null]
     );
-    testType<(string|null)[][]>(
+    testType<(string | null)[][]>(
         DataType.ArrayText,
         `ARRAY[ARRAY['a',null,'b'],ARRAY[null, 'c', null]]::text[][]`,
-        [['a',null,'b'],[null, 'c', null]]
+        [['a', null, 'b'], [null, 'c', null]]
     );
     testType<Date[]>(
         DataType.ArrayDate,

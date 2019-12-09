@@ -787,15 +787,15 @@ export class Writer {
     close(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Close, [
-                makeBufferSegment(kind + name, this.encoding, true)
-            ]);
+            makeBufferSegment(kind + name, this.encoding, true)
+        ]);
     }
 
     describe(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Describe, [
-                makeBufferSegment(kind + name, this.encoding, true)
-            ]);
+            makeBufferSegment(kind + name, this.encoding, true)
+        ]);
     }
 
     end() {
@@ -805,9 +805,9 @@ export class Writer {
     execute(portal: string, limit = 0) {
         this.enqueue(
             Command.Execute, [
-                makeBufferSegment(portal, this.encoding, true),
-                [SegmentType.Int32BE, limit],
-            ]);
+            makeBufferSegment(portal, this.encoding, true),
+            [SegmentType.Int32BE, limit],
+        ]);
     }
 
     flush() {
