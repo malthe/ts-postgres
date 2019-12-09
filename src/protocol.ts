@@ -345,15 +345,11 @@ export function readRowData(
                 value = null;
             } else if (isArray) {
                 let offset = start;
-                const dimCount = buffer.readInt32BE(offset) - 1;
-                const elementType = buffer.readInt32BE(offset += 8);
 
-                offset += 4;
+                const readArray = (size: number) => {
+                    const array: ArrayValue<Primitive> =
+                        new Array(size);
 
-                if (dimCount === 0) {
-                    const size = buffer.readInt32BE(offset);
-                    const array: ArrayValue<Primitive> = new Array(size);
-                    offset += 8;
                     for (let j = 0; j < size; j++) {
                         const length = buffer.readInt32BE(offset);
                         offset += 4;
@@ -365,7 +361,18 @@ export function readRowData(
                         }
                         array[j] = value;
                     }
-                    value = array;
+                    return array;
+                }
+
+                const dimCount = buffer.readInt32BE(offset) - 1;
+                const elementType = buffer.readInt32BE(offset += 8);
+
+                offset += 4;
+
+                if (dimCount === 0) {
+                    const size = buffer.readInt32BE(offset);
+                    offset += 8;
+                    value = readArray(size);
                 } else {
                     const arrays: ArrayValue<Primitive>[] =
                         new Array(dimCount);
@@ -384,22 +391,7 @@ export function readRowData(
                     offset += 8;
 
                     for (let l = 0; l < total; l++) {
-                        const array: ArrayValue<Primitive> =
-                            new Array(size);
-
-                        for (let j = 0; j < size; j++) {
-                            const length = buffer.readInt32BE(offset);
-                            const elementStart = offset + 4;
-                            const elementEnd = elementStart + length;
-                            offset = elementEnd;
-                            array[j] = read(
-                                elementType,
-                                elementStart,
-                                elementEnd
-                            );
-                        }
-
-                        let next = array;
+                        let next = readArray(size);
                         for (let j = dimCount - 1; j >= 0; j--) {
                             const count = counts[j];
                             const dim = dims[j];
@@ -787,15 +779,15 @@ export class Writer {
     close(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Close, [
-                makeBufferSegment(kind + name, this.encoding, true)
-            ]);
+            makeBufferSegment(kind + name, this.encoding, true)
+        ]);
     }
 
     describe(name: string, kind: 'S' | 'P') {
         this.enqueue(
             Command.Describe, [
-                makeBufferSegment(kind + name, this.encoding, true)
-            ]);
+            makeBufferSegment(kind + name, this.encoding, true)
+        ]);
     }
 
     end() {
@@ -805,9 +797,9 @@ export class Writer {
     execute(portal: string, limit = 0) {
         this.enqueue(
             Command.Execute, [
-                makeBufferSegment(portal, this.encoding, true),
-                [SegmentType.Int32BE, limit],
-            ]);
+            makeBufferSegment(portal, this.encoding, true),
+            [SegmentType.Int32BE, limit],
+        ]);
     }
 
     flush() {
