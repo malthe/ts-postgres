@@ -1,8 +1,11 @@
 # Changes
 
-In next release ...
+
+1.1.2 (2019-12-28)
+------------------
 
 - Fixed handling of null values in arrays. [matthieusieben]
+
 
 1.1.1 (2019-12-06)
 ------------------
