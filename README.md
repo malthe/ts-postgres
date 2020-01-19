@@ -64,6 +64,33 @@ const result = await client.query(...)
 ```
 If the query fails, an exception is thrown.
 
+### Connection options
+
+The client constructor takes an optional
+[Configuration](src/client.ts#L67) object.
+
+For example, to connect to a remote host use the *host* configuration key:
+
+```typescript
+const client = new Client({"host": <hostname>});
+```
+
+The following table lists the various configuration options and their
+default value when applicable.
+
+| Key                     | Type                             | Default                                    |
+|-------------------------|:---------------------------------|--------------------------------------------|
+| host                    | `string`                         | "localhost"                                |
+| port                    | `number`                         | 5432                                       |
+| user                    | `string`                         | *The username of the process owner*        |
+| database                | `string`                         | "postgres"                                 |
+| password                | `string`                         |                                            |
+| types                   | `Map<DataType, ValueTypeReader>` | *Default value mapping for built-in types* |
+| extraFloatDigits        | `number`                         | 0                                          |
+| keepAlive               | `boolean`                        | true                                       |
+| preparedStatementPrefix | `string`                         | "tsp_"                                     |
+
+
 ### Passing query parameters
 
 Query parameters use the format `$1`, `$2` etc.
