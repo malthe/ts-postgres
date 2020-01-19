@@ -38,26 +38,59 @@ async function main() {
     const client = new Client();
     await client.connect();
 
-    const stream = client.query(
-        `SELECT 'Hello ' || $1 || '!' AS message`,
-        ['world']
-    );
+    try {
+        // Querying the client returns a query result promise
+        // which is also an asynchronous result iterator.
+        const resultIterator = client.query(
+            `SELECT 'Hello ' || $1 || '!' AS message`,
+            ['world']
+        );
 
-    for await (const row of stream) {
-        console.log(row.get('message')); // 'Hello world!'
+        for await (const row of resultIterator) {
+            // 'Hello world!'
+            console.log(row.get('message'));
+        }
+    } finally {
+        await client.end();
     }
-
-    await client.end();
 }
 
 main()
 ```
-The example above uses the variable ``stream`` to indicate that the result set is made available as it arrives on the connection. But we'll often want to just wait for the entire result set to arrive before starting to process the data.
+Waiting on the result iterator returns the complete query result.
 
 ```typescript
-const result = await client.query('select generate_series(1, 10)');
+const result = await client.query(...)
 ```
-If the query fails, waiting for the result will throw an exception.
+If the query fails, an exception is thrown.
+
+### Passing query parameters
+
+Query parameters use the format `$1`, `$2` etc.
+
+When a specific data type is not inferrable from the query, PostgreSQL
+uses `DataType.Text` as the default data type (which is mapped to the
+string type in TypeScript). An explicit type can be provided in two
+different ways:
+
+1. Using type cast in the query, e.g. `$1::int`.
+
+2. By passing a list of types to the query method:
+
+   ```typescript
+   import { DataType } from 'ts-postgres';
+   const result = await client.query(
+      "select $1 || ' bottles of beer'", [99], [DataType.Int4]
+   );
+    ```
+
+Note that the `number` type in TypeScript has a maximum safe integer
+value which lies between and `DataType.Int8` – given by
+`Number.MAX_SAFE_INTEGER`. The maximum safe integer data type to use
+is therefore `DataType.Int4`.
+
+The `bigint` type is not currently supported.
+
 
 ### Iterator interface
 
