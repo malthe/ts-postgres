@@ -2,7 +2,7 @@
 
 In next release ...
 
-- 
+- Added support for `BigInt`.
 
 1.1.2 (2019-12-28)
 ------------------
