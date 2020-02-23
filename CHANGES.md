@@ -2,6 +2,9 @@
 
 In next release ...
 
+1.1.3 (2020-02-23)
+------------------
+
 - Added support for `BigInt`.
 
 1.1.2 (2019-12-28)
