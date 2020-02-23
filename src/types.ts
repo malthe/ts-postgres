@@ -141,7 +141,14 @@ export function isPoint(item: any): item is Point {
     return 'x' in item && 'y' in item;
 }
 
-export type Builtin = Buffer | Date | boolean | number | null | string;
+export type Builtin =
+    Buffer |
+    Date |
+    BigInt |
+    boolean |
+    number |
+    null |
+    string;
 
 export type AnyJson = boolean | number | string | null | JsonArray | JsonMap;
 

@@ -62,7 +62,7 @@ export const enum TransactionStatus {
     InError = 0x45
 }
 
-export type SegmentValue = Buffer | number | null | string;
+export type SegmentValue = Buffer | BigInt | number | null | string;
 export type Segment = [SegmentType, SegmentValue];
 
 export const enum SegmentType {
@@ -72,6 +72,7 @@ export const enum SegmentType {
     Int8,
     Int16BE,
     Int32BE,
+    Int64BE,
     UInt32BE
 };
 
@@ -166,6 +167,7 @@ function getMessageSize(segment: SegmentType, value: SegmentValue) {
                 break;
             }
         }
+        case SegmentType.Int64BE:
         case SegmentType.Float8: {
             return 8;
         }
@@ -300,6 +302,8 @@ export function readRowData(
                     case DataType.Int4:
                     case DataType.Oid:
                         return buffer.readInt32BE(start);
+                    case DataType.Int8:
+                        return buffer.readBigInt64BE(start);
                     case DataType.Float4:
                         return buffer.readFloatBE(start);
                     case DataType.Float8:
@@ -574,6 +578,10 @@ export class Writer {
                     size = add(SegmentType.Int32BE, Number(value));
                     break;
                 }
+                case DataType.Int8: {
+                    size = add(SegmentType.Int64BE, BigInt(value));
+                    break;
+                }
                 case DataType.Point: {
                     if (isPoint(value)) {
                         size = sum(
@@ -674,6 +682,7 @@ export class Writer {
                     return value ? 't' : 'f';
                 case DataType.Int2:
                 case DataType.Int4:
+                case DataType.Int8:
                 case DataType.Oid:
                 case DataType.Float4:
                 case DataType.Float8:
@@ -946,6 +955,12 @@ export class Writer {
                     const n = Number(value);
                     buffer.writeInt32BE(n, offset);
                     offset += 4;
+                    break;
+                };
+                case SegmentType.Int64BE: {
+                    const n = BigInt(value);
+                    buffer.writeBigInt64BE(n, offset);
+                    offset += 8;
                     break;
                 };
                 case SegmentType.UInt32BE: {
