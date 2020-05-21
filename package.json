@@ -14,7 +14,7 @@
     "types": "dist/src/index.d.ts",
     "author": "Malthe Borch <mborch@gmail.com>",
     "dependencies": {
-        "ts-typed-events": "^1.1.1"
+        "ts-typed-events": "^2.0.0"
     },
     "files": [
         "/dist",

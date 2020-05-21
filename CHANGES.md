@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Updated dependency on "ts-typed-events".
+
 1.1.3 (2020-02-23)
 ------------------
 
