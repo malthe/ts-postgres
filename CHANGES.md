@@ -2,6 +2,9 @@
 
 In next release ...
 
+- Added optional `connectionTimeout` configuration setting (in
+  milliseconds).
+
 - Updated dependency on "ts-typed-events".
 
 1.1.3 (2020-02-23)
