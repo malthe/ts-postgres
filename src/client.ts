@@ -73,7 +73,8 @@ export interface Configuration {
     types?: Map<DataType, ValueTypeReader>,
     extraFloatDigits?: number,
     keepAlive?: boolean,
-    preparedStatementPrefix?: string
+    preparedStatementPrefix?: string,
+    connectionTimeout?: number,
 }
 
 export interface Notification {
@@ -297,6 +298,7 @@ export class Client {
         }
 
         this.connecting = true;
+        const timeout = this.config.connectionTimeout;
 
         let p = this.events.connect.once();
         const port = this.config.port || defaults.port;
@@ -308,6 +310,14 @@ export class Client {
             this.stream.connect(port, host);
         }
 
+        if (typeof timeout !== "undefined") {
+            p = Promise.race([
+                p,
+                new Promise((_, reject) => setTimeout(
+                    () => reject(new Error(`Timeout after ${timeout} ms`)), timeout
+                )),
+            ]) as Promise<Connect>
+        }
         return p;
     }
 

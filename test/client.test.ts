@@ -1,6 +1,7 @@
+import { createServer, AddressInfo } from 'net';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
-import { Result } from '../src/client';
+import { Client, Result } from '../src/client';
 import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
@@ -143,6 +144,21 @@ describe('Events', () => {
         expect.assertions(1);
         return p;
     });
+});
+
+describe('Timeout', () => {
+    test('Connection timeout', async () => {
+        const server = createServer().listen();
+        const address = server.address() as AddressInfo;
+
+        const client = new Client({
+            connectionTimeout: 250,
+            host: address.address,
+            port: address.port,
+        });
+
+        return expect(client.connect()).rejects.toThrow(/Timeout after 250 ms/);
+    }, 500);
 });
 
 describe('Query', () => {
