@@ -154,7 +154,7 @@ describe('Timeout', () => {
 
         const client = new Client({
             connectionTimeout: 250,
-            host: address.address,
+            host: process.env["PGHOST"] || address.address,
             port: address.port,
         });
 
