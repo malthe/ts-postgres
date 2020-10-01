@@ -7,7 +7,7 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
         extraFloatDigits: 2
     });
     client.on('notice', console.log);
-    test(name, async () => {
+    test(name, async (done) => {
         const p = fn(client);
         await client.connect();
         let closed = false;
@@ -19,5 +19,6 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
                 await client.end();
             };
         }
+        done();
     }, timeout);
 };
