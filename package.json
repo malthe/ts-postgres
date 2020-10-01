@@ -33,7 +33,7 @@
         "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
         "prebuild": "rimraf dist",
         "build": "tsc",
-        "test": "jest --verbose --detectOpenHandles",
+        "test": "jest --verbose --detectOpenHandles --runInBand",
         "test:watch": "jest --watch",
         "test:prod": "npm run lint && npm run test -- --coverage --no-cache"
     },
