@@ -279,9 +279,9 @@ export class Client {
             } else {
                 // Don't raise ECONNRESET errors - they can & should be
                 // ignored during disconnect.
-                if (this.ending && error.errno === constants.errno.ECONNRESET) {
-                    return
-                }
+                if (this.ending && error.errno ===
+                    constants.errno.ECONNRESET) return;
+
                 this.events.end.emit({});
             }
         });
