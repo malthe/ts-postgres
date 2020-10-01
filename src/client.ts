@@ -289,6 +289,7 @@ export class Client {
         this.stream.on('finish', () => {
             this.closed = true;
             this.events.end.emit({});
+            this.stream.destroy();
         });
     }
 
