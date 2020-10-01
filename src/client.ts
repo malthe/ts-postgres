@@ -309,8 +309,15 @@ export class Client {
             throw error;
         });
 
-        const port: number = this.config.port || parseInt(process.env["PGPORT"] as string) || defaults.port;
-        const host: string = this.config.host || process.env["PGHOST"] || defaults.host;
+        const port: number =
+            this.config.port ||
+            parseInt(process.env["PGPORT"] as string, 10) ||
+            defaults.port;
+
+        const host: string =
+            this.config.host ||
+            process.env["PGHOST"] ||
+            defaults.host;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
