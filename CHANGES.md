@@ -2,6 +2,9 @@
 
 In next release ...
 
+- Fixed an issue where a connection error would not reject the connect
+  promise.
+
 - Added optional `connectionTimeout` configuration setting (in
   milliseconds).
 

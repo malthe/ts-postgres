@@ -44,7 +44,7 @@ export type ResultIterator = _ResultIterator<Value>;
 
 export type ResultRow = _ResultRow<Value>;
 
-export interface Connect { };
+export type Connect = (SystemError | null);
 
 export interface End { };
 
@@ -274,12 +274,16 @@ export class Client {
         });
 
         this.stream.on('error', (error: SystemError) => {
-            // Don't raise ECONNRESET errors - they can & should be
-            // ignored during disconnect
-            if (this.ending && error.errno === constants.errno.ECONNRESET) {
-                return
+            if (this.connecting) {
+                this.events.connect.emit(error);
+            } else {
+                // Don't raise ECONNRESET errors - they can & should be
+                // ignored during disconnect.
+                if (this.ending && error.errno === constants.errno.ECONNRESET) {
+                    return
+                }
+                this.events.end.emit({});
             }
-            this.events.end.emit({});
         });
 
         this.stream.on('finish', () => {
@@ -300,9 +304,13 @@ export class Client {
         this.connecting = true;
         const timeout = this.config.connectionTimeout;
 
-        let p = this.events.connect.once();
-        const port = this.config.port || defaults.port;
-        const host = this.config.host || defaults.host;
+        let p = this.events.connect.once().then((error) => {
+            if (!error) return;
+            throw error;
+        });
+
+        const port: number = this.config.port || parseInt(process.env["PGPORT"] as string) || defaults.port;
+        const host: string = this.config.host || process.env["PGHOST"] || defaults.host;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
@@ -318,7 +326,7 @@ export class Client {
                         new Error(`Timeout after ${timeout} ms`)
                     ), timeout
                 )),
-            ]) as Promise<Connect>
+            ]) as Promise<void>
         }
         return p;
     }
@@ -704,7 +712,7 @@ export class Client {
                     switch (code) {
                         case 0: {
                             process.nextTick(() => {
-                                this.events.connect.emit({});
+                                this.events.connect.emit(null);
                             });
                             break;
                         }
