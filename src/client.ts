@@ -314,7 +314,9 @@ export class Client {
             p = Promise.race([
                 p,
                 new Promise((_, reject) => setTimeout(
-                    () => reject(new Error(`Timeout after ${timeout} ms`)), timeout
+                    () => reject(
+                        new Error(`Timeout after ${timeout} ms`)
+                    ), timeout
                 )),
             ]) as Promise<Connect>
         }
