@@ -157,7 +157,9 @@ describe('Timeout', () => {
             port: address.port,
         });
 
-        return expect(client.connect()).rejects.toThrow(/Timeout after 250 ms/);
+        return expect(client.connect()).rejects.toThrow(
+            /Timeout after 250 ms/
+        );
     }, 500);
 });
 
