@@ -147,19 +147,21 @@ describe('Events', () => {
 });
 
 describe('Timeout', () => {
-    test('Connection timeout', async () => {
-        const server = createServer().listen();
+    test('Connection timeout', async (done) => {
+        const server = createServer();
+        server.listen();
         const address = server.address() as AddressInfo;
 
         const client = new Client({
             connectionTimeout: 250,
-            host: address.address,
+            host: process.env["PGHOST"] || address.address,
             port: address.port,
         });
 
-        return expect(client.connect()).rejects.toThrow(
-            /Timeout after 250 ms/
-        );
+        await expect(client.connect()).rejects.toThrow(/Timeout after 250 ms/);
+        server.close();
+        await client.end();
+        done();
     }, 500);
 });
 

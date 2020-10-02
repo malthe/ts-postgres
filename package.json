@@ -33,7 +33,7 @@
         "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
         "prebuild": "rimraf dist",
         "build": "tsc",
-        "test": "jest --verbose",
+        "test": "jest --verbose --detectOpenHandles --runInBand",
         "test:watch": "jest --watch",
         "test:prod": "npm run lint && npm run test -- --coverage --no-cache"
     },
@@ -63,16 +63,16 @@
         "@types/jest": "^24.0.23",
         "@types/node": "^12.12.14",
         "colors": "^1.4.0",
-        "jest": "^24.9.0",
+        "jest": "^26.4.2",
         "lint-staged": "^9.5.0",
         "prettier": "^1.19.1",
         "prompt": "^1.0.0",
         "rimraf": "^2.7.1",
-        "ts-jest": "^24.2.0",
-        "ts-node": "^8.5.4",
+        "ts-jest": "^26.4.1",
+        "ts-node": "^8.10.2",
         "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
         "tslint-config-standard": "^8.0.1",
-        "typescript": "^3.6.3"
+        "typescript": "^3.9.7"
     }
 }

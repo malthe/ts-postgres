@@ -2,6 +2,12 @@
 
 In next release ...
 
+- The environment variables `PGHOST` and `PGPORT` can now be set to
+  override the static defaults "localhost" and 5432.
+
+- Fixed an issue where a connection error would not reject the connect
+  promise.
+
 - Added optional `connectionTimeout` configuration setting (in
   milliseconds).
 
