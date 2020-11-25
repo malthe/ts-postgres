@@ -55,7 +55,7 @@ async function main() {
     }
 }
 
-main()
+await main()
 ```
 Waiting on the result iterator returns the complete query result.
 
