@@ -7,7 +7,7 @@ import { DataFormat, DataType } from '../src/types';
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
 const [maxTime, WarmupTime] = (benchmarkEnabled) ?
-    [5000, 1000] : [50, 10];
+    [5000, 1000] : [500, 100];
 
 const enum TestQuery {
     PgType,

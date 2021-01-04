@@ -46,7 +46,7 @@ function testType<T extends Value>(
                         expect(rows[0].length).toEqual(1);
                         expect(rows[0][0]).toEqual(true)
                     });
-        }, 250)
+        }, 2500)
     };
 
     const testValue = (format: DataFormat) => {
@@ -60,7 +60,7 @@ function testType<T extends Value>(
                     expect(rows[0].length).toEqual(1);
                     expect(rows[0][0]).toEqual(expected)
                 });
-        }, 250)
+        }, 2500)
     };
 
     describe(`${expression} (${dataType}/binary)`, () => {

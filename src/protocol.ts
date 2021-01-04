@@ -56,6 +56,11 @@ export const enum Message {
     RowDescription = 0x54
 }
 
+export const enum SSLResponseCode {
+    Supported = 0x53,
+    NotSupported = 0x4e,
+}
+
 export const enum TransactionStatus {
     Idle = 0x49,
     InTransaction = 0x54,
@@ -81,6 +86,12 @@ export interface RowDescription {
     names: string[]
 }
 
+export interface StartupConfiguration {
+    user: string,
+    database: string,
+    extraFloatDigits: number
+}
+
 export class DatabaseError extends Error {
     constructor(
         public level: ErrorLevel,
@@ -98,6 +109,8 @@ export class DatabaseError extends Error {
         }
     }
 }
+
+export type Receive = (buffer: Buffer, offset: number, size: number) => number;
 
 const nullBuffer = Buffer.from('null');
 
@@ -159,7 +172,7 @@ function makeBufferSegment(
     return [SegmentType.Buffer, makeBuffer(s, encoding, nullTerminate)];
 }
 
-function getMessageSize(segment: SegmentType, value: SegmentValue) {
+function getSegmentSize(segment: SegmentType, value: SegmentValue) {
     switch (segment) {
         case SegmentType.Buffer: {
             if (value instanceof Buffer) {
@@ -185,6 +198,21 @@ function getMessageSize(segment: SegmentType, value: SegmentValue) {
         }
     }
     return -1;
+}
+
+function getMessageSize(code: number | null, segments: Segment[]) {
+    // Messages are composed of a one byte message code plus a
+    // 32-bit message length.
+    let size = 4 + (code ? 1 : 0);
+
+    // Precompute total message size.
+    const length = segments.length;
+    for (let i = 0; i < length; i++) {
+        const [segment, value] = segments[i];
+        size += Math.max(getSegmentSize(segment, value), 0);
+    }
+
+    return size;
 }
 
 export function readRowDescription(
@@ -222,6 +250,7 @@ export function readRowDescription(
         names: names
     }
 }
+
 
 export function readRowData(
     buffer: Buffer,
@@ -433,6 +462,82 @@ export function readRowData(
     return row;
 }
 
+export function writeMessage(
+    code: number | null,
+    segments: Segment[]) {
+    const size = getMessageSize(code, segments);
+    const buffer = Buffer.allocUnsafe(size);
+    writeMessageInto(code, segments, buffer);
+    return buffer;
+}
+
+function writeMessageInto(
+    code: number | null,
+    segments: Segment[],
+    buffer: Buffer) {
+    let offset = 0;
+    if (code) buffer[offset++] = code;
+    buffer.writeInt32BE(buffer.length - (code ? 1 : 0), offset);
+    offset += 4;
+    const length = segments.length;
+    for (let i = 0; i < length; i++) {
+        const [segment, value] = segments[i];
+        switch (segment) {
+            case SegmentType.Buffer: {
+                if (value instanceof Buffer) {
+                    value.copy(buffer, offset);
+                    offset += value.length;
+                }
+                break;
+            }
+            case SegmentType.Float4: {
+                const n = Number(value);
+                buffer.writeFloatBE(n, offset);
+                offset += 4;
+                break;
+            }
+            case SegmentType.Float8: {
+                const n = Number(value);
+                buffer.writeDoubleBE(n, offset);
+                offset += 8;
+                break;
+            }
+            case SegmentType.Int8: {
+                const n = Number(value);
+                buffer.writeInt8(n, offset);
+                offset += 1;
+                break;
+            }
+            case SegmentType.Int16BE: {
+                const n = Number(value);
+                buffer.writeInt16BE(n, offset);
+                offset += 2;
+                break;
+            }
+            case SegmentType.Int32BE: {
+                const n = Number(value);
+                buffer.writeInt32BE(n, offset);
+                offset += 4;
+                break;
+            }
+            case SegmentType.Int64BE: {
+                const n = value instanceof Buffer ? value.readBigInt64BE(0) : (
+                    typeof value === "bigint" ? value : BigInt(Number(value))
+                );
+                buffer.writeBigInt64BE(n, offset);
+                offset += 8;
+                break;
+            }
+            case SegmentType.UInt32BE: {
+                const n = Number(value);
+                buffer.writeUInt32BE(n, offset);
+                offset += 4;
+                break;
+            }
+        }
+    }
+}
+
 export class Reader {
     constructor(private readonly buffer: Buffer, private offset: number) { }
 
@@ -453,9 +558,9 @@ export class Reader {
 
 export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer(4096);
-    constructor(
-        private readonly stream: Socket,
-        private readonly encoding: BufferEncoding) { }
+    //private outgoing_msg_debug: Array<number | null> = [];
+
+    constructor(private readonly encoding: BufferEncoding) { }
 
     bind(
         name: string,
@@ -486,7 +591,7 @@ export class Writer {
 
         const add = (message: SegmentType, value: SegmentValue) => {
             segments.push([message, value]);
-            return getMessageSize(message, value);
+            return getSegmentSize(message, value);
         }
 
         const reserve = (message: SegmentType) => {
@@ -582,7 +687,12 @@ export class Writer {
                     break;
                 }
                 case DataType.Int8: {
-                    size = add(SegmentType.Int64BE, BigInt(value));
+                    size = add(
+                        SegmentType.Int64BE,
+                        value instanceof Buffer ? value.readBigInt64BE(0) : (
+                            typeof value === "bigint" ? value : Number(value)
+                        )
+                    );
                     break;
                 }
                 case DataType.Point: {
@@ -616,9 +726,9 @@ export class Writer {
                             const buffer = parseUuid(value);
                             size = add(SegmentType.Buffer, buffer);
                         }
-                    } catch (err) {
+                    } catch (error) {
                         throw new Error(
-                            `Invalid UUID: ${value} (${err.message})`
+                            `Invalid UUID: ${value} (${error})`
                         );
                     }
                     break;
@@ -802,16 +912,16 @@ export class Writer {
         ]);
     }
 
-    end() {
-        this.enqueue(Command.End, []);
-    }
-
     execute(portal: string, limit = 0) {
         this.enqueue(
             Command.Execute, [
             makeBufferSegment(portal, this.encoding, true),
             [SegmentType.Int32BE, limit],
         ]);
+    }
+
+    end() {
+        this.enqueue(Command.End, []);
     }
 
     flush() {
@@ -835,26 +945,26 @@ export class Writer {
     }
 
     password(text: string) {
-        this.sendMessage(
+        this.enqueue(
             Command.Password,
             [makeBufferSegment(text, this.encoding, true)],
         );
     }
 
-    send() {
-        if (this.outgoing.isEmpty()) return false;
+    send(socket: Socket) {
+        if (this.outgoing.empty) return false;
         const buffer = this.outgoing.consume();
-        return !this.stream.write(buffer);
+        return socket.write(buffer);
     }
 
-    startup(user: string, database: string, extraFloatDigits: number) {
+    startup(config: StartupConfiguration) {
         const data = [
             'user',
-            user,
+            config.user,
             'database',
-            database,
+            config.database,
             'extra_float_digits',
-            String(extraFloatDigits),
+            String(config.extraFloatDigits),
             'client_encoding',
             this.encoding,
             ''
@@ -869,108 +979,28 @@ export class Writer {
             segments.push(makeBufferSegment(s, this.encoding, true));
         }
 
-        this.sendMessage(null, segments);
+        this.enqueue(null, segments);
+    }
+
+    startupSSL() {
+        const segments: Segment[] = [
+            [SegmentType.Int16BE, 0x04D2],
+            [SegmentType.Int16BE, 0x162F]
+        ];
+        this.enqueue(null, segments);
     }
 
     sync() {
         this.enqueue(Command.Sync, []);
     }
 
-    private getMessageSize(code: number | null, segments: Segment[]) {
-        // Messages are composed of a one byte message code plus a
-        // 32-bit message length.
-        let size = 4 + (code ? 1 : 0);
-
-        // Precompute total message size.
-        const length = segments.length;
-        for (let i = 0; i < length; i++) {
-            const [segment, value] = segments[i];
-            size += Math.max(getMessageSize(segment, value), 0);
-        }
-
-        return size;
-    }
-
     private enqueue(
         code: number | null,
         segments: Segment[]) {
+        const size = getMessageSize(code, segments);
+
         // Allocate space and write segments.
-        const size = this.getMessageSize(code, segments);
         const buffer = this.outgoing.getBuffer(size);
-        this.write(code, segments, buffer, size);
-    }
-
-    private sendMessage(code: number | null, segments: Segment[]) {
-        const size = this.getMessageSize(code, segments);
-        const buffer = Buffer.allocUnsafe(size);
-        this.write(code, segments, buffer, size);
-        this.stream.write(buffer);
-    }
-
-    private write(
-        code: number | null,
-        segments: Segment[],
-        buffer: Buffer,
-        size: number) {
-        let offset = 0;
-        if (code) buffer[offset++] = code;
-        buffer.writeInt32BE(size - (code ? 1 : 0), offset);
-        offset += 4;
-        const length = segments.length;
-        for (let i = 0; i < length; i++) {
-            const [segment, value] = segments[i];
-            switch (segment) {
-                case SegmentType.Buffer: {
-                    if (value instanceof Buffer) {
-                        value.copy(buffer, offset);
-                        offset += value.length;
-                    }
-                    break;
-                }
-                case SegmentType.Float4: {
-                    const n = Number(value);
-                    buffer.writeFloatBE(n, offset);
-                    offset += 4;
-                    break;
-                }
-                case SegmentType.Float8: {
-                    const n = Number(value);
-                    buffer.writeDoubleBE(n, offset);
-                    offset += 8;
-                    break;
-                }
-                case SegmentType.Int8: {
-                    const n = Number(value);
-                    buffer.writeInt8(n, offset);
-                    offset += 1;
-                    break;
-                }
-                case SegmentType.Int16BE: {
-                    const n = Number(value);
-                    buffer.writeInt16BE(n, offset);
-                    offset += 2;
-                    break;
-                }
-                case SegmentType.Int32BE: {
-                    const n = Number(value);
-                    buffer.writeInt32BE(n, offset);
-                    offset += 4;
-                    break;
-                }
-                case SegmentType.Int64BE: {
-                    const n = BigInt(value);
-                    buffer.writeBigInt64BE(n, offset);
-                    offset += 8;
-                    break;
-                }
-                case SegmentType.UInt32BE: {
-                    const n = Number(value);
-                    buffer.writeUInt32BE(n, offset);
-                    offset += 4;
-                    break;
-                }
-            }
-        }
+        writeMessageInto(code, segments, buffer);
     }
 }
-

@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Add SSL support.
+
 - Fix buffer race condition that could lead to data corruption.
 
 - Fix issue with `BYTEA` where a returned buffer would incorrectly be
