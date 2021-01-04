@@ -1,6 +1,7 @@
 import { constants } from 'os';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
+import { SecureContextOptions } from 'tls';
 
 import * as defaults from './defaults';
 import * as logger from './logging';
@@ -36,6 +37,7 @@ import {
     Value,
     ValueTypeReader
 } from './types';
+
 import { md5 } from './utils';
 
 export type Result = _Result<Value>;
@@ -44,7 +46,7 @@ export type ResultIterator = _ResultIterator<Value>;
 
 export type ResultRow = _ResultRow<Value>;
 
-export type Connect = (SystemError | null);
+export type Connect = (SystemError | string | null);
 
 export interface End { };
 
@@ -64,6 +66,22 @@ export interface DataTypeError {
     value: Value
 }
 
+export const enum SSLMode {
+    Disable = 'disable',
+    Prefer = 'prefer',
+    Require = 'require',
+    VerifyCA = 'verify-ca'
+}
+
+export interface SSL {
+    mode?: (
+        SSLMode.Prefer |
+        SSLMode.Require |
+        SSLMode.VerifyCA
+    ),
+    options?: SecureContextOptions,
+}
+
 export interface Configuration {
     host?: string,
     port?: number,
@@ -75,6 +93,7 @@ export interface Configuration {
     keepAlive?: boolean,
     preparedStatementPrefix?: string,
     connectionTimeout?: number,
+    ssl?: (SSLMode.Disable | SSL)
 }
 
 export interface Notification {
@@ -166,11 +185,7 @@ export class Client {
     private readonly stream = new Socket();
     private readonly writer: Writer;
 
-    private buffer: Buffer | null = null;
     private expect = 5;
-    private mustDrain = false;
-    private offset = 0;
-    private remaining = 0;
 
     private bindQueue = new Queue<RowDataHandlerInfo | null>();
     private closeHandlerQueue = new Queue<CloseHandler | null>();
@@ -189,87 +204,53 @@ export class Client {
     public transactionStatus: TransactionStatus | null = null;
 
     constructor(public readonly config: Configuration = {}) {
-        const keepAlive =
-            (typeof config.keepAlive === 'undefined') ?
-                config.keepAlive : true;
+        const receive = (buffer: Buffer, offset: number, size: number) =>
+            this.receive(buffer, offset, size);
 
-        this.writer = new Writer(
-            this.stream,
-            this.encoding
-        );
-
-        this.stream.on('connect', () => {
-            if (keepAlive) {
-                this.stream.setKeepAlive(true)
-            };
-            this.closed = false;
-            this.writer.startup(
-                this.config.user || defaults.user || '',
-                this.config.database || defaults.database || '',
-                this.config.extraFloatDigits || 0
-            );
-        });
+        this.writer = new Writer(this.stream, receive, this.encoding);
 
         this.stream.on('close', () => {
             this.ready = false;
             this.connected = false;
-            this.mustDrain = false;
+            this.events.end.emit({});
         });
 
-        this.stream.on('drain', () => {
-            this.mustDrain = false;
-            this.flush();
-        });
+        this.stream.on('connect', () => {
+            this.closed = false;
 
-        this.stream.on('data', (buffer: Buffer) => {
-            const length = buffer.length;
-            const remaining = this.remaining;
-            const size = length + remaining;
+            const ssl =
+                defaults.sslMode === SSLMode.Disable ? SSLMode.Disable :
+                    this.config.ssl || {
+                        mode: defaults.sslMode,
+                    } as SSL;
 
-            if (this.buffer && remaining) {
-                const free = this.buffer.length - this.offset - remaining;
-                let tail = this.offset + remaining;
-                if (free < length) {
-                    const newBuffer = Buffer.allocUnsafe(size);
-                    this.buffer.copy(newBuffer, 0, this.offset, tail);
-                    this.offset = 0;
-                    this.buffer = newBuffer;
-                    tail = remaining;
-                };
-                buffer.copy(this.buffer, tail, 0, length);
-            } else {
-                this.buffer = buffer;
-                this.offset = 0;
+            const keepAlive =
+                (typeof this.config.keepAlive === 'undefined') ?
+                    this.config.keepAlive : true;
+
+            if (keepAlive) {
+                this.stream.setKeepAlive(true)
+            };
+
+            const settings = {
+                user: this.config.user || defaults.user || '',
+                database: this.config.database || defaults.database || '',
+                extraFloatDigits: this.config.extraFloatDigits || 0
             }
 
-            try {
-                const read = this.receive(this.buffer, this.offset, size);
-                this.offset += read;
-                this.remaining = size - read;
-            } catch (error) {
-                const active = this.activeDataHandlerInfo;
-                if (active) {
-                    active.handler(error);
-                }
-                while (!this.bindQueue.isEmpty()) {
-                    const info = this.bindQueue.shift();
-                    if (info) {
-                        info.handler(error);
-                    }
-                }
-                while (!this.preFlightQueue.isEmpty()) {
-                    const handler = this.preFlightQueue.shift().dataHandler;
-                    if (handler) {
-                        handler(error);
-                    }
-                }
+            if (ssl !== SSLMode.Disable) {
+                const required =
+                    ssl.mode === SSLMode.Require ||
+                    ssl.mode === SSLMode.VerifyCA;
 
-                // Mark connection as not connected.
-                this.connected = false;
-                this.ready = false;
-                this.closed = true;
-                this.error = true;
-                this.stream.destroy(error);
+                const verify = ssl.mode == SSLMode.VerifyCA;
+                this.writer.startup_ssl(required, verify, ssl.options).then(() => {
+                    this.writer.startup(settings);
+                }).catch((error) => {
+                    this.events.connect.emit(error);
+                })
+            } else {
+                this.writer.startup(settings);
             }
         });
 
@@ -288,8 +269,6 @@ export class Client {
 
         this.stream.on('finish', () => {
             this.closed = true;
-            this.events.end.emit({});
-            this.stream.destroy();
         });
     }
 
@@ -303,22 +282,16 @@ export class Client {
         }
 
         this.connecting = true;
-        const timeout = this.config.connectionTimeout;
+
+        const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
 
         let p = this.events.connect.once().then((error) => {
             if (!error) return;
             throw error;
         });
 
-        const port: number =
-            this.config.port ||
-            parseInt(process.env["PGPORT"] as string, 10) ||
-            defaults.port;
-
-        const host: string =
-            this.config.host ||
-            process.env["PGHOST"] ||
-            defaults.host;
+        const port = this.config.port || defaults.port;
+        const host = this.config.host || defaults.host;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
@@ -344,11 +317,9 @@ export class Client {
             throw new Error('Connection already closed.');
         }
 
-        this.ending = true;
-        this.writer.end();
-        this.flush();
-        this.stream.end();
         this.ready = false;
+        this.ending = true;
+        this.writer.end(this.connected);
         return this.events.end.once();
     }
 
@@ -397,7 +368,8 @@ export class Client {
         text: string,
         name?: string,
         types?: DataType[]): Promise<PreparedStatement> {
-        const providedNameOrGenerated = (name) || (
+
+        const providedNameOrGenerated = name || (
             (this.config.preparedStatementPrefix ||
                 defaults.preparedStatementPrefix) + (
                 this.nextPreparedStatementId++
@@ -425,7 +397,7 @@ export class Client {
                                             Cleanup.Close
                                         );
                                         this.writer.flush();
-                                        this.flush();
+                                        this.send();
                                     }
                                 );
                             },
@@ -459,7 +431,7 @@ export class Client {
                 this.cleanupQueue.push(Cleanup.PreFlight);
                 this.cleanupQueue.push(Cleanup.ParameterDescription);
                 this.cleanupQueue.push(Cleanup.ErrorHandler);
-                this.flush();
+                this.send();
             });
     }
 
@@ -485,9 +457,9 @@ export class Client {
                 new Query(
                     text,
                     values, {
-                        types: types,
-                        format: format
-                    }) :
+                    types: types,
+                    format: format
+                }) :
                 text;
         return this.execute(query);
     }
@@ -524,8 +496,7 @@ export class Client {
             (error) => { info.handler(error); }
         );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
-
-        this.flush();
+        this.send();
     }
 
     private execute(query: Query): ResultIterator {
@@ -592,13 +563,13 @@ export class Client {
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
         this.writer.sync();
-        this.flush();
+        this.send();
         return result.iterator;
     }
 
-    private flush() {
-        if (!this.ready || this.mustDrain) return;
-        if (this.writer.send()) this.mustDrain = true;
+    private send() {
+        if (!this.ready) return;
+        this.writer.send();
     }
 
     private parseError(buffer: Buffer) {
@@ -725,13 +696,20 @@ export class Client {
                             break;
                         }
                         case 3:
-                            this.writer.password(this.config.password || '');
+                            this.writer.password(
+                                this.config.password ||
+                                defaults.password ||
+                                ''
+                            );
                             break;
                         case 5: {
                             const { user = '', password = '' } = this.config;
                             const salt = buffer.slice(start + 4, start + 8);
 
-                            const shadow = md5(`${password}${user}`);
+                            const shadow = md5(
+                                `${password || defaults.password}` +
+                                `${user || defaults.user}`
+                            );
 
                             this.writer.password(`md5${md5(shadow, salt)}`);
                             break;
@@ -823,6 +801,7 @@ export class Client {
                                 break loop;
                             }
                             case Cleanup.ParameterDescription: {
+                                // This does not seem to ever happen!
                                 this.parameterDescriptionQueue.shift();
                                 break;
                             }
@@ -897,7 +876,7 @@ export class Client {
                     const status = buffer.readInt8(start);
                     this.transactionStatus = status as TransactionStatus;
                     this.ready = true;
-                    this.flush();
+                    this.send();
                     break;
                 };
                 case Message.RowDescription: {
