@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Add SSL support.
+
 - The environment variables `PGHOST` and `PGPORT` can now be set to
   override the static defaults "localhost" and 5432.
 

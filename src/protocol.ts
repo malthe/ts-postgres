@@ -13,6 +13,8 @@ import {
     ValueTypeReader
 } from './types';
 
+import { SecureContextOptions, connect, createSecureContext } from 'tls';
+
 const arrayMask = 1 << 31;
 const readerMask = 1 << 29;
 const infinity = Number('Infinity');
@@ -81,6 +83,12 @@ export interface RowDescription {
     names: string[]
 }
 
+export interface StartupConfiguration {
+    user: string,
+    database: string,
+    extraFloatDigits: number
+}
+
 export class DatabaseError extends Error {
     constructor(
         public level: ErrorLevel,
@@ -97,6 +105,8 @@ export class DatabaseError extends Error {
         }
     }
 };
+
+export type Receive = (buffer: Buffer, offset: number, size: number) => number;
 
 const nullBuffer = Buffer.from('null');
 
@@ -450,8 +460,14 @@ export class Reader {
 
 export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer(4096);
+    private offset = 0;
+    private remaining = 0;
+    private mustDrain = false;
+    private buffer: Buffer | null = null;
+
     constructor(
-        private readonly stream: Socket,
+        private stream: Socket,
+        private receive: Receive,
         private readonly encoding: BufferEncoding) { }
 
     bind(
@@ -799,8 +815,14 @@ export class Writer {
         ]);
     }
 
-    end() {
-        this.enqueue(Command.End, []);
+    end(graceful: boolean) {
+        if (graceful) {
+            this.enqueue(Command.End, []);
+            this.stream.end();
+            this.mustDrain = false;
+        } else {
+            this.stream.destroy();
+        }
     }
 
     execute(portal: string, limit = 0) {
@@ -839,22 +861,20 @@ export class Writer {
     }
 
     send() {
-        if (this.outgoing.isEmpty()) return false;
-
+        if (this.outgoing.isEmpty() || this.mustDrain || !this.stream.writable) return false;
         const buffer = this.outgoing.slice();
         this.outgoing.clear();
-
-        return !this.stream.write(buffer);
+        this.mustDrain = !this.stream.write(buffer);
     }
 
-    startup(user: string, database: string, extraFloatDigits: number) {
+    startup(config: StartupConfiguration) {
         const data = [
             'user',
-            user,
+            config.user,
             'database',
-            database,
+            config.database,
             'extra_float_digits',
-            String(extraFloatDigits),
+            String(config.extraFloatDigits),
             'client_encoding',
             this.encoding,
             ''
@@ -870,6 +890,104 @@ export class Writer {
         }
 
         this.sendMessage(null, segments);
+
+        this.stream.on('data', (buffer: Buffer) => {
+            const length = buffer.length;
+            const remaining = this.remaining;
+            const size = length + remaining;
+
+            if (this.buffer && remaining) {
+                const free = this.buffer.length - this.offset - remaining;
+                let tail = this.offset + remaining;
+                if (free < length) {
+                    const newBuffer = Buffer.allocUnsafe(size);
+                    this.buffer.copy(newBuffer, 0, this.offset, tail);
+                    this.offset = 0;
+                    this.buffer = newBuffer;
+                    tail = remaining;
+                };
+                buffer.copy(this.buffer, tail, 0, length);
+            } else {
+                this.buffer = buffer;
+                this.offset = 0;
+            }
+
+            try {
+                const read = this.receive(this.buffer, this.offset, size);
+                this.offset += read;
+                this.remaining = size - read;
+            } catch (error) {
+                console.warn(error);
+                this.stream.destroy();
+            }
+        });
+
+        this.stream.on('drain', () => {
+            this.mustDrain = false;
+            this.flush();
+        });
+    }
+
+    startup_ssl(required: boolean, verify: boolean, options?: SecureContextOptions) {
+        const segments: Segment[] = [
+            [SegmentType.Int16BE, 0x04D2],
+            [SegmentType.Int16BE, 0x162F]
+        ];
+        this.sendMessage(null, segments);
+        const writer = this;
+        return new Promise((resolve, reject) => {
+            this.stream.once('data', (buffer: Buffer) => {
+                let code = buffer.toString("ascii", 0, 1);
+                switch (code) {
+                    // Server supports SSL connections, continue.
+                    case 'S':
+                        break
+
+                    // Server does not support SSL connections.
+                    case 'N':
+                        if (required) {
+                            this.end(false);
+                            reject(
+                                new Error(
+                                    'Server does not support SSL connections'
+                                )
+                            );
+                        } else {
+                            resolve();
+                        }
+                        return;
+                    // Any other response byte, including 'E'
+                    // (ErrorResponse) indicating a server error.
+                    default:
+                        reject(
+                            new Error(
+                                'Error establishing an SSL connection'
+                            )
+                        );
+                        this.end(false);
+                        return;
+                }
+
+                const context = options ?
+                    createSecureContext(options) :
+                    undefined;
+
+                const on_connect = () => {
+                    if (verify && !stream.authorized) {
+                        this.end(false);
+                        reject(stream.authorizationError)
+                    } else {
+                        writer.stream = stream;
+                        resolve();
+                    }
+                }
+
+                const stream = connect({
+                    socket: this.stream,
+                    secureContext: context
+                }, on_connect)
+            });
+        })
     }
 
     sync() {
