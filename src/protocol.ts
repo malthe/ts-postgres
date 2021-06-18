@@ -315,7 +315,9 @@ export function readRowData(
                     case DataType.Varchar:
                         return buffer.toString(encoding, start, end);
                     case DataType.Bytea:
-                        return buffer.slice(start, end);
+                        const new_buffer = Buffer.allocUnsafe(end - start);
+                        buffer.copy(new_buffer, 0, start, end);
+                        return new_buffer;
                     case DataType.Jsonb:
                         if (buffer[start] === 1) {
                             const jsonb = buffer.toString(
