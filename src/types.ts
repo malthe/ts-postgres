@@ -122,7 +122,7 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
 export enum DataFormat {
     Text,
     Binary,
-};
+}
 
 export type ValueTypeReader = (
     buffer: Buffer,
@@ -135,8 +135,9 @@ export type ValueTypeReader = (
 export interface Point {
     x: number,
     y: number
-};
+}
 
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export function isPoint(item: any): item is Point {
     return 'x' in item && 'y' in item;
 }
@@ -154,9 +155,9 @@ export type AnyJson = boolean | number | string | null | JsonArray | JsonMap;
 
 export interface JsonMap { [key: string]: AnyJson; }
 
-export interface JsonArray extends Array<AnyJson> { }
+export type JsonArray = Array<AnyJson>;
 
-export interface ArrayValue<T> extends Array<ArrayValue<T> | T> { };
+export type ArrayValue<T> = Array<ArrayValue<T> | T>;
 
 export type Primitive = Builtin | Point | JsonMap;
 

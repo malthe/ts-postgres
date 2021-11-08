@@ -1,4 +1,4 @@
-export class Queue<T extends any = undefined> {
+export class Queue<T> {
     private container: Array<T | undefined> = [];
 
     private head = 0;
@@ -38,17 +38,18 @@ export class Queue<T extends any = undefined> {
             this.shrink();
         }
 
+        /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
         return item!;
-    };
+    }
 
     isEmpty() {
         return this.length === 0;
-    };
+    }
 
     private double() {
         let source = this.head;
         let target = 0;
-        let newContainer = [];
+        const newContainer = [];
         newContainer.length = 2 * this.size;
 
         while (target < this.size) {
@@ -66,7 +67,7 @@ export class Queue<T extends any = undefined> {
     private shrink() {
         let source = this.head;
         let target = 0;
-        let newContainer = [];
+        const newContainer = [];
         newContainer.length = this.size / 4;
 
         while (target < this.size) {
@@ -80,5 +81,4 @@ export class Queue<T extends any = undefined> {
         this.tail = this.size;
         this.size /= 4;
     }
-
 }

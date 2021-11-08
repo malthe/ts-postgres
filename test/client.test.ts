@@ -12,7 +12,7 @@ const [maxTime, WarmupTime] = (benchmarkEnabled) ?
 const enum TestQuery {
     PgType,
     Array
-};
+}
 
 function secondsFromHrTime(time: [number, number]) {
     const d = process.hrtime(time);
@@ -25,7 +25,7 @@ function unsafeToSimpleQuery(query: Query) {
     for (let i = 0; i < params.length; i++) {
         const param = params[i];
         text = text.replace('$' + (i + 1), param);
-    };
+    }
     return new Query(text);
 }
 
@@ -33,6 +33,7 @@ function testSelect(
     testQuery: TestQuery,
     batchSize: number,
     doReplaceArgs: boolean) {
+    /* eslint-disable-next-line prefer-const */
     let { name, query } = (() => {
         switch (testQuery) {
             case TestQuery.Array: return {
@@ -50,12 +51,12 @@ function testSelect(
                     [-1, true]
                 )
             };
-        };
+        }
     })();
 
     if (doReplaceArgs) {
         query = unsafeToSimpleQuery(query);
-    };
+    }
 
     testWithClient(`SQL: Select (batch size: ${batchSize})`,
         async (client) => {
@@ -66,8 +67,8 @@ function testSelect(
                 let queries = 0;
                 let acknowledged = 0;
                 let results = 0;
-                let startTime = process.hrtime();
-                let secs = time / 1000;
+                const startTime = process.hrtime();
+                const secs = time / 1000;
 
                 while (true) {
                     const d = secs - secondsFromHrTime(startTime);
@@ -76,7 +77,7 @@ function testSelect(
                     }
 
                     let i = batchSize;
-                    let promises: Promise<void>[] = [];
+                    const promises: Promise<void>[] = [];
 
                     while (i--) {
                         const p = client.query(query).then(
@@ -90,16 +91,16 @@ function testSelect(
                     }
 
                     await Promise.all(promises);
-                };
+                }
 
-                let d = secondsFromHrTime(startTime);
+                const d = secondsFromHrTime(startTime);
                 return [queries, results, queries - acknowledged, d];
-            };
+            }
 
             if (WarmupTime) await go(WarmupTime);
 
-            let [queries, rows, diff, time] = await go(maxTime);
-            let round = (n: number) => { return Math.round(n / time) };
+            const [queries, rows, diff, time] = await go(maxTime);
+            const round = (n: number) => { return Math.round(n / time) };
 
             if (benchmarkEnabled) {
                 const secs =
@@ -115,13 +116,14 @@ function testSelect(
 
             expect(diff).toEqual(0);
         }, (WarmupTime + maxTime) + 10000);
-};
+}
 
 describe('Events', () => {
     testWithClient('End', async (client) => {
         expect.assertions(1);
         const f = jest.fn();
         client.on('end', f);
+        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
         const p = new Promise((resolve, _) => {
             client.on('connect', async () => {
                 await client.end();
@@ -133,7 +135,8 @@ describe('Events', () => {
     });
 
     testWithClient('Connect', async (client) => {
-        let p = new Promise((resolve, _) => {
+        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+        const p = new Promise((resolve, _) => {
             client.on('connect', () => {
                 setTimeout(() => {
                     expect(true).toBeTruthy();
@@ -270,7 +273,7 @@ describe('Query', () => {
                     case 0: {
                         const p = client.query('select foo');
                         return expect(p).rejects.toThrow(/foo/);
-                    };
+                    }
                     case 1: {
                         const p = client.query('select 1 as i');
                         return expect(p).resolves.toEqual(
@@ -294,7 +297,7 @@ describe('Query', () => {
                         );
                         return expect(p).rejects.toThrow(/2281/);
                     }
-                };
+                }
             };
 
             const go = async (remaining: number): Promise<void> => {

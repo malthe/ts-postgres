@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 import { DatabaseError } from './protocol';
 
 type Resolver = (error: null | string | DatabaseError) => void;
@@ -70,7 +72,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                 }
             });
         });
-    };
+    }
 
     async first() {
         for await (const row of this) {
@@ -87,9 +89,9 @@ export class ResultIterator<T> extends Promise<Result<T>> {
 
     notify(done: boolean, status?: (string | DatabaseError)) {
         if (done) this.done = true;
-        for (let subscriber of this.subscribers) subscriber(done, status);
+        for (const subscriber of this.subscribers) subscriber(done, status);
         this.subscribers.length = 0;
-    };
+    }
 
     [Symbol.asyncIterator](): AsyncIterator<ResultRow<T>> {
         let i = 0;
@@ -108,6 +110,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
             return new ResultRow<T>(names, values);
         };
 
+        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
         let error: any = null;
 
         this.catch((reason) => {
@@ -143,7 +146,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                 return { value: shift(), done: false };
             }
         };
-    };
+    }
 }
 
 export type DataHandler<T> = Callback<T | null | string | DatabaseError>;
@@ -179,4 +182,4 @@ export function makeResult<T>() {
         dataHandler: dataHandler!,
         nameHandler: nameHandler
     };
-};
+}

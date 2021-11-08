@@ -12,7 +12,7 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     const rows = await f(query());
 
     expect(rows.length).toEqual(10);
-    let expectation = [...Array(10).keys()];
+    const expectation = [...Array(10).keys()];
     const keys = rows.map((row) => [...row.names]);
     const values = rows.map((row) => [...row.data]);
 
@@ -28,14 +28,17 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     // We could iterate multiple times over the same result.
     let count = 0;
     const result = query();
+
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     for await (const _ of result) {
         count += 1;
-    };
+    }
     expect(count).toEqual(10);
 
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     for await (const _ of result) {
         count += 1;
-    };
+    }
     expect(count).toEqual(20);
 
     // The result is also available in the public rows attribute.
@@ -48,7 +51,7 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
 describe('Result', () => {
     testWithClient('Names', async (client) => {
         expect.assertions(2);
-        let result = await client.query(
+        const result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
         expect(result.names.length).toEqual(1);
@@ -57,7 +60,7 @@ describe('Result', () => {
 
     testWithClient('Get', async (client) => {
         expect.assertions(3);
-        let result = await client.query(
+        const result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
         expect(result.status).toEqual('SELECT 1');
@@ -69,7 +72,7 @@ describe('Result', () => {
 
     testWithClient('Parse array containing null', async (client) => {
         expect.assertions(1);
-        let row = await client.query(
+        const row = await client.query(
             'select ARRAY[null::text] as a'
         ).one();
         expect(row.get('a')).toEqual([null]);
@@ -77,7 +80,7 @@ describe('Result', () => {
 
     testWithClient('Format array containing null value', async (client) => {
         expect.assertions(1);
-        let row = await client.query(
+        const row = await client.query(
             'select $1::text[] as a', [[null]]
         ).one();
         expect(row.get('a')).toEqual([null]);
@@ -85,7 +88,7 @@ describe('Result', () => {
 
     testWithClient('Format null-array', async (client) => {
         expect.assertions(1);
-        let row = await client.query(
+        const row = await client.query(
             'select $1::text[] as a', [null]
         ).one();
         expect(row.get('a')).toEqual(null);
@@ -93,7 +96,7 @@ describe('Result', () => {
 
     testWithClient('One', async (client) => {
         expect.assertions(1);
-        let row = await client.query(
+        const row = await client.query(
             'select $1::text as message', ['Hello world!']
         ).one();
         expect(row.get('message')).toEqual('Hello world!');
@@ -121,7 +124,7 @@ describe('Result', () => {
 
     testWithClient('Multiple null params', async (client) => {
         expect.assertions(3);
-        let row = await client.query(
+        const row = await client.query(
             'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
             [null, null, null]
         ).one();
@@ -138,7 +141,7 @@ describe('Result', () => {
                     const rows: ResultRow[] = [];
                     for (const row of result) {
                         rows.push(row);
-                    };
+                    }
                     return rows;
                 });
             });
@@ -151,14 +154,14 @@ describe('Result', () => {
                 const rows: ResultRow[] = [];
                 for await (const row of result) {
                     rows.push(row);
-                };
+                }
                 return rows;
             });
     });
 
     testWithClient('Null typed array', async (client) => {
         expect.assertions(1);
-        let row = await client.query('select null::text[] as value').one();
+        const row = await client.query('select null::text[] as value').one();
         expect(row.get('value')).toEqual(null);
     });
 });

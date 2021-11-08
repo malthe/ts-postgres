@@ -1,6 +1,7 @@
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 function make(f: (data: any) => void) {
     let last: any = null;
-    let count: number = 0;
+    let count = 0;
 
     const log = (data: any) => {
         return f(`ts-postgres: ${data}`);

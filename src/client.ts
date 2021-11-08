@@ -46,18 +46,18 @@ export type ResultRow = _ResultRow<Value>;
 
 export type Connect = (SystemError | null);
 
-export interface End { };
+export type End = void;
 
 export interface Parameter {
     name: string;
     value: string;
-};
+}
 
 export interface ClientNotice extends DatabaseError {
     level: ErrorLevel,
     code: keyof typeof postgresqlErrorCodes,
     message: string
-};
+}
 
 export interface DataTypeError {
     dataType: DataType,
@@ -94,6 +94,7 @@ export interface PreparedStatement {
 
 type Callback<T> = (data: T) => void;
 
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 type CallbackOf<U> = U extends any ? Callback<U> : never;
 
 type Event = (
@@ -130,7 +131,7 @@ const enum Cleanup {
     ParameterDescription,
     PreFlight,
     RowDescription,
-};
+}
 
 interface Bind {
     name: string;
@@ -138,13 +139,13 @@ interface Bind {
     portal: string;
     values: Value[],
     close: boolean
-};
+}
 
 interface PreFlightQueue {
     descriptionHandler: DescriptionHandler;
     dataHandler: RowDataHandler | null;
     bind: Bind | null;
-};
+}
 
 export class Client {
     private readonly events = events({
@@ -201,7 +202,7 @@ export class Client {
         this.stream.on('connect', () => {
             if (keepAlive) {
                 this.stream.setKeepAlive(true)
-            };
+            }
             this.closed = false;
             this.writer.startup(
                 this.config.user || defaults.user || '',
@@ -235,7 +236,7 @@ export class Client {
                     this.offset = 0;
                     this.buffer = newBuffer;
                     tail = remaining;
-                };
+                }
                 buffer.copy(this.buffer, tail, 0, length);
             } else {
                 this.buffer = buffer;
@@ -282,13 +283,13 @@ export class Client {
                 if (this.ending && error.errno ===
                     constants.errno.ECONNRESET) return;
 
-                this.events.end.emit({});
+                this.events.end.emit();
             }
         });
 
         this.stream.on('finish', () => {
             this.closed = true;
-            this.events.end.emit({});
+            this.events.end.emit();
             this.stream.destroy();
         });
     }
@@ -485,9 +486,9 @@ export class Client {
                 new Query(
                     text,
                     values, {
-                        types: types,
-                        format: format
-                    }) :
+                    types: types,
+                    format: format
+                }) :
                 text;
         return this.execute(query);
     }
@@ -610,7 +611,7 @@ export class Client {
         let offset = 0;
 
         while (offset < length) {
-            let next = buffer.indexOf(0, offset);
+            const next = buffer.indexOf(0, offset);
             if (next < 0) break;
 
             const value = buffer.slice(offset + 1, next).toString();
@@ -635,7 +636,7 @@ export class Client {
                 }
                 default:
                     break;
-            };
+            }
 
             offset = next + 1;
         }
@@ -656,7 +657,7 @@ export class Client {
             let mtype: Message | null;
 
             // Fast path: retrieve data rows.
-            let info = this.activeDataHandlerInfo;
+            const info = this.activeDataHandlerInfo;
             while (true) {
                 mtype = buffer.readInt8(frame);
                 if (mtype !== Message.RowData) break;
@@ -755,7 +756,7 @@ export class Client {
                         this.activeDataHandlerInfo = info;
                     }
                     break;
-                };
+                }
                 case Message.NoData: {
                     this.cleanupQueue.shift(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
@@ -798,7 +799,7 @@ export class Client {
                         handler();
                     }
                     break;
-                };
+                }
                 case Message.ErrorResponse: {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
@@ -829,7 +830,7 @@ export class Client {
                             case Cleanup.PreFlight: {
                                 this.preFlightQueue.shift();
                                 break;
-                            };
+                            }
                             case Cleanup.RowDescription: {
                                 this.rowDescriptionQueue.shift();
                                 break;
@@ -859,10 +860,9 @@ export class Client {
                 }
                 case Message.ParseComplete: {
                     break;
-                };
+                }
                 case Message.ParameterDescription: {
-                    let length = buffer.readInt16BE(start);
-
+                    const length = buffer.readInt16BE(start);
                     const types: Array<DataType> = new Array(length);
                     for (let i = 0; i < length; i++) {
                         const offset = start + 2 + i * 4;
@@ -882,7 +882,7 @@ export class Client {
                         value: value
                     });
                     break;
-                };
+                }
                 case Message.ReadyForQuery: {
                     if (this.error) {
                         this.error = false
@@ -899,7 +899,7 @@ export class Client {
                     this.ready = true;
                     this.flush();
                     break;
-                };
+                }
                 case Message.RowDescription: {
                     this.cleanupQueue.shift(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
@@ -926,12 +926,12 @@ export class Client {
                         }
                     }
                     break;
-                };
+                }
                 default: {
                     logger.warn(`Message not implemented: ${mtype}`);
                     break;
-                };
-            };
+                }
+            }
 
             this.expect = 5;
             read += total;
@@ -939,4 +939,4 @@ export class Client {
 
         return read;
     }
-};
+}
