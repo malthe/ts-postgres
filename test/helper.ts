@@ -4,7 +4,8 @@ type Test = (client: Client) => Promise<any>;
 
 export function testWithClient(name: string, fn: Test, timeout?: number) {
     const client = new Client({
-        extraFloatDigits: 2
+        extraFloatDigits: 2,
+        preparedStatementPrefix: name + " "
     });
     client.on('notice', console.log);
     test(name, async () => {
