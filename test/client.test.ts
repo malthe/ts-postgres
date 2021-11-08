@@ -1,4 +1,4 @@
-import { createServer, AddressInfo } from 'net';
+import { createServer, AddressInfo, Socket } from 'net';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
 import { Client, Result } from '../src/client';
@@ -147,11 +147,19 @@ describe('Events', () => {
 });
 
 describe('Timeout', () => {
-    test('Connection timeout', async (done) => {
+    test('Connection timeout', async () => {
         const server = createServer();
-        server.listen();
+        await new Promise((resolve) => {
+            server.listen(0, "localhost", 1, resolve);
+        });
+        const sockets = new Set<Socket>();
+        server.on('connection', (socket) => {
+            sockets.add(socket); server.once('close', () => {
+                sockets.delete(socket);
+            });
+        });
+        expect(server.listening).toBeTruthy();
         const address = server.address() as AddressInfo;
-
         const client = new Client({
             connectionTimeout: 250,
             host: process.env["PGHOST"] || address.address,
@@ -159,9 +167,15 @@ describe('Timeout', () => {
         });
 
         await expect(client.connect()).rejects.toThrow(/Timeout after 250 ms/);
-        server.close();
         await client.end();
-        done();
+        for (const socket of sockets.values()) {
+            socket.destroy();
+        }
+        return new Promise((resolve) => {
+            server.close(() => {
+                resolve();
+            });
+        });
     }, 500);
 });
 

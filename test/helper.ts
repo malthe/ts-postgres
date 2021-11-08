@@ -7,7 +7,7 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
         extraFloatDigits: 2
     });
     client.on('notice', console.log);
-    test(name, async (done) => {
+    test(name, async () => {
         const p = fn(client);
         await client.connect();
         let closed = false;
@@ -17,8 +17,8 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
         } finally {
             if (!closed) {
                 await client.end();
+                if (!client.closed) throw new Error("Expected client to be closed");
             };
         }
-        done();
     }, timeout);
 };
