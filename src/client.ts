@@ -304,22 +304,15 @@ export class Client {
         }
 
         this.connecting = true;
-        const timeout = this.config.connectionTimeout;
+        const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
 
         let p = this.events.connect.once().then((error) => {
             if (!error) return;
             throw error;
         });
 
-        const port: number =
-            this.config.port ||
-            parseInt(process.env["PGPORT"] as string, 10) ||
-            defaults.port;
-
-        const host: string =
-            this.config.host ||
-            process.env["PGHOST"] ||
-            defaults.host;
+        const port = this.config.port || defaults.port;
+        const host = this.config.host || defaults.host;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
@@ -726,14 +719,17 @@ export class Client {
                             break;
                         }
                         case 3:
-                            this.writer.password(this.config.password || '');
+                            this.writer.password(
+                                this.config.password || defaults.password || ''
+                            );
                             break;
                         case 5: {
                             const { user = '', password = '' } = this.config;
                             const salt = buffer.slice(start + 4, start + 8);
-
-                            const shadow = md5(`${password}${user}`);
-
+                            const shadow = md5(
+                                `${password || defaults.password}` +
+                                `${user || defaults.user}`
+                            );
                             this.writer.password(`md5${md5(shadow, salt)}`);
                             break;
                         }
