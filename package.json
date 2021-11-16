@@ -33,9 +33,9 @@
         "lint": "eslint -c .eslintrc.json --ext .ts src test",
         "prebuild": "rimraf dist",
         "build": "tsc",
-        "test": "jest --verbose --detectOpenHandles --runInBand",
+        "test": "jest --verbose --unhandled-rejections=strict --detectOpenHandles --silent false",
         "test:watch": "jest --watch",
-        "test:prod": "npm run lint && npm run test -- --coverage --no-cache"
+        "test:prod": "npm run lint && npm run test -- --coverage --no-cache --testTimeout=5000"
     },
     "jest": {
         "preset": "ts-jest",

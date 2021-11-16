@@ -13,6 +13,7 @@ export const user = process.env.PGUSER || (
 export const database = process.env.PGDATABASE || 'postgres';
 export const password = process.env.PGPASSWORD;
 export const preparedStatementPrefix = 'tsp_';
+export const sslMode = process.env.PGSSLMODE;
 export const connectionTimeout = secToMsec(
     parseInt(process.env.PGCONNECT_TIMEOUT as string, 10)
 );

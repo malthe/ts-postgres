@@ -1,5 +1,5 @@
 export class ElasticBuffer {
-    public offset = 0;
+    private offset = 0;
     private buffer: Buffer;
 
     constructor(size: number) {
@@ -10,7 +10,7 @@ export class ElasticBuffer {
         this.offset = 0;
     }
 
-    isEmpty() {
+    get empty() {
         return this.offset === 0;
     }
 

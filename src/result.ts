@@ -2,7 +2,8 @@
 
 import { DatabaseError } from './protocol';
 
-type Resolver = (error: null | string | DatabaseError) => void;
+type Resolution = null | string | Error | DatabaseError;
+type Resolver = (resolution: Resolution) => void;
 type ResultHandler = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
@@ -53,7 +54,7 @@ export class Result<T> {
 
 export class ResultIterator<T> extends Promise<Result<T>> {
     private subscribers: (
-        (done: boolean, error?: (string | DatabaseError)
+        (done: boolean, error?: (string | DatabaseError | Error)
         ) => void)[] = [];
     private done = false;
 
@@ -62,13 +63,13 @@ export class ResultIterator<T> extends Promise<Result<T>> {
 
     constructor(private container: T[][], executor: ResultHandler) {
         super((resolve, reject) => {
-            executor((status) => {
-                if (status instanceof Error) {
-                    reject(status);
+            executor((resolution) => {
+                if (resolution instanceof Error) {
+                    reject(resolution);
                 } else {
                     const names = this.names || [];
                     const rows = this.rows || [];
-                    resolve(new Result(names, rows, status));
+                    resolve(new Result(names, rows, resolution));
                 }
             });
         });
@@ -87,7 +88,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         throw new Error('Query returned an empty result');
     }
 
-    notify(done: boolean, status?: (string | DatabaseError)) {
+    notify(done: boolean, status?: (string | DatabaseError | Error)) {
         if (done) this.done = true;
         for (const subscriber of this.subscribers) subscriber(done, status);
         this.subscribers.length = 0;
@@ -149,7 +150,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
     }
 }
 
-export type DataHandler<T> = Callback<T | null | string | DatabaseError>;
+export type DataHandler<T> = Callback<T | Resolution>;
 
 export type NameHandler = Callback<string[]>;
 
@@ -162,7 +163,7 @@ export function makeResult<T>() {
     }
     const rows: T[][] = [];
     const p = new ResultIterator<T>(rows, (resolve) => {
-        dataHandler = ((row: T[] | null | string | DatabaseError) => {
+        dataHandler = ((row: T[] | Resolution) => {
             if (row === null || typeof row === 'string') {
                 p.rows = rows;
                 resolve(row);

@@ -9,6 +9,8 @@ import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
 
+import { SecureContextOptions, connect as tls, createSecureContext } from 'tls';
+
 import {
     DataHandler,
     Result as _Result,
@@ -25,6 +27,7 @@ import {
     Message,
     Reader,
     RowDescription,
+    SSLResponseCode,
     TransactionStatus,
     Writer
 } from './protocol';
@@ -36,6 +39,7 @@ import {
     Value,
     ValueTypeReader
 } from './types';
+
 import { md5 } from './utils';
 
 export type Result = _Result<Value>;
@@ -44,7 +48,7 @@ export type ResultIterator = _ResultIterator<Value>;
 
 export type ResultRow = _ResultRow<Value>;
 
-export type Connect = (SystemError | null);
+export type Connect = (Error | string | null);
 
 export type End = void;
 
@@ -64,6 +68,22 @@ export interface DataTypeError {
     value: Value
 }
 
+export const enum SSLMode {
+    Disable = 'disable',
+    Prefer = 'prefer',
+    Require = 'require',
+    VerifyCA = 'verify-ca'
+}
+
+export interface SSL {
+    mode?: (
+        SSLMode.Prefer |
+        SSLMode.Require |
+        SSLMode.VerifyCA
+    ),
+    options?: SecureContextOptions,
+}
+
 export interface Configuration {
     host?: string,
     port?: number,
@@ -75,6 +95,7 @@ export interface Configuration {
     keepAlive?: boolean,
     preparedStatementPrefix?: string,
     connectionTimeout?: number,
+    ssl?: (SSLMode.Disable | SSL)
 }
 
 export interface Notification {
@@ -112,17 +133,13 @@ type RowDataHandler = DataHandler<Row>;
 
 type DescriptionHandler = (description: RowDescription) => void;
 
-interface SystemError extends Error {
-    errno: string | number
-}
-
 interface RowDataHandlerInfo {
     readonly handler: RowDataHandler;
     readonly description: RowDescription | null;
 }
 
 // Indicates that an error has occurred.
-type ErrorHandler = (error: DatabaseError) => void;
+type ErrorHandler = (error: Error | DatabaseError) => void;
 
 const enum Cleanup {
     Bind,
@@ -160,18 +177,15 @@ export class Client {
     private ending = false;
     private connected = false;
     private connecting = false;
-    private ready = false;
     private error = false;
 
     private readonly encoding = 'utf-8';
-    private readonly stream = new Socket();
     private readonly writer: Writer;
 
-    private buffer: Buffer | null = null;
     private expect = 5;
-    private mustDrain = false;
+    private stream = new Socket();
     private offset = 0;
-    private remaining = 0;
+    private mustDrain = false;
 
     private bindQueue = new Queue<RowDataHandlerInfo | null>();
     private closeHandlerQueue = new Queue<CloseHandler | null>();
@@ -190,91 +204,27 @@ export class Client {
     public transactionStatus: TransactionStatus | null = null;
 
     constructor(public readonly config: Configuration = {}) {
-        const keepAlive =
-            (typeof config.keepAlive === 'undefined') ?
-                config.keepAlive : true;
+        this.writer = new Writer(this.encoding);
 
-        this.writer = new Writer(
-            this.stream,
-            this.encoding
-        );
+        this.stream.on('close', () => {
+            this.connected = false;
+            this.events.end.emit();
+        });
 
         this.stream.on('connect', () => {
+            const keepAlive =
+                (typeof this.config.keepAlive === 'undefined') ?
+                    this.config.keepAlive : true;
+
             if (keepAlive) {
                 this.stream.setKeepAlive(true)
             }
+
             this.closed = false;
-            this.writer.startup(
-                this.config.user || defaults.user || '',
-                this.config.database || defaults.database || '',
-                this.config.extraFloatDigits || 0
-            );
+            this.startup();
         });
 
-        this.stream.on('close', () => {
-            this.ready = false;
-            this.connected = false;
-            this.mustDrain = false;
-        });
-
-        this.stream.on('drain', () => {
-            this.mustDrain = false;
-            this.flush();
-        });
-
-        this.stream.on('data', (buffer: Buffer) => {
-            const length = buffer.length;
-            const remaining = this.remaining;
-            const size = length + remaining;
-
-            if (this.buffer && remaining) {
-                const free = this.buffer.length - this.offset - remaining;
-                let tail = this.offset + remaining;
-                if (free < length) {
-                    const newBuffer = Buffer.allocUnsafe(size);
-                    this.buffer.copy(newBuffer, 0, this.offset, tail);
-                    this.offset = 0;
-                    this.buffer = newBuffer;
-                    tail = remaining;
-                }
-                buffer.copy(this.buffer, tail, 0, length);
-            } else {
-                this.buffer = buffer;
-                this.offset = 0;
-            }
-
-            try {
-                const read = this.receive(this.buffer, this.offset, size);
-                this.offset += read;
-                this.remaining = size - read;
-            } catch (error) {
-                const active = this.activeDataHandlerInfo;
-                if (active) {
-                    active.handler(error);
-                }
-                while (!this.bindQueue.isEmpty()) {
-                    const info = this.bindQueue.shift();
-                    if (info) {
-                        info.handler(error);
-                    }
-                }
-                while (!this.preFlightQueue.isEmpty()) {
-                    const handler = this.preFlightQueue.shift().dataHandler;
-                    if (handler) {
-                        handler(error);
-                    }
-                }
-
-                // Mark connection as not connected.
-                this.connected = false;
-                this.ready = false;
-                this.closed = true;
-                this.error = true;
-                this.stream.destroy(error);
-            }
-        });
-
-        this.stream.on('error', (error: SystemError) => {
+        this.stream.on('error', (error: NodeJS.ErrnoException) => {
             if (this.connecting) {
                 this.events.connect.emit(error);
             } else {
@@ -289,8 +239,144 @@ export class Client {
 
         this.stream.on('finish', () => {
             this.closed = true;
-            this.events.end.emit();
-            this.stream.destroy();
+        });
+    }
+
+    private startup() {
+        const writer = new Writer(this.encoding);
+
+        const ssl =
+            defaults.sslMode === SSLMode.Disable ? SSLMode.Disable :
+                this.config.ssl || {
+                    mode: defaults.sslMode,
+                } as SSL;
+
+        const settings = {
+            user: this.config.user || defaults.user || '',
+            database: this.config.database || defaults.database || '',
+            extraFloatDigits: this.config.extraFloatDigits || 0
+        }
+
+        if (ssl !== SSLMode.Disable) {
+            writer.startupSSL();
+
+            const abort = (error: Connect) => {
+                this.events.connect.emit(error);
+                this.end();
+            }
+
+            const startup = (stream?: Socket) => {
+                if (stream) this.stream = stream;
+                writer.startup(settings);
+                this.listen();
+                this.send2(writer);
+            }
+
+            const required =
+                ssl.mode === SSLMode.Require ||
+                ssl.mode === SSLMode.VerifyCA;
+
+            this.stream.once('data', (buffer: Buffer) => {
+                const code = buffer.readInt8(0);
+                switch (code) {
+                    // Server supports SSL connections, continue.
+                    case SSLResponseCode.Supported:
+                        break
+
+                    // Server does not support SSL connections.
+                    case SSLResponseCode.NotSupported:
+                        if (required) {
+                            abort(
+                                new Error(
+                                    'Server does not support SSL connections'
+                                )
+                            );
+                        } else {
+                            startup();
+                        }
+                        return;
+                    // Any other response byte, including 'E'
+                    // (ErrorResponse) indicating a server error.
+                    default:
+                        abort(
+                            new Error(
+                                'Error establishing an SSL connection'
+                            )
+                        );
+                        return;
+                }
+
+                const context = ssl.options ?
+                    createSecureContext(ssl.options) :
+                    undefined;
+
+                const options = {
+                    socket: this.stream,
+                    secureContext: context
+                };
+
+                const verify = ssl.mode == SSLMode.VerifyCA;
+
+                const stream = tls(
+                    options,
+                    () => {
+                        if (verify && !stream.authorized) {
+                            abort(stream.authorizationError)
+                        } else {
+                            startup(stream);
+                        }
+                    }
+                );
+
+                stream.on('error', (error) => {
+                    abort(error);
+                });
+            });
+        } else {
+            writer.startup(settings);
+            this.listen();
+        }
+
+        this.send2(writer);
+    }
+
+    private listen() {
+        let buffer: Buffer | null = null;
+        let remaining = 0;
+
+        this.stream.on('data', (newBuffer: Buffer) => {
+            const length = newBuffer.length;
+            const size = length + remaining;
+
+            if (buffer && remaining) {
+                const free = buffer.length - this.offset - remaining;
+                let tail = this.offset + remaining;
+                if (free < length) {
+                    const tempBuf = Buffer.allocUnsafe(size);
+                    buffer.copy(tempBuf, 0, this.offset, tail);
+                    this.offset = 0;
+                    buffer = tempBuf;
+                    tail = remaining;
+                }
+                newBuffer.copy(buffer, tail, 0, length);
+            } else {
+                buffer = newBuffer;
+                this.offset = 0;
+            }
+
+            try {
+                const read = this.receive(buffer, this.offset, size);
+                this.offset += read;
+                remaining = size - read;
+            } catch (error) {
+                logger.warn(error);
+                this.stream.destroy();
+            }
+        });
+
+        this.stream.on('drain', () => {
+            this.mustDrain = false;
+            this.writer.flush();
         });
     }
 
@@ -304,6 +390,7 @@ export class Client {
         }
 
         this.connecting = true;
+
         const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
 
         let p = this.events.connect.once().then((error) => {
@@ -334,15 +421,29 @@ export class Client {
     }
 
     end() {
+        if (this.ending) {
+            throw new Error('Already ending');
+        }
+
         if (this.closed) {
-            throw new Error('Connection already closed.');
+            throw new Error('Connection already closed');
+        }
+
+        if (this.stream.destroyed) {
+            throw new Error('Connection unexpectedly destroyed');
         }
 
         this.ending = true;
-        this.writer.end();
-        this.flush();
-        this.stream.end();
-        this.ready = false;
+
+        if (this.connected) {
+            this.writer.end();
+            this.send();
+            this.stream.end();
+            this.mustDrain = false;
+        } else {
+            this.stream.destroy();
+        }
+
         return this.events.end.once();
     }
 
@@ -391,7 +492,8 @@ export class Client {
         text: string,
         name?: string,
         types?: DataType[]): Promise<PreparedStatement> {
-        const providedNameOrGenerated = (name) || (
+
+        const providedNameOrGenerated = name || (
             (this.config.preparedStatementPrefix ||
                 defaults.preparedStatementPrefix) + (
                 this.nextPreparedStatementId++
@@ -399,14 +501,14 @@ export class Client {
 
         return new Promise<PreparedStatement>(
             (resolve, reject) => {
-                const errorHandler = (error: DatabaseError) => reject(error);
+                const errorHandler: ErrorHandler = (error) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
                 this.writer.parse(providedNameOrGenerated, text, types || []);
                 this.writer.describe(providedNameOrGenerated, 'S');
                 this.preFlightQueue.push({
                     descriptionHandler: (description: RowDescription) => {
                         const types = this.parameterDescriptionQueue.shift();
-                        this.cleanupQueue.shift(Cleanup.ParameterDescription);
+                        this.cleanupQueue.expect(Cleanup.ParameterDescription);
 
                         resolve({
                             close: () => {
@@ -419,7 +521,7 @@ export class Client {
                                             Cleanup.Close
                                         );
                                         this.writer.flush();
-                                        this.flush();
+                                        this.send();
                                     }
                                 );
                             },
@@ -453,7 +555,7 @@ export class Client {
                 this.cleanupQueue.push(Cleanup.PreFlight);
                 this.cleanupQueue.push(Cleanup.ParameterDescription);
                 this.cleanupQueue.push(Cleanup.ErrorHandler);
-                this.flush();
+                this.send();
             });
     }
 
@@ -499,7 +601,7 @@ export class Client {
                 types
             );
         } catch (error) {
-            info.handler(error);
+            info.handler(error as Error);
             return;
         }
 
@@ -518,8 +620,7 @@ export class Client {
             (error) => { info.handler(error); }
         );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
-
-        this.flush();
+        this.send();
     }
 
     private execute(query: Query): ResultIterator {
@@ -586,14 +687,21 @@ export class Client {
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
         this.writer.sync();
-        this.flush();
+        this.send();
         return result.iterator;
     }
 
-    private flush() {
-        if (!this.ready || this.mustDrain) return;
-        if (this.writer.send()) this.mustDrain = true;
+    private send() {
+        // TODO refactor
+        if (!this.connected && !this.ending) return;
+        this.mustDrain = !this.writer.send(this.stream);
     }
+
+    private send2(writer: Writer) {
+        if (this.mustDrain || !this.stream.writable) return;
+        this.mustDrain = !writer.send(this.stream);
+    }
+
 
     private parseError(buffer: Buffer) {
         let level: DatabaseError['level'] | null = null;
@@ -651,8 +759,10 @@ export class Client {
 
             // Fast path: retrieve data rows.
             const info = this.activeDataHandlerInfo;
+
             while (true) {
                 mtype = buffer.readInt8(frame);
+
                 if (mtype !== Message.RowData) break;
 
                 if (!info) {
@@ -666,8 +776,7 @@ export class Client {
                 const bytes = buffer.readInt32BE(frame + 1) + 1;
 
                 if (info) {
-                    const total = bytes + read;
-                    if (size < total) {
+                    if (size < bytes + read) {
                         this.expect = bytes;
                         return read;
                     }
@@ -680,7 +789,6 @@ export class Client {
                         this.encoding,
                         types
                     );
-
                     // Submit row to result handler.
                     info.handler(row);
                 }
@@ -697,19 +805,26 @@ export class Client {
                 }
             }
 
-            const length = buffer.readInt32BE(frame + 1) - 4;
-            const total = length + 5;
+            //const length = buffer.readInt32BE(frame + 1) - 4;
+            //const total = length + 5;
 
-            if (size < total + read) {
-                this.expect = total;
+            const bytes = buffer.readInt32BE(frame + 1) + 1;
+            const length = bytes - 5;
+
+            if (size < bytes + read) {
+                this.expect = bytes;
                 break;
             }
+
+            this.expect = 5;
+            read += bytes;
 
             // This is the start offset of the message data.
             const start = frame + 5;
 
             switch (mtype as Message) {
                 case Message.Authentication: {
+                    const writer = new Writer(this.encoding);
                     const code = buffer.readInt32BE(start);
                     switch (code) {
                         case 0: {
@@ -718,11 +833,11 @@ export class Client {
                             });
                             break;
                         }
-                        case 3:
-                            this.writer.password(
-                                this.config.password || defaults.password || ''
-                            );
+                        case 3: {
+                            const s = this.config.password || defaults.password || '';
+                            writer.password(s);
                             break;
+                        }
                         case 5: {
                             const { user = '', password = '' } = this.config;
                             const salt = buffer.slice(start + 4, start + 8);
@@ -730,7 +845,7 @@ export class Client {
                                 `${password || defaults.password}` +
                                 `${user || defaults.user}`
                             );
-                            this.writer.password(`md5${md5(shadow, salt)}`);
+                            writer.password(`md5${md5(shadow, salt)}`);
                             break;
                         }
                         default:
@@ -738,6 +853,7 @@ export class Client {
                                 `Unsupported authentication scheme: ${code}`
                             );
                     }
+                    this.send2(writer);
                     break;
                 }
                 case Message.BackendKeyData: {
@@ -747,14 +863,14 @@ export class Client {
                 }
                 case Message.BindComplete: {
                     const info = this.bindQueue.shift();
-                    this.cleanupQueue.shift(Cleanup.Bind);
+                    this.cleanupQueue.expect(Cleanup.Bind);
                     if (info) {
                         this.activeDataHandlerInfo = info;
                     }
                     break;
                 }
                 case Message.NoData: {
-                    this.cleanupQueue.shift(Cleanup.PreFlight);
+                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     if (preflight.dataHandler) {
                         if (preflight.bind) {
@@ -790,7 +906,7 @@ export class Client {
                 }
                 case Message.CloseComplete: {
                     const handler = this.closeHandlerQueue.shift();
-                    this.cleanupQueue.shift(Cleanup.Close);
+                    this.cleanupQueue.expect(Cleanup.Close);
                     if (handler) {
                         handler();
                     }
@@ -820,6 +936,7 @@ export class Client {
                                 break loop;
                             }
                             case Cleanup.ParameterDescription: {
+                                // This does not seem to ever happen!
                                 this.parameterDescriptionQueue.shift();
                                 break;
                             }
@@ -884,20 +1001,18 @@ export class Client {
                         this.error = false
                     } else if (this.connected) {
                         this.errorHandlerQueue.shift();
-                        this.cleanupQueue.shift(Cleanup.ErrorHandler);
+                        this.cleanupQueue.expect(Cleanup.ErrorHandler);
                     } else {
-                        this.transactionStatus = TransactionStatus.Idle;
                         this.connecting = false;
                         this.connected = true;
                     }
                     const status = buffer.readInt8(start);
                     this.transactionStatus = status as TransactionStatus;
-                    this.ready = true;
-                    this.flush();
+                    this.send();
                     break;
                 }
                 case Message.RowDescription: {
-                    this.cleanupQueue.shift(Cleanup.PreFlight);
+                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     const description = readRowDescription(
                         buffer, start, this.config.types
@@ -928,9 +1043,6 @@ export class Client {
                     break;
                 }
             }
-
-            this.expect = 5;
-            read += total;
         }
 
         return read;
