@@ -1,7 +1,7 @@
 import { createServer, AddressInfo, Socket } from 'net';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
-import { Client, Result } from '../src/client';
+import { Client, Result, ResultIterator } from '../src/client';
 import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
@@ -58,7 +58,7 @@ function testSelect(
         query = unsafeToSimpleQuery(query);
     }
 
-    testWithClient(`SQL: Select (batch size: ${batchSize})`,
+    testWithClient(`SQL: Select (${testQuery}; ${doReplaceArgs}; batch size: ${batchSize})`,
         async (client) => {
             expect.assertions(1);
 
@@ -127,7 +127,7 @@ describe('Events', () => {
         const p = new Promise((resolve, _) => {
             client.on('connect', async () => {
                 await client.end();
-                resolve();
+                resolve(undefined);
             });
         });
         await p;
@@ -140,7 +140,7 @@ describe('Events', () => {
             client.on('connect', () => {
                 setTimeout(() => {
                     expect(true).toBeTruthy();
-                    resolve();
+                    resolve(undefined);
                 }, 125);
             });
         });
@@ -153,7 +153,7 @@ describe('Timeout', () => {
     test('Connection timeout', async () => {
         const server = createServer();
         await new Promise((resolve) => {
-            server.listen(0, "localhost", 1, resolve);
+            server.listen(0, "localhost", 1, () => { resolve(undefined) });
         });
         const sockets = new Set<Socket>();
         server.on('connection', (socket) => {
@@ -176,7 +176,7 @@ describe('Timeout', () => {
         }
         return new Promise((resolve) => {
             server.close(() => {
-                resolve();
+                resolve(undefined);
             });
         });
     }, 500);
@@ -262,65 +262,111 @@ describe('Query', () => {
         }
     );
 
+    interface Test {
+        query: ResultIterator;
+        expectation: {
+            names: string[];
+            rows: number[][];
+            status: string;
+        } | RegExp;
+    }
+
+    const tests: Array<(client: Client) => Test> = [
+        (client: Client) => {
+            return {
+                query: client.query('select foo'),
+                expectation: /foo/
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.query('select boo, $1 as bar', [0]),
+                expectation: /boo/
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.query('select 1 as i'),
+                expectation: { names: ['i'], rows: [[1]], status: 'SELECT 1' }
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.query('select 1 / $1 as j', [0]),
+                expectation: /division by zero/
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.query('select $1::int as k', [2]),
+                expectation: { names: ['k'], rows: [[2]], status: 'SELECT 1' }
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.query('select $1::internal as l', [""]),
+                expectation: /2281/
+            }
+        }
+    ];
+
+    function make(client: Client, n: number) {
+        const p = tests[n](client);
+        const e = expect(p.query);
+        if (p.expectation instanceof RegExp) {
+            return e.rejects.toThrow(p.expectation)
+        } else {
+            return e.resolves.toEqual(p.expectation)
+        }
+    }
+
+    function makeTest(ns: number[]) {
+        testWithClient(
+            `Pipeline combination query ${ns.join(';')}`,
+            async (client) => {
+                const promises = [];
+                for (let i = 0; i < ns.length; i++) {
+                    const p = make(client, ns[i]);
+                    promises.push(p);
+                }
+                await Promise.all(promises);
+            }
+        );
+    }
+
+    for (let i = 0; i < tests.length; i++) {
+        makeTest([i]);
+        for (let j = 0; j < tests.length; j++) {
+            makeTest([i, j]);
+        }
+    }
+
     testWithClient(
-        'Query errors plays nicely with pipeline',
+        'Pipeline combination query (fuzzy)',
         async (client) => {
-            const random = (n: number) =>
-                Math.floor(Math.random() * Math.floor(n));
-
-            const make = (n: number): Promise<void> | undefined => {
-                switch (n) {
-                    case 0: {
-                        const p = client.query('select foo');
-                        return expect(p).rejects.toThrow(/foo/);
-                    }
-                    case 1: {
-                        const p = client.query('select 1 as i');
-                        return expect(p).resolves.toEqual(
-                            { names: ['i'], rows: [[1]], status: 'SELECT 1' }
-                        );
-                    }
-                    case 2: {
-                        const p = client.query('select 1 / $1 as j', [0]);
-                        return expect(p).rejects.toThrow(/division by zero/);
-                    }
-                    case 3: {
-                        const p = client.query('select $1::int as k', [2]);
-                        return expect(p).resolves.toEqual(
-                            { names: ['k'], rows: [[2]], status: 'SELECT 1' }
-                        );
-                    }
-                    case 4: {
-                        const p = client.query(
-                            'select $1::internal as l',
-                            [""]
-                        );
-                        return expect(p).rejects.toThrow(/2281/);
-                    }
-                }
-            };
-
-            const go = async (remaining: number): Promise<void> => {
-                if (remaining === 0) return Promise.resolve();
-                const i = Math.min(
-                    Math.max(random(remaining), 1),
-                    remaining / 2
-                );
-                const promises: Promise<void>[] = [];
-                for (let j = 0; j < i; j++) {
-                    const n = random(5);
-                    const p = make(n);
-                    if (p) promises.push(p);
-                }
-                return Promise.all(promises).then(
-                    () => {
-                        return go(remaining - promises.length)
-                    }
-                );
+            let seed = 1;
+            function random(n: number) {
+                const x = Math.sin(seed++) * 10000;
+                const r = x - Math.floor(x);
+                return Math.floor(r * Math.floor(n));
             }
 
-            for (let i = 0; i < 10; i++) {
-                await go(500);
+            for (let i = 0; i < 5; i++) {
+                let remaining = 500;
+                while (remaining) {
+                    const count = Math.min(
+                        Math.max(random(remaining), 1),
+                        remaining / 2 >> 0
+                    ) || 1;
+                    remaining -= count;
+                    const promises: Promise<void>[] = [];
+                    for (let j = 0; j < count; j++) {
+                        const n = random(tests.length);
+                        const p = make(client, n);
+                        promises.push(p);
+                    }
+                    await Promise.all(promises);
+                }
             }
         },
         5000
