@@ -34,8 +34,11 @@ export class ElasticBuffer {
         return this.buffer.slice(offset, offset + size);
     }
 
-    slice() {
+    consume() {
         const end = this.offset;
-        return this.buffer.slice(0, end)
+        const buffer = Buffer.allocUnsafe(end);
+        this.buffer.copy(buffer, 0, 0, end);
+        this.offset = 0;
+        return buffer;
     }
 }

@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Fix buffer race condition that could lead to data corruption.
+
 - Fix issue with `BYTEA` where a returned buffer would incorrectly be
   a slice into an internal buffer.
 

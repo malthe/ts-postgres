@@ -843,10 +843,7 @@ export class Writer {
 
     send() {
         if (this.outgoing.isEmpty()) return false;
-
-        const buffer = this.outgoing.slice();
-        this.outgoing.clear();
-
+        const buffer = this.outgoing.consume();
         return !this.stream.write(buffer);
     }
 
