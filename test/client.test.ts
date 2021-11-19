@@ -6,8 +6,7 @@ import { DataFormat, DataType } from '../src/types';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
-const [maxTime, WarmupTime] = (benchmarkEnabled) ?
-    [5000, 1000] : [500, 100];
+const timedQueryTime = benchmarkEnabled ? 5000 : 500;
 
 const enum TestQuery {
     PgType,
@@ -97,9 +96,9 @@ function testSelect(
                 return [queries, results, queries - acknowledged, d];
             }
 
-            if (WarmupTime) await go(WarmupTime);
+            await go(timedQueryTime / 10);
 
-            const [queries, rows, diff, time] = await go(maxTime);
+            const [queries, rows, diff, time] = await go(timedQueryTime);
             const round = (n: number) => { return Math.round(n / time) };
 
             if (benchmarkEnabled) {
@@ -115,7 +114,7 @@ function testSelect(
             }
 
             expect(diff).toEqual(0);
-        }, (WarmupTime + maxTime) + 10000);
+        });
 }
 
 describe('Events', () => {
@@ -179,7 +178,7 @@ describe('Timeout', () => {
                 resolve(undefined);
             });
         });
-    }, 500);
+    });
 });
 
 describe('Query', () => {
@@ -245,7 +244,7 @@ describe('Query', () => {
             expect(msg.payload).toEqual('bar');
         });
         await client.query('notify foo, \'bar\'');
-    })
+    });
 
     testWithClient('Cursor', async (client) => {
         await client.query('begin');
@@ -368,8 +367,7 @@ describe('Query', () => {
                     await Promise.all(promises);
                 }
             }
-        },
-        5000
+        }
     );
 
     testWithClient('Empty query', async (client) => {
