@@ -1,6 +1,7 @@
 # Changes
 
-In next release ...
+1.2.0 (2021-11-19)
+------------------
 
 - The "execute" method is now public and must be used now when passing
   a query object rather than individual arguments when querying.
