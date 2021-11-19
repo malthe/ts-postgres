@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Add support for streaming binary column data.
+
 - Add SSL support.
 
 - Fix buffer race condition that could lead to data corruption.
