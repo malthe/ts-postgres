@@ -128,11 +128,8 @@ different ways:
 
 Note that the `number` type in TypeScript has a maximum safe integer
 value which lies between and `DataType.Int8` – given by
-`Number.MAX_SAFE_INTEGER`. The maximum safe integer data type to use
-is therefore `DataType.Int4`.
-
-The `bigint` type is not currently supported.
-
+`Number.MAX_SAFE_INTEGER`. To use `DataType.Int8` the `bigint` type
+should be used.
 
 ### Iterator interface
 
