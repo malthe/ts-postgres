@@ -99,7 +99,8 @@ export enum DataType {
     Anyrange = 3831,
     EventTrigger = 3838,
     Regnamespace = 4089,
-    Regrole = 4096
+    Regrole = 4096,
+    MinUserOid = 16384,
 }
 
 export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([

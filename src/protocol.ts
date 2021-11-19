@@ -338,6 +338,13 @@ export function readRowData(
                     const read = (t: DataType, start: number, end: number) => {
                         if (start === end) return null;
 
+                        /* Cutoff for system object OIDs;
+                           see comments in src/include/access/transam.h
+
+                           We do not support user object OIDs.
+                        */
+                        if (t >= DataType.MinUserOid) return null;
+
                         switch (t) {
                             case DataType.Bool:
                                 return (buffer[start] !== 0);
