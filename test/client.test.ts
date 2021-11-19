@@ -79,7 +79,7 @@ function testSelect(
                     const promises: Promise<void>[] = [];
 
                     while (i--) {
-                        const p = client.query(query).then(
+                        const p = client.execute(query).then(
                             (result: Result) => {
                                 acknowledged += 1;
                                 results += result.rows.length;
@@ -185,21 +185,21 @@ describe('Query', () => {
     testWithClient('Without parameters', async (client) => {
         expect.assertions(1);
         const query = new Query('select 1');
-        const result = await client.query(query);
+        const result = await client.execute(query);
         expect(result.rows.length).toEqual(1);
     });
 
     testWithClient('With parameters', async (client) => {
         expect.assertions(1);
         const query = new Query('select $1::int', [1]);
-        const result = await client.query(query);
+        const result = await client.execute(query);
         expect(result.rows.length).toEqual(1);
     });
 
     testWithClient('Named portal', async (client) => {
         expect.assertions(1);
         const query = new Query('select $1::int', [1]);
-        const result = await client.query(query);
+        const result = await client.execute(query);
         expect(result.rows.length).toEqual(1);
     });
 
@@ -280,7 +280,7 @@ describe('Query', () => {
             [Buffer.from(s)],
             { streams: { col: socket } }
         );
-        await client.query(query);
+        await client.execute(query);
 
         // At this point we're done really done streaming, and how can
         // we know when that happens?

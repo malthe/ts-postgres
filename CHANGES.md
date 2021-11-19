@@ -2,6 +2,9 @@
 
 In next release ...
 
+- The "execute" method is now public and must be used now when passing
+  a query object rather than individual arguments when querying.
+
 - Add support for streaming binary column data.
 
 - Add SSL support.

@@ -568,20 +568,8 @@ export class Client {
             });
     }
 
-    // Query object interface.
-    query(query: Query): ResultIterator;
-
-    // Argument-based query interface.
     query(
         text: string,
-        args?: Value[],
-        types?: DataType[],
-        format?: DataFormat | DataFormat[],
-        streams?: Record<string, Writable>):
-        ResultIterator;
-
-    query(
-        text: string | Query,
         values?: Value[],
         types?: DataType[],
         format?: DataFormat | DataFormat[],
