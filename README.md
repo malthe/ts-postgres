@@ -24,6 +24,7 @@ $ npm install ts-postgres@latest
 * Hybrid query result object
   * Iterable (synchronous or asynchronous; one row at a time)
   * Promise-based
+  * Streaming
 
 ---
 
@@ -41,12 +42,12 @@ async function main() {
     try {
         // Querying the client returns a query result promise
         // which is also an asynchronous result iterator.
-        const resultIterator = client.query(
-            `SELECT 'Hello ' || $1 || '!' AS message`,
+        const result = client.query(
+            "SELECT 'Hello ' || $1 || '!' AS message",
             ['world']
         );
 
-        for await (const row of resultIterator) {
+        for await (const row of result) {
             // 'Hello world!'
             console.log(row.get('message'));
         }
@@ -57,7 +58,7 @@ async function main() {
 
 await main()
 ```
-Waiting on the result iterator returns the complete query result.
+Waiting on the result (i.e., result iterator) returns the complete query result.
 
 ```typescript
 const result = await client.query(...)
@@ -67,7 +68,7 @@ If the query fails, an exception is thrown.
 ### Connection options
 
 The client constructor takes an optional
-[Configuration](src/client.ts#L67) object.
+[Configuration](src/client.ts#L88) object.
 
 For example, to connect to a remote host use the *host* configuration key:
 
@@ -90,6 +91,20 @@ default value when applicable.
 | keepAlive               | `boolean`                        | true                                       |
 | preparedStatementPrefix | `string`                         | "tsp_"                                     |
 
+### Querying
+
+The `query` method accepts a `Query` object or a number of arguments
+that together define the query, the first argument (query text) being
+the only required one.
+
+The initial example above could be written as:
+```typescript
+const query = new Query(
+    "SELECT 'Hello ' || $1 || '!' AS message",
+    ['world']
+);
+const result = await client.execute(query);
+```
 
 ### Passing query parameters
 
@@ -145,6 +160,22 @@ for (const row of result.rows) {
 }
 ```
 This is the most efficient way to work with result data. Column names are available as the ``names`` attribute of a result.
+
+### Streaming
+
+A query can support streaming of one or more columns directly into an
+asynchronous stream such as a network socket, or a file.
+
+Assuming that `socket` is a writable stream:
+
+```typescript
+const query = new Query(
+    "SELECT some_bytea_column",
+    {streams: {"some_bytea_column": socket}}
+);
+const result = await client.execute(query);
+```
+This can for example be used to reduce time to first byte and memory use.
 
 ### Multiple queries
 
@@ -221,7 +252,7 @@ ts-postgres is free software.  If you encounter a bug with the library please op
 
 ## License
 
-Copyright (c) 2018-2020 Malthe Borch (mborch@gmail.com)
+Copyright (c) 2018-2021 Malthe Borch (mborch@gmail.com)
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal

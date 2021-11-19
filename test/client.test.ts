@@ -252,7 +252,59 @@ describe('Query', () => {
         const result = await client.query('fetch next from foo');
         expect(result.names).toEqual(['int4']);
         expect(result.rows).toEqual([[1]]);
-    })
+    });
+
+    testWithClient('Stream', async (client) => {
+        expect.assertions(2);
+        const s = "abcdefghijklmnopqrstuvxyz".repeat(Math.pow(2, 17));
+        const buffer = Buffer.from(s);
+        const server = createServer(
+            (conn) => {
+                let offset = 0;
+                conn.on('data', (data: Buffer) => {
+                    const s = data.toString();
+                    buffer.write(s, offset);
+                    offset += s.length;
+                });
+            }
+        );
+        await new Promise((resolve) => {
+            server.listen(0, "localhost", 1, () => { resolve(undefined) });
+        });
+        expect(server.listening).toBeTruthy();
+        const address = server.address() as AddressInfo;
+        const socket = new Socket();
+        socket.connect(address.port);
+        const query = new Query(
+            'select upper($1)::bytea as col',
+            [Buffer.from(s)],
+            { streams: { col: socket } }
+        );
+        await client.query(query);
+
+        // At this point we're done really done streaming, and how can
+        // we know when that happens?
+        //
+        // Probably, the query should return only when the callback
+        // comes through.
+        return new Promise((resolve) => {
+            socket.on(
+                'close',
+                () => {
+                    server.close(
+                        () => {
+                            try {
+                                expect(buffer.toString()).toEqual(s.toUpperCase());
+                            } finally {
+                                resolve(undefined);
+                            }
+                        }
+                    );
+                }
+            );
+            socket.end();
+        });
+    });
 
     testWithClient(
         'Query errors become promise rejection',

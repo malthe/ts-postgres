@@ -1,3 +1,4 @@
+import { Writable } from 'stream';
 import {
     DataFormat,
     DataType,
@@ -9,6 +10,7 @@ export interface QueryOptions {
     readonly portal: string;
     readonly types: DataType[];
     readonly format: DataFormat | DataFormat[];
+    readonly streams: Record<string, Writable>;
 }
 
 export class Query {

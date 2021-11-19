@@ -1,6 +1,7 @@
 import { constants } from 'os';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
+import { Writable } from 'stream';
 
 import * as defaults from './defaults';
 import * as logger from './logging';
@@ -109,7 +110,8 @@ export interface PreparedStatement {
     execute: (
         values?: Value[],
         portal?: string,
-        format?: DataFormat | DataFormat[]
+        format?: DataFormat | DataFormat[],
+        streams?: Record<string, Writable>,
     ) => ResultIterator
 }
 
@@ -129,7 +131,10 @@ type Event = (
 
 type CloseHandler = () => void;
 
-type RowDataHandler = DataHandler<Row>;
+interface RowDataHandler {
+    callback: DataHandler<Row>,
+    streams: Record<string, Writable>,
+}
 
 type DescriptionHandler = (description: RowDescription) => void;
 
@@ -528,13 +533,17 @@ export class Client {
                             execute: (
                                 values?: Value[],
                                 portal?: string,
-                                format?: DataFormat | DataFormat[]
+                                format?: DataFormat | DataFormat[],
+                                streams?: Record<string, Writable>,
                             ) => {
                                 const result = makeResult<Value>();
                                 result.nameHandler(description.names);
                                 const info = {
-                                    handler: result.dataHandler,
-                                    description: description
+                                    handler: {
+                                        callback: result.dataHandler,
+                                        streams: streams || {},
+                                    },
+                                    description: description,
                                 };
                                 this.bindAndExecute(info, {
                                     name: providedNameOrGenerated,
@@ -567,14 +576,16 @@ export class Client {
         text: string,
         args?: Value[],
         types?: DataType[],
-        format?: DataFormat | DataFormat[]):
+        format?: DataFormat | DataFormat[],
+        streams?: Record<string, Writable>):
         ResultIterator;
 
     query(
         text: string | Query,
         values?: Value[],
         types?: DataType[],
-        format?: DataFormat | DataFormat[]):
+        format?: DataFormat | DataFormat[],
+        streams?: Record<string, Writable>):
         ResultIterator {
         const query =
             (typeof text === 'string') ?
@@ -582,7 +593,8 @@ export class Client {
                     text,
                     values, {
                     types: types,
-                    format: format
+                    format: format,
+                    streams: streams,
                 }) :
                 text;
         return this.execute(query);
@@ -601,7 +613,7 @@ export class Client {
                 types
             );
         } catch (error) {
-            info.handler(error as Error);
+            info.handler.callback(error as Error);
             return;
         }
 
@@ -617,13 +629,13 @@ export class Client {
 
         this.writer.sync();
         this.errorHandlerQueue.push(
-            (error) => { info.handler(error); }
+            (error) => { info.handler.callback(error); }
         );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
         this.send();
     }
 
-    private execute(query: Query): ResultIterator {
+    execute(query: Query): ResultIterator {
         if (this.closed && !this.connecting) {
             throw new Error('Connection is closed.');
         }
@@ -633,11 +645,17 @@ export class Client {
         const options = query.options;
         const format = options ? options.format : undefined;
         const types = options ? options.types : undefined;
+        const streams = options ? options.streams : undefined;
         const portal = (options ? options.portal : undefined) || '';
         const result = makeResult<Value>();
 
         const descriptionHandler = (description: RowDescription) => {
             result.nameHandler(description.names);
+        };
+
+        const dataHandler: RowDataHandler = {
+            callback: result.dataHandler,
+            streams: streams || {},
         };
 
         if (values && values.length) {
@@ -651,7 +669,7 @@ export class Client {
             this.writer.describe(name, 'S');
             this.preFlightQueue.push({
                 descriptionHandler: descriptionHandler,
-                dataHandler: result.dataHandler,
+                dataHandler: dataHandler,
                 bind: {
                     name: name,
                     portal: portal,
@@ -669,7 +687,7 @@ export class Client {
             this.writer.describe(portal, 'P');
             this.preFlightQueue.push({
                 descriptionHandler: descriptionHandler,
-                dataHandler: result.dataHandler,
+                dataHandler: dataHandler,
                 bind: null
             });
             this.writer.execute(portal);
@@ -755,16 +773,11 @@ export class Client {
 
         while (size >= this.expect + read) {
             let frame = offset + read;
-            let mtype: Message | null;
+            let mtype: Message = buffer.readInt8(frame);
 
             // Fast path: retrieve data rows.
-            const info = this.activeDataHandlerInfo;
-
-            while (true) {
-                mtype = buffer.readInt8(frame);
-
-                if (mtype !== Message.RowData) break;
-
+            if (mtype === Message.RowData) {
+                const info = this.activeDataHandlerInfo;
                 if (!info) {
                     throw new Error('No active data handler');
                 }
@@ -773,40 +786,79 @@ export class Client {
                     throw new Error('No result type information');
                 }
 
-                const bytes = buffer.readInt32BE(frame + 1) + 1;
+                const {
+                    handler: {
+                        streams,
+                        callback,
+                    },
+                    description: {
+                        columns,
+                        names,
+                    }
+                } = info;
 
-                if (info) {
-                    if (size < bytes + read) {
-                        this.expect = bytes;
+                let row: Array<Value> | null = null;
+
+                const hasStreams = Object.keys(streams).length > 0;
+
+                const mappedStreams = hasStreams ? names.map(
+                    name => streams[name] || null
+                ) : null;
+
+                while (true) {
+                    mtype = buffer.readInt8(frame);
+                    if (mtype !== Message.RowData) break;
+
+
+                    const bytes = buffer.readInt32BE(frame + 1) + 1;
+                    const start = frame + 5;
+
+                    if (size < 11 + read) {
+                        this.expect = 7;
                         return read;
                     }
 
-                    const start = frame + 5;
-                    const row = readRowData(
-                        buffer,
-                        start,
-                        info.description,
+                    if (row === null) {
+                        const count = buffer.readInt16BE(start);
+                        row = new Array<Value>(count);
+                    }
+
+                    const startRowData = start + 2;
+                    const slice = buffer.slice(startRowData, bytes + read);
+                    const end = readRowData(
+                        slice,
+                        row,
+                        columns,
                         this.encoding,
-                        types
+                        types,
+                        mappedStreams
                     );
-                    // Submit row to result handler.
-                    info.handler(row);
-                }
 
-                // Keep track of how much data we've consumed.
-                read += bytes;
-                frame += bytes;
+                    const remaining = bytes + read - size;
+                    if (remaining <= 0) {
+                        callback(row);
+                        row = null;
+                    } else {
+                        const offset = startRowData + end;
+                        buffer.writeInt8(mtype, offset - 7);
+                        buffer.writeInt32BE(bytes - end - 1, offset - 6);
+                        buffer.writeInt16BE(row.length, offset - 2);
+                        return offset - 7;
+                    }
 
-                // If the next message header doesn't fit, we
-                // break out and wait for more data to arrive.
-                if (size < frame + 5) {
-                    this.expect = 5;
-                    return read;
+                    // Keep track of how much data we've consumed.
+                    frame += bytes;
+
+                    // If the next message header doesn't fit, we
+                    // break out and wait for more data to arrive.
+                    if (size < frame + 5) {
+                        this.expect = 5;
+                        return read;
+                    }
+
+                    read += bytes;
                 }
             }
-
-            //const length = buffer.readInt32BE(frame + 1) - 4;
-            //const total = length + 5;
 
             const bytes = buffer.readInt32BE(frame + 1) + 1;
             const length = bytes - 5;
@@ -884,7 +936,7 @@ export class Client {
                                 this.parameterDescriptionQueue.shift()
                             );
                         } else {
-                            preflight.dataHandler(null);
+                            preflight.dataHandler.callback(null);
                         }
                     } else {
                         throw new Error('Data handler not set');
@@ -899,7 +951,8 @@ export class Client {
                         const status = buffer.slice(
                             start, start + length - 1
                         ).toString();
-                        info.handler(status);
+
+                        info.handler.callback(status);
                         this.activeDataHandlerInfo = null;
                     }
                     break;
@@ -1023,7 +1076,7 @@ export class Client {
                     if (preflight.dataHandler) {
                         const info = {
                             handler: preflight.dataHandler,
-                            description: description
+                            description: description,
                         };
 
                         if (preflight.bind) {

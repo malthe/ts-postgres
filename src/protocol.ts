@@ -1,4 +1,5 @@
 import { Socket } from 'net';
+import { Writable } from 'stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { sum } from './utils';
@@ -17,6 +18,7 @@ const arrayMask = 1 << 31;
 const readerMask = 1 << 29;
 const infinity = Number('Infinity');
 const timeshift = 946684800000;
+const isUndefined = Object.is.bind(null, undefined);
 
 export const enum Command {
     Bind = 0x42,
@@ -82,7 +84,7 @@ export const enum SegmentType {
 }
 
 export interface RowDescription {
-    columns: Uint32Array;
+    columns: Uint32Array,
     names: string[]
 }
 
@@ -254,212 +256,249 @@ export function readRowDescription(
 
 export function readRowData(
     buffer: Buffer,
-    rowDataOffset: number,
-    rowDescription: RowDescription,
+    row: Array<Value>,
+    columnSpecification: Uint32Array,
     encoding: BufferEncoding,
-    types: ReadonlyMap<DataType, ValueTypeReader> | null):
-    ArrayValue<Primitive> {
-    const columns = buffer.readInt16BE(rowDataOffset);
-    const row = new Array<Value>(columns);
-    const columnSpecification = rowDescription.columns;
+    types: ReadonlyMap<DataType, ValueTypeReader> | null,
+    streams: ReadonlyArray<Writable | null> | null,
+): number {
+    const columns = row.length;
+    const bufferLength = buffer.length;
 
-    let dataColumnOffset = rowDataOffset + 2;
-    let i = 0;
+    // Find the row index (i.e., column) that's undefined which is
+    // where we start reading row data.
+    let i = row.findIndex(isUndefined);
+    let offset = 0;
 
     while (i < columns) {
-        const length = buffer.readInt32BE(dataColumnOffset);
-        const start = dataColumnOffset + 4;
-        const end = start + (length >= 0 ? length : 0);
+        // Must have enough data available to read column size.
+        const start = offset + 4;
+        if (bufferLength < start) break;
 
-        dataColumnOffset = end;
+        const j = i;
+        i++;
 
-        const spec = columnSpecification[i];
-        const dataType: DataType =
-            spec &
-            ~arrayMask &
-            ~readerMask;
+        const length = buffer.readInt32BE(offset);
 
-        const isArray = (spec & arrayMask) !== 0;
-        const isReader = (spec & readerMask) !== 0;
+        // If the length is reported as -1, this means a NULL value.
+        const dataLength = (length >= 0 ? length : 0);
+
+        const end = start + dataLength;
+        const remaining = end - bufferLength;
+        const partial = remaining > 0;
 
         let value: Value = null;
 
-        if (isReader) {
-            const reader = (types) ? types.get(dataType) : null;
-            if (reader) {
-                value = reader(
-                    buffer,
-                    start,
-                    end,
-                    DataFormat.Binary,
-                    encoding
-                );
+        if (start < end) {
+            const spec = columnSpecification[j];
+            let skip = false;
+
+            if (streams !== null && spec === DataType.Bytea) {
+                const stream = streams[j];
+                if (stream !== null) {
+                    const slice = buffer.slice(start, end);
+                    const alloc = Buffer.allocUnsafe(slice.length);
+                    slice.copy(alloc, 0, 0, slice.length);
+                    stream.write(alloc);
+                    buffer.writeInt32BE(length - alloc.length, bufferLength - 4);
+
+                    if (partial) {
+                        return bufferLength - 4;
+                    }
+
+                    skip = true;
+                }
             }
-        } else {
-            const read = (t: DataType, start: number, end: number) => {
-                if (start === end) return null;
 
-                switch (t) {
-                    case DataType.Bool:
-                        return (buffer[start] !== 0);
-                    case DataType.Date: {
-                        const n = buffer.readInt32BE(start);
-                        if (n === 0x7fffffff) return infinity;
-                        if (n === -0x80000000) return -infinity;
+            if (partial) {
+                break;
+            }
 
-                        // Shift from 2000 to 1970 and fix units.
-                        return new Date(
-                            (n * 1000 * 86400) + timeshift
+            if (!skip) {
+                const dataType: DataType =
+                    spec &
+                    ~arrayMask &
+                    ~readerMask;
+
+                const isArray = (spec & arrayMask) !== 0;
+                const isReader = (spec & readerMask) !== 0;
+
+                if (isReader) {
+                    const reader = (types) ? types.get(dataType) : null;
+                    if (reader) {
+                        value = reader(
+                            buffer,
+                            start,
+                            end,
+                            DataFormat.Binary,
+                            encoding
                         );
                     }
-                    case DataType.Timestamp:
-                    case DataType.Timestamptz: {
-                        const lo = buffer.readUInt32BE(start + 4);
-                        const hi = buffer.readInt32BE(start);
-
-                        if (lo === 0xffffffff &&
-                            hi === 0x7fffffff) return infinity;
-                        if (lo === 0x00000000 &&
-                            hi === -0x80000000) return -infinity;
-
-                        return new Date(
-                            (lo + hi * 4294967296) / 1000 +
-                            timeshift
-                        );
-                    }
-                    case DataType.Int2:
-                        return buffer.readInt16BE(start);
-                    case DataType.Int4:
-                    case DataType.Oid:
-                        return buffer.readInt32BE(start);
-                    case DataType.Int8:
-                        return buffer.readBigInt64BE(start);
-                    case DataType.Float4:
-                        return buffer.readFloatBE(start);
-                    case DataType.Float8:
-                        return buffer.readDoubleBE(start);
-                    case DataType.Bpchar:
-                    case DataType.Char:
-                    case DataType.Name:
-                    case DataType.Text:
-                    case DataType.Varchar:
-                        return buffer.toString(encoding, start, end);
-                    case DataType.Bytea:
-                        const new_buffer = Buffer.allocUnsafe(end - start);
-                        buffer.copy(new_buffer, 0, start, end);
-                        return new_buffer;
-                    case DataType.Jsonb:
-                        if (buffer[start] === 1) {
-                            const jsonb = buffer.toString(
-                                encoding, start + 1, end
-                            );
-
-                            if (jsonb) {
-                                return JSON.parse(jsonb);
-                            }
-                        }
-
-                        break;
-                    case DataType.Json:
-                        const json = buffer.toString(encoding, start, end);
-                        if (json) {
-                            return JSON.parse(json);
-                        }
-                        break;
-                    case DataType.Point:
-                        return {
-                            x: buffer.readDoubleBE(start),
-                            y: buffer.readDoubleBE(start + 8)
-                        }
-                    case DataType.Uuid:
-                        return formatUuid(buffer.slice(start, end));
-                }
-                return null;
-            };
-
-            if (start === end) {
-                value = null;
-            } else if (isArray) {
-                let offset = start;
-
-                const readArray = (size: number) => {
-                    const array: ArrayValue<Primitive> =
-                        new Array(size);
-
-                    for (let j = 0; j < size; j++) {
-                        const length = buffer.readInt32BE(offset);
-                        offset += 4;
-                        let value = null;
-                        if (length >= 0) {
-                            const elementStart = offset;
-                            offset = elementStart + length;
-                            value = read(elementType, elementStart, offset);
-                        }
-                        array[j] = value;
-                    }
-                    return array;
-                }
-
-                const dimCount = buffer.readInt32BE(offset) - 1;
-                const elementType = buffer.readInt32BE(offset += 8);
-
-                offset += 4;
-
-                if (dimCount === 0) {
-                    const size = buffer.readInt32BE(offset);
-                    offset += 8;
-                    value = readArray(size);
                 } else {
-                    const arrays: ArrayValue<Primitive>[] =
-                        new Array(dimCount);
-                    const dims = new Uint32Array(dimCount);
+                    const read = (t: DataType, start: number, end: number) => {
+                        if (start === end) return null;
 
-                    for (let j = 0; j < dimCount; j++) {
-                        const size = buffer.readInt32BE(offset);
-                        dims[j] = size;
-                        offset += 8;
-                    }
+                        switch (t) {
+                            case DataType.Bool:
+                                return (buffer[start] !== 0);
+                            case DataType.Date: {
+                                const n = buffer.readInt32BE(start);
+                                if (n === 0x7fffffff) return infinity;
+                                if (n === -0x80000000) return -infinity;
 
-                    const size = buffer.readInt32BE(offset);
-                    const counts = Uint32Array.from(dims);
-                    const total = dims.reduce((a, b) => a * b);
+                                // Shift from 2000 to 1970 and fix units.
+                                return new Date(
+                                    (n * 1000 * 86400) + timeshift
+                                );
+                            }
+                            case DataType.Timestamp:
+                            case DataType.Timestamptz: {
+                                const lo = buffer.readUInt32BE(start + 4);
+                                const hi = buffer.readInt32BE(start);
 
-                    offset += 8;
+                                if (lo === 0xffffffff &&
+                                    hi === 0x7fffffff) return infinity;
+                                if (lo === 0x00000000 &&
+                                    hi === -0x80000000) return -infinity;
 
-                    for (let l = 0; l < total; l++) {
-                        let next = readArray(size);
-                        for (let j = dimCount - 1; j >= 0; j--) {
-                            const count = counts[j];
-                            const dim = dims[j];
-                            const k = dim - count;
-                            const m = count - 1;
+                                return new Date(
+                                    (lo + hi * 4294967296) / 1000 +
+                                    timeshift
+                                );
+                            }
+                            case DataType.Int2:
+                                return buffer.readInt16BE(start);
+                            case DataType.Int4:
+                            case DataType.Oid:
+                                return buffer.readInt32BE(start);
+                            case DataType.Int8:
+                                return buffer.readBigInt64BE(start);
+                            case DataType.Float4:
+                                return buffer.readFloatBE(start);
+                            case DataType.Float8:
+                                return buffer.readDoubleBE(start);
+                            case DataType.Bpchar:
+                            case DataType.Char:
+                            case DataType.Name:
+                            case DataType.Text:
+                            case DataType.Varchar:
+                                return buffer.toString(encoding, start, end);
+                            case DataType.Bytea:
+                                const new_buffer = Buffer.allocUnsafe(end - start);
+                                buffer.copy(new_buffer, 0, start, end);
+                                return new_buffer;
+                            case DataType.Jsonb:
+                                if (buffer[start] === 1) {
+                                    const jsonb = buffer.toString(
+                                        encoding, start + 1, end
+                                    );
 
-                            if (k === 0) {
-                                arrays[j] = new Array(dim);
+                                    if (jsonb) {
+                                        return JSON.parse(jsonb);
+                                    }
+                                }
+
+                                break;
+                            case DataType.Json:
+                                const json = buffer.toString(encoding, start, end);
+                                if (json) {
+                                    return JSON.parse(json);
+                                }
+                                break;
+                            case DataType.Point:
+                                return {
+                                    x: buffer.readDoubleBE(start),
+                                    y: buffer.readDoubleBE(start + 8)
+                                }
+                            case DataType.Uuid:
+                                return formatUuid(buffer.slice(start, end));
+                        }
+                        return null;
+                    };
+
+                    if (isArray) {
+                        let offset = start;
+
+                        const readArray = (size: number) => {
+                            const array: ArrayValue<Primitive> =
+                                new Array(size);
+
+                            for (let j = 0; j < size; j++) {
+                                const length = buffer.readInt32BE(offset);
+                                offset += 4;
+                                let value = null;
+                                if (length >= 0) {
+                                    const elementStart = offset;
+                                    offset = elementStart + length;
+                                    value = read(elementType, elementStart, offset);
+                                }
+                                array[j] = value;
+                            }
+                            return array;
+                        }
+
+                        const dimCount = buffer.readInt32BE(offset) - 1;
+                        const elementType = buffer.readInt32BE(offset += 8);
+
+                        offset += 4;
+
+                        if (dimCount === 0) {
+                            const size = buffer.readInt32BE(offset);
+                            offset += 8;
+                            value = readArray(size);
+                        } else {
+                            const arrays: ArrayValue<Primitive>[] =
+                                new Array(dimCount);
+                            const dims = new Uint32Array(dimCount);
+
+                            for (let j = 0; j < dimCount; j++) {
+                                const size = buffer.readInt32BE(offset);
+                                dims[j] = size;
+                                offset += 8;
                             }
 
-                            const array = arrays[j];
+                            const size = buffer.readInt32BE(offset);
+                            const counts = Uint32Array.from(dims);
+                            const total = dims.reduce((a, b) => a * b);
 
-                            array[k] = next;
-                            counts[j] = m || dims[j];
+                            offset += 8;
 
-                            if (m !== 0) break;
-                            next = array;
+                            for (let l = 0; l < total; l++) {
+                                let next = readArray(size);
+                                for (let j = dimCount - 1; j >= 0; j--) {
+                                    const count = counts[j];
+                                    const dim = dims[j];
+                                    const k = dim - count;
+                                    const m = count - 1;
+
+                                    if (k === 0) {
+                                        arrays[j] = new Array(dim);
+                                    }
+
+                                    const array = arrays[j];
+
+                                    array[k] = next;
+                                    counts[j] = m || dims[j];
+
+                                    if (m !== 0) break;
+                                    next = array;
+                                }
+                            }
+
+                            value = arrays[0];
                         }
+                    } else {
+                        value = read(dataType, start, end);
                     }
-
-                    value = arrays[0];
                 }
-            } else {
-                value = read(dataType, start, end);
             }
         }
 
-        row[i] = value;
-        i++;
+        row[j] = value;
+        offset = end;
     }
 
-    return row;
+    return offset;
 }
 
 export function writeMessage(
