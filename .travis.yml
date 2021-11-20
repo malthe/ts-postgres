@@ -10,6 +10,8 @@ cache:
     - node_modules
 notifications:
   email: false
+env:
+  - PGSSLMODE=disable
 node_js:
   - node
 script:
