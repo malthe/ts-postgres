@@ -43,7 +43,9 @@
         "coveragePathIgnorePatterns": [
             "/node_modules/",
             "/test/",
-            "/src/logging.ts"
+            "/src/logging.ts",
+            "/src/queue.ts",
+            "/src/utils.ts"
         ],
         "coverageThreshold": {
             "global": {
