@@ -1,7 +1,9 @@
+import { randomBytes } from 'crypto';
 import { Socket } from 'net';
 import { Writable } from 'stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
+import { hi, hmacSha256, sha256, xorBuffers } from './sasl';
 import { sum } from './utils';
 import {
     arrayDataTypeMapping,
@@ -30,7 +32,8 @@ export const enum Command {
     Parse = 0x50,
     Password = 0x70,
     Query = 0x51,
-    Sync = 0x53
+    Sync = 0x53,
+    SASLResponse = 0x70
 }
 
 export enum ErrorLevel {
@@ -604,7 +607,8 @@ export class Reader {
 
 export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer(4096);
-    //private outgoing_msg_debug: Array<number | null> = [];
+    private serverSignature: string | null = null;
+    readonly clientNonce = randomBytes(18).toString('base64');
 
     constructor(private readonly encoding: BufferEncoding) { }
 
@@ -995,6 +999,76 @@ export class Writer {
             Command.Password,
             [makeBufferSegment(text, this.encoding, true)],
         );
+    }
+
+    saslInitialResponse(mechanism: string) {
+        if (mechanism !== 'SCRAM-SHA-256') return false;
+        const response = Buffer.from('n,,n=*,r=' + this.clientNonce);
+        this.enqueue(
+            Command.SASLResponse, [
+            makeBufferSegment(mechanism, this.encoding, true),
+            [SegmentType.Int32BE, response.length],
+            [SegmentType.Buffer, response]
+        ]);
+        return true;
+    }
+
+    saslResponse(data: string, password: string) {
+        const m = Object.fromEntries(data.split(',').map(
+            (attr) => [attr[0], attr.substring(2)])
+        );
+
+        if (!(m.i && m.r && m.s)) throw new Error("SASL message parse error");
+
+        const nonce = m.r;
+        if (!nonce.startsWith(this.clientNonce))
+            throw new Error("SASL nonce mismatch");
+        if (nonce.length === this.clientNonce.length)
+            throw new Error("SASL nonce too short");
+
+        const iterations = parseInt(m.i, 10);
+        const salt = Buffer.from(m.s, 'base64');
+        const saltedPassword = hi(password, salt, iterations)
+
+        const clientKey = hmacSha256(saltedPassword, 'Client Key');
+        const storedKey = sha256(clientKey);
+
+        const clientFinalMessageWithoutProof = 'c=biws,r=' + nonce;
+        const clientFirstMessageBare = 'n=*,r=' + this.clientNonce;
+        const serverFirstMessage = data;
+
+        const authMessage = (
+            clientFirstMessageBare + ',' +
+            serverFirstMessage + ',' +
+            clientFinalMessageWithoutProof
+        );
+
+        const clientSignature = hmacSha256(storedKey, authMessage);
+        const clientProofBytes = xorBuffers(clientKey, clientSignature);
+        const clientProof = clientProofBytes.toString('base64');
+
+        const serverKey = hmacSha256(saltedPassword, 'Server Key');
+        const serverSignatureBytes = hmacSha256(serverKey, authMessage);
+
+        const response = Buffer.from(
+            clientFinalMessageWithoutProof + ',p=' + clientProof
+        );
+
+        this.serverSignature = serverSignatureBytes.toString('base64');
+        this.enqueue(
+            Command.SASLResponse, [
+            [SegmentType.Int32BE, response.length],
+            [SegmentType.Buffer, response]
+        ]);
+    }
+
+    saslFinal(data: string) {
+        if (!data.split(',').find((attr) => {
+            if (attr[0] === 'v') {
+                return (attr.substr(2) === this.serverSignature);
+            }
+            return false;
+        })) throw new Error('SASL server signature does not match');
     }
 
     send(socket: Socket) {

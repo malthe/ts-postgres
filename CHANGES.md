@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Add support for SCRAM-SHA-256 authentication.
+
 - Fix issue where a query with multiple columns would yield incomplete
   rows when protocol data spans multiple receive buffers.
 

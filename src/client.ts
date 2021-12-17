@@ -871,6 +871,7 @@ export class Client {
                 case Message.Authentication: {
                     const writer = new Writer(this.encoding);
                     const code = buffer.readInt32BE(start);
+                    outer:
                     switch (code) {
                         case 0: {
                             process.nextTick(() => {
@@ -899,11 +900,22 @@ export class Client {
                             while (true) {
                                 const mechanism = reader.readCString(this.encoding);
                                 if (mechanism.length === 0) break;
+                                if (writer.saslInitialResponse(mechanism)) break outer;
                                 mechanisms.push(mechanism);
                             }
                             throw new Error(
                                 `SASL authentication unsupported (mechanisms: ${mechanisms.join(', ')})`
                             );
+                        }
+                        case 11: {
+                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            const password = this.config.password || defaults.password || '';
+                            writer.saslResponse(data, password);
+                            break;
+                        }
+                        case 12: {
+                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            writer.saslFinal(data);
                         }
                         default:
                             throw new Error(
