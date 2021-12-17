@@ -2,7 +2,7 @@ import { createServer, AddressInfo, Socket } from 'net';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
 import { Client, Result, ResultIterator } from '../src/client';
-import { DataFormat, DataType } from '../src/types';
+import { DataFormat, DataType, Value } from '../src/types';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
@@ -11,6 +11,14 @@ const timedQueryTime = benchmarkEnabled ? 5000 : 500;
 const enum TestQuery {
     PgType,
     Array
+}
+
+function makeRandomizer(seed: number) {
+    return (n: number): number => {
+        const x = Math.sin(seed++) * 10000;
+        const r = x - Math.floor(x);
+        return Math.floor(r * Math.floor(n));
+    }
 }
 
 function secondsFromHrTime(time: [number, number]) {
@@ -317,12 +325,12 @@ describe('Query', () => {
         query: ResultIterator;
         expectation: {
             names: string[];
-            rows: number[][];
+            rows: Value[];
             status: string;
         } | RegExp;
     }
 
-    const tests: Array<(client: Client) => Test> = [
+    const tests: Array<(client: Client, seed: number) => Test> = [
         (client: Client) => {
             return {
                 query: client.query('select foo'),
@@ -358,11 +366,32 @@ describe('Query', () => {
                 query: client.query('select $1::internal as l', [""]),
                 expectation: /2281/
             }
+        },
+        (client: Client, seed: number) => {
+            const random = makeRandomizer(seed);
+            const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+            const columns = random(alphabet.length) || 1;
+            const blocksize = random(71) || 1;
+            const names = [];
+            const row = [];
+            let query = "select ";
+            for (let i = 0; i < columns; i++) {
+                const column = String.fromCharCode('a'.charCodeAt(0) + i);
+                const string = alphabet.substring(0, i + 1).repeat(blocksize);
+                names.push(column);
+                row.push(string);
+                if (i > 0) query += ", ";
+                query += `'${string}' as ${column}`;
+            }
+            return {
+                query: client.query(query),
+                expectation: { names: names, rows: [row], status: 'SELECT 1' }
+            }
         }
     ];
 
-    function make(client: Client, n: number) {
-        const p = tests[n](client);
+    function make(client: Client, n: number, seed: number): Promise<void> {
+        const p = tests[n](client, seed);
         const e = expect(p.query);
         if (p.expectation instanceof RegExp) {
             return e.rejects.toThrow(p.expectation)
@@ -377,7 +406,7 @@ describe('Query', () => {
             async (client) => {
                 const promises = [];
                 for (let i = 0; i < ns.length; i++) {
-                    const p = make(client, ns[i]);
+                    const p = make(client, ns[i], 1);
                     promises.push(p);
                 }
                 await Promise.all(promises);
@@ -395,12 +424,7 @@ describe('Query', () => {
     testWithClient(
         'Pipeline combination query (fuzzy)',
         async (client) => {
-            let seed = 1;
-            function random(n: number) {
-                const x = Math.sin(seed++) * 10000;
-                const r = x - Math.floor(x);
-                return Math.floor(r * Math.floor(n));
-            }
+            const random = makeRandomizer(1);
 
             for (let i = 0; i < 5; i++) {
                 let remaining = 500;
@@ -413,7 +437,7 @@ describe('Query', () => {
                     const promises: Promise<void>[] = [];
                     for (let j = 0; j < count; j++) {
                         const n = random(tests.length);
-                        const p = make(client, n);
+                        const p = make(client, n, remaining);
                         promises.push(p);
                     }
                     await Promise.all(promises);

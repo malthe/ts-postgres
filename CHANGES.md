@@ -2,7 +2,8 @@
 
 In next release ...
 
--
+- Fix issue where a query with multiple columns would yield incomplete
+  rows when protocol data spans multiple receive buffers.
 
 1.2.0 (2021-11-19)
 ------------------
