@@ -1,6 +1,6 @@
 # ts-postgres
 
-[![Build Status](https://app.travis-ci.com/malthe/ts-postgres.svg?branch=master)](http://travis-ci.com/malthe/ts-postgres)
+![Build Status](https://github.com/malthe/ts-postgres/actions/workflows/main.yml/badge.svg)
 <span class="badge-npmversion"><a href="https://npmjs.org/package/ts-postgres" title="View this project on NPM"><img src="https://img.shields.io/npm/v/ts-postgres.svg" alt="NPM version" /></a></span>
 <span class="badge-npmdownloads"><a href="https://npmjs.org/package/ts-postgres" title="View this project on NPM"><img src="https://img.shields.io/npm/dm/ts-postgres.svg" alt="NPM downloads" /></a></span>
 
