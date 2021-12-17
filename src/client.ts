@@ -893,6 +893,18 @@ export class Client {
                             writer.password(`md5${md5(shadow, salt)}`);
                             break;
                         }
+                        case 10: {
+                            const reader = new Reader(buffer, start + 4);
+                            const mechanisms = [];
+                            while (true) {
+                                const mechanism = reader.readCString(this.encoding);
+                                if (mechanism.length === 0) break;
+                                mechanisms.push(mechanism);
+                            }
+                            throw new Error(
+                                `SASL authentication unsupported (mechanisms: ${mechanisms.join(', ')})`
+                            );
+                        }
                         default:
                             throw new Error(
                                 `Unsupported authentication scheme: ${code}`
