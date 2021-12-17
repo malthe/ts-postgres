@@ -191,6 +191,7 @@ export class Client {
     private stream = new Socket();
     private offset = 0;
     private mustDrain = false;
+    private activeRow: Array<Value> | null = null;
 
     private bindQueue = new Queue<RowDataHandlerInfo | null>();
     private closeHandlerQueue = new Queue<CloseHandler | null>();
@@ -785,10 +786,9 @@ export class Client {
                     }
                 } = info;
 
-                let row: Array<Value> | null = null;
+                let row = this.activeRow;
 
                 const hasStreams = Object.keys(streams).length > 0;
-
                 const mappedStreams = hasStreams ? names.map(
                     name => streams[name] || null
                 ) : null;
@@ -803,6 +803,7 @@ export class Client {
 
                     if (size < 11 + read) {
                         this.expect = 7;
+                        this.activeRow = row;
                         return read;
                     }
 
@@ -831,6 +832,7 @@ export class Client {
                         buffer.writeInt8(mtype, offset - 7);
                         buffer.writeInt32BE(bytes - end - 1, offset - 6);
                         buffer.writeInt16BE(row.length, offset - 2);
+                        this.activeRow = row;
                         return offset - 7;
                     }
 
@@ -840,12 +842,15 @@ export class Client {
                     // If the next message header doesn't fit, we
                     // break out and wait for more data to arrive.
                     if (size < frame + 5) {
+                        this.activeRow = row;
                         this.expect = 5;
                         return read;
                     }
 
                     read += bytes;
                 }
+
+                this.activeRow = null;
             }
 
             const bytes = buffer.readInt32BE(frame + 1) + 1;
