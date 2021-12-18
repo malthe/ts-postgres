@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { constants } from 'os';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
@@ -186,6 +187,9 @@ export class Client {
 
     private readonly encoding = 'utf-8';
     private readonly writer: Writer;
+
+    private readonly clientNonce = randomBytes(18).toString('base64');
+    private serverSignature: string | null = null;
 
     private expect = 5;
     private stream = new Socket();
@@ -900,7 +904,8 @@ export class Client {
                             while (true) {
                                 const mechanism = reader.readCString(this.encoding);
                                 if (mechanism.length === 0) break;
-                                if (writer.saslInitialResponse(mechanism)) break outer;
+                                if (writer.saslInitialResponse(mechanism, this.clientNonce))
+                                    break outer;
                                 mechanisms.push(mechanism);
                             }
                             throw new Error(
@@ -910,12 +915,14 @@ export class Client {
                         case 11: {
                             const data = buffer.slice(start + 4, start + length).toString("utf8");
                             const password = this.config.password || defaults.password || '';
-                            writer.saslResponse(data, password);
+                            this.serverSignature = writer.saslResponse(data, password, this.clientNonce);
                             break;
                         }
                         case 12: {
                             const data = buffer.slice(start + 4, start + length).toString("utf8");
-                            writer.saslFinal(data);
+                            if (!this.serverSignature) throw new Error('Server signature missing');
+                            writer.saslFinal(data, this.serverSignature);
+                            break;
                         }
                         default:
                             throw new Error(
