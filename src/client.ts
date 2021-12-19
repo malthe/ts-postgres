@@ -234,6 +234,7 @@ export class Client {
             this.startup();
         });
 
+        /* istanbul ignore next */
         this.stream.on('error', (error: NodeJS.ErrnoException) => {
             if (this.connecting) {
                 this.events.connect.emit(error);
@@ -878,6 +879,7 @@ export class Client {
                     const writer = new Writer(this.encoding);
                     const code = buffer.readInt32BE(start);
                     outer:
+                    /* istanbul ignore next */
                     switch (code) {
                         case 0: {
                             process.nextTick(() => {
