@@ -405,6 +405,8 @@ export class Client {
 
         let p = this.events.connect.once().then((error) => {
             if (!error) return;
+            this.connecting = false;
+            this.stream.destroy();
             throw error;
         });
 
@@ -925,9 +927,9 @@ export class Client {
                             break;
                         }
                         default:
-                            throw new Error(
+                            this.events.connect.emit(new Error(
                                 `Unsupported authentication scheme: ${code}`
-                            );
+                            ));
                     }
                     this.send2(writer);
                     break;
@@ -993,41 +995,43 @@ export class Client {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
 
-                    this.events.error.emit(error);
-
-                    loop:
-                    while (true) {
-                        switch (this.cleanupQueue.shift()) {
-                            case Cleanup.Bind: {
-                                this.bindQueue.shift();
-                                break;
-                            }
-                            case Cleanup.Close: {
-                                this.closeHandlerQueue.shift();
-                                break;
-                            }
-                            case Cleanup.ErrorHandler: {
-                                const handler = this.errorHandlerQueue.shift();
-                                handler(error);
-                                this.error = true;
-                                break loop;
-                            }
-                            case Cleanup.ParameterDescription: {
-                                // This does not seem to ever happen!
-                                this.parameterDescriptionQueue.shift();
-                                break;
-                            }
-                            case Cleanup.PreFlight: {
-                                this.preFlightQueue.shift();
-                                break;
-                            }
-                            case Cleanup.RowDescription: {
-                                this.rowDescriptionQueue.shift();
-                                break;
+                    if (this.connecting) {
+                        this.events.connect.emit(error);
+                    } else {
+                        this.events.error.emit(error);
+                        loop:
+                        while (true) {
+                            switch (this.cleanupQueue.shift()) {
+                                case Cleanup.Bind: {
+                                    this.bindQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.Close: {
+                                    this.closeHandlerQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.ErrorHandler: {
+                                    const handler = this.errorHandlerQueue.shift();
+                                    handler(error);
+                                    this.error = true;
+                                    break loop;
+                                }
+                                case Cleanup.ParameterDescription: {
+                                    // This does not seem to ever happen!
+                                    this.parameterDescriptionQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.PreFlight: {
+                                    this.preFlightQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.RowDescription: {
+                                    this.rowDescriptionQueue.shift();
+                                    break;
+                                }
                             }
                         }
                     }
-
                     break;
                 }
                 case Message.Notice: {

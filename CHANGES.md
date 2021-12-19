@@ -2,6 +2,9 @@
 
 In next release ...
 
+- Fix error handling during connection attempts such that promise
+  returned by `connect()` is rejected in case of an error.
+
 - Add support for SCRAM-SHA-256 authentication.
 
 - Fix issue where a query with multiple columns would yield incomplete
