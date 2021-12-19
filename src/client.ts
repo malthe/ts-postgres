@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { constants } from 'os';
 import { Socket } from 'net';
 import { Event as TypedEvent, events } from 'ts-typed-events';
@@ -187,6 +188,9 @@ export class Client {
     private readonly encoding = 'utf-8';
     private readonly writer: Writer;
 
+    private readonly clientNonce = randomBytes(18).toString('base64');
+    private serverSignature: string | null = null;
+
     private expect = 5;
     private stream = new Socket();
     private offset = 0;
@@ -230,6 +234,7 @@ export class Client {
             this.startup();
         });
 
+        /* istanbul ignore next */
         this.stream.on('error', (error: NodeJS.ErrnoException) => {
             if (this.connecting) {
                 this.events.connect.emit(error);
@@ -401,6 +406,8 @@ export class Client {
 
         let p = this.events.connect.once().then((error) => {
             if (!error) return;
+            this.connecting = false;
+            this.stream.destroy();
             throw error;
         });
 
@@ -871,6 +878,8 @@ export class Client {
                 case Message.Authentication: {
                     const writer = new Writer(this.encoding);
                     const code = buffer.readInt32BE(start);
+                    outer:
+                    /* istanbul ignore next */
                     switch (code) {
                         case 0: {
                             process.nextTick(() => {
@@ -893,10 +902,36 @@ export class Client {
                             writer.password(`md5${md5(shadow, salt)}`);
                             break;
                         }
-                        default:
+                        case 10: {
+                            const reader = new Reader(buffer, start + 4);
+                            const mechanisms = [];
+                            while (true) {
+                                const mechanism = reader.readCString(this.encoding);
+                                if (mechanism.length === 0) break;
+                                if (writer.saslInitialResponse(mechanism, this.clientNonce))
+                                    break outer;
+                                mechanisms.push(mechanism);
+                            }
                             throw new Error(
-                                `Unsupported authentication scheme: ${code}`
+                                `SASL authentication unsupported (mechanisms: ${mechanisms.join(', ')})`
                             );
+                        }
+                        case 11: {
+                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            const password = this.config.password || defaults.password || '';
+                            this.serverSignature = writer.saslResponse(data, password, this.clientNonce);
+                            break;
+                        }
+                        case 12: {
+                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            if (!this.serverSignature) throw new Error('Server signature missing');
+                            writer.saslFinal(data, this.serverSignature);
+                            break;
+                        }
+                        default:
+                            this.events.connect.emit(new Error(
+                                `Unsupported authentication scheme: ${code}`
+                            ));
                     }
                     this.send2(writer);
                     break;
@@ -962,41 +997,43 @@ export class Client {
                     const error = this.parseError(
                         buffer.slice(start, start + length));
 
-                    this.events.error.emit(error);
-
-                    loop:
-                    while (true) {
-                        switch (this.cleanupQueue.shift()) {
-                            case Cleanup.Bind: {
-                                this.bindQueue.shift();
-                                break;
-                            }
-                            case Cleanup.Close: {
-                                this.closeHandlerQueue.shift();
-                                break;
-                            }
-                            case Cleanup.ErrorHandler: {
-                                const handler = this.errorHandlerQueue.shift();
-                                handler(error);
-                                this.error = true;
-                                break loop;
-                            }
-                            case Cleanup.ParameterDescription: {
-                                // This does not seem to ever happen!
-                                this.parameterDescriptionQueue.shift();
-                                break;
-                            }
-                            case Cleanup.PreFlight: {
-                                this.preFlightQueue.shift();
-                                break;
-                            }
-                            case Cleanup.RowDescription: {
-                                this.rowDescriptionQueue.shift();
-                                break;
+                    if (this.connecting) {
+                        this.events.connect.emit(error);
+                    } else {
+                        this.events.error.emit(error);
+                        loop:
+                        while (true) {
+                            switch (this.cleanupQueue.shift()) {
+                                case Cleanup.Bind: {
+                                    this.bindQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.Close: {
+                                    this.closeHandlerQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.ErrorHandler: {
+                                    const handler = this.errorHandlerQueue.shift();
+                                    handler(error);
+                                    this.error = true;
+                                    break loop;
+                                }
+                                case Cleanup.ParameterDescription: {
+                                    // This does not seem to ever happen!
+                                    this.parameterDescriptionQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.PreFlight: {
+                                    this.preFlightQueue.shift();
+                                    break;
+                                }
+                                case Cleanup.RowDescription: {
+                                    this.rowDescriptionQueue.shift();
+                                    break;
+                                }
                             }
                         }
                     }
-
                     break;
                 }
                 case Message.Notice: {
