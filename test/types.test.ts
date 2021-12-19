@@ -278,8 +278,7 @@ describe('Types', () => {
     testType<JsonMap[]>(
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
-        [{ 'foo': 'bar' }],
-        true);
+        [{ 'foo': 'bar' }]);
     // Test nulls
     testType<boolean | null>(
         DataType.Bool,
