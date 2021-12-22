@@ -2,6 +2,9 @@
 
 In next release ...
 
+- The stack trace of a query error now originates in calling code,
+  rather than an async listening thread.
+
 - Fix error handling for queries that return no data.
 
 - Fix error handling during connection attempts such that promise

@@ -697,8 +697,16 @@ export class Client {
             this.cleanupQueue.push(Cleanup.Close);
         }
 
+        const stack = new Error().stack;
         this.errorHandlerQueue.push(
-            (error) => result.dataHandler(error)
+            (error) => {
+                if (stack !== undefined)
+                    error.stack = stack.replace(
+                        /(?<=^Error: )\n/,
+                        error.toString() + "\n"
+                    );
+                result.dataHandler(error)
+            }
         );
 
         this.cleanupQueue.push(Cleanup.ErrorHandler);
