@@ -956,18 +956,18 @@ export class Client {
                     this.cleanupQueue.expect(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     if (preflight.dataHandler) {
+                        const info = {
+                            handler: preflight.dataHandler,
+                            description: null,
+                        };
                         if (preflight.bind) {
-                            const info = {
-                                handler: preflight.dataHandler,
-                                description: null,
-                            };
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
                                 this.parameterDescriptionQueue.shift()
                             );
                         } else {
-                            preflight.dataHandler.callback(null);
+                            this.activeDataHandlerInfo = info;
                         }
                     } else {
                         throw new Error('Data handler not set');
@@ -976,14 +976,13 @@ export class Client {
                 }
                 case Message.EmptyQueryResponse:
                 case Message.CommandComplete: {
-                    // This is unset if the query had no row data.
                     const info = this.activeDataHandlerInfo;
                     if (info) {
                         const status = buffer.slice(
                             start, start + length - 1
                         ).toString();
 
-                        info.handler.callback(status);
+                        info.handler.callback(status || null);
                         this.activeDataHandlerInfo = null;
                     }
                     break;

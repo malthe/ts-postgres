@@ -2,6 +2,8 @@
 
 In next release ...
 
+- Fix error handling for queries that return no data.
+
 - Fix error handling during connection attempts such that promise
   returned by `connect()` is rejected in case of an error.
 
