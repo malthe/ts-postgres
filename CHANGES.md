@@ -1,6 +1,7 @@
 # Changes
 
-In next release ...
+1.2.1 (2021-12-23)
+------------------
 
 - Fix range error that could occur when parsing an incomplete data row
   after one or more previous messages had already been processed.
