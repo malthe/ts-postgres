@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 import { constants } from 'os';
 import { Socket } from 'net';
-import { Event as TypedEvent, events } from 'ts-typed-events';
+import { Event as TypedEvent } from 'ts-typed-events';
 import { Writable } from 'stream';
 
 import * as defaults from './defaults';
@@ -171,14 +171,14 @@ interface PreFlightQueue {
 }
 
 export class Client {
-    private readonly events = events({
+    private readonly events = {
         connect: new TypedEvent<Connect>(),
         end: new TypedEvent<End>(),
         parameter: new TypedEvent<Parameter>(),
         error: new TypedEvent<DatabaseError>(),
         notice: new TypedEvent<ClientNotice>(),
         notification: new TypedEvent<Notification>()
-    });
+    };
 
     private ending = false;
     private connected = false;
