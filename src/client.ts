@@ -193,7 +193,6 @@ export class Client {
 
     private expect = 5;
     private stream = new Socket();
-    private offset = 0;
     private mustDrain = false;
     private activeRow: Array<Value> | null = null;
 
@@ -353,6 +352,7 @@ export class Client {
 
     private listen() {
         let buffer: Buffer | null = null;
+        let offset = 0;
         let remaining = 0;
 
         this.stream.on('data', (newBuffer: Buffer) => {
@@ -360,24 +360,24 @@ export class Client {
             const size = length + remaining;
 
             if (buffer && remaining) {
-                const free = buffer.length - this.offset - remaining;
-                let tail = this.offset + remaining;
+                const free = buffer.length - offset - remaining;
+                let tail = offset + remaining;
                 if (free < length) {
                     const tempBuf = Buffer.allocUnsafe(size);
-                    buffer.copy(tempBuf, 0, this.offset, tail);
-                    this.offset = 0;
+                    buffer.copy(tempBuf, 0, offset, tail);
+                    offset = 0;
                     buffer = tempBuf;
                     tail = remaining;
                 }
                 newBuffer.copy(buffer, tail, 0, length);
             } else {
                 buffer = newBuffer;
-                this.offset = 0;
+                offset = 0;
             }
 
             try {
-                const read = this.receive(buffer, this.offset, size);
-                this.offset += read;
+                const read = this.receive(buffer, offset, size);
+                offset += read;
                 remaining = size - read;
             } catch (error) {
                 if (this.connecting) {
