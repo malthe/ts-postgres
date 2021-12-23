@@ -2,6 +2,9 @@
 
 In next release ...
 
+- Fix range error that could occur when parsing an incomplete data row
+  after one or more previous messages had already been processed.
+
 - The stack trace of a query error now originates in calling code,
   rather than an async listening thread.
 

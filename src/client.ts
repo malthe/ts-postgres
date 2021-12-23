@@ -850,8 +850,9 @@ export class Client {
                         buffer.writeInt8(mtype, offset - 7);
                         buffer.writeInt32BE(bytes - end - 1, offset - 6);
                         buffer.writeInt16BE(row.length, offset - 2);
+                        this.expect = 12;
                         this.activeRow = row;
-                        return offset - 7;
+                        return read + end;
                     }
 
                     // Keep track of how much data we've consumed.
