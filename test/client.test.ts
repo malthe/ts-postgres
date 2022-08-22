@@ -458,7 +458,7 @@ describe('Query', () => {
     });
 
     testWithClient(
-        'Prepare and execute',
+        'Prepare and execute (SELECT)',
         async (client) => {
             const stmt = await client.prepare('select $1::int as i');
             await expect(stmt.execute([1])).resolves.toEqual(
@@ -466,6 +466,19 @@ describe('Query', () => {
             );
             const result = await stmt.execute([2]);
             expect(result.rows).toEqual([[2]]);
+            await stmt.close();
+        });
+
+    testWithClient(
+        'Prepare and execute (INSERT)',
+        async (client) => {
+            await client.query('create temporary table foo (bar int)');
+            const stmt = await client.prepare('insert into foo values ($1)');
+            await expect(stmt.execute([1])).resolves.toEqual(
+                { names: [], rows: [], status: 'INSERT 0 1' }
+            );
+            const result = await stmt.execute([2]);
+            expect(result.rows).toEqual([]);
             await stmt.close();
         });
 

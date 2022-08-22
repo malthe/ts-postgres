@@ -979,7 +979,10 @@ export class Client {
                             this.activeDataHandlerInfo = info;
                         }
                     } else {
-                        throw new Error('Data handler not set');
+                        preflight.descriptionHandler({
+                            columns: new Uint32Array(0),
+                            names: [],
+                        });
                     }
                     break;
                 }
