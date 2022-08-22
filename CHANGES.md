@@ -1,6 +1,6 @@
 # Changes
 
-In next release ...
+- The TypeScript library requirement was upgraded to "es2019".
 
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
   dependency was updated to version 3.0.0.
