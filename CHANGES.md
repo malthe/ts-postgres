@@ -1,4 +1,9 @@
+
 # Changes
+
+- Fixed an issue where an unexpected error would be thrown for a
+  prepared statement that returns no data (e.g. a simple insert);
+  issue #56.
 
 - The TypeScript library requirement was upgraded to "es2019".
 
