@@ -732,6 +732,7 @@ export class Client {
         let level: DatabaseError['level'] | null = null;
         let code: DatabaseError['code'] | null = null;
         let message: DatabaseError['message'] | null = null;
+        let details: string | null = null;
 
         const length = buffer.length;
         let offset = 0;
@@ -756,6 +757,10 @@ export class Client {
                     code = value as DatabaseError['code'];
                     break;
                 }
+                case 0x44: {
+                    details = value;
+                    break;
+                }
                 case 0x4d: {
                     message = value;
                     break;
@@ -768,7 +773,7 @@ export class Client {
         }
 
         if (level && code && message) {
-            return new DatabaseError(level, code, message);
+            return new DatabaseError(level, code, details ? `${message}: ${details}` : message);
         }
 
         throw new Error('Unable to parse error message.');
