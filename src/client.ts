@@ -11,7 +11,7 @@ import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
 
-import { SecureContextOptions, connect as tls, createSecureContext } from 'tls';
+import { ConnectionOptions, connect as tls, createSecureContext } from 'tls';
 
 import {
     DataHandler,
@@ -83,7 +83,7 @@ export interface SSL {
         SSLMode.Require |
         SSLMode.VerifyCA
     ),
-    options?: SecureContextOptions,
+    options?: ConnectionOptions,
 }
 
 export interface Configuration {
@@ -321,6 +321,9 @@ export class Client {
                     undefined;
 
                 const options = {
+                    checkServerIdentity: ssl.options ?
+                        ssl.options.checkServerIdentity :
+                        undefined,
                     socket: this.stream,
                     secureContext: context
                 };
