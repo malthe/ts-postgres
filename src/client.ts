@@ -584,7 +584,6 @@ export class Client {
                 });
                 this.writer.sync();
                 this.cleanupQueue.push(Cleanup.PreFlight);
-                this.cleanupQueue.push(Cleanup.ParameterDescription);
                 this.cleanupQueue.push(Cleanup.ErrorHandler);
                 this.send();
             });
@@ -1013,7 +1012,6 @@ export class Client {
                     break;
                 }
                 case Message.NoData: {
-                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     if (preflight.dataHandler) {
                         const info = {
@@ -1021,6 +1019,7 @@ export class Client {
                             description: null,
                         };
                         if (preflight.bind) {
+                            this.cleanupQueue.expect(Cleanup.ParameterDescription);
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
@@ -1035,6 +1034,7 @@ export class Client {
                             names: [],
                         });
                     }
+                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     break;
                 }
                 case Message.EmptyQueryResponse:
@@ -1100,7 +1100,7 @@ export class Client {
                         const dataType = buffer.readInt32BE(offset);
                         types[i] = dataType;
                     }
-
+                    this.cleanupQueue.unshift(Cleanup.ParameterDescription);
                     this.parameterDescriptionQueue.push(types);
                     break;
                 }
@@ -1130,7 +1130,6 @@ export class Client {
                     break;
                 }
                 case Message.RowDescription: {
-                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     const preflight = this.preFlightQueue.shift();
                     const description = readRowDescription(
                         buffer, start, this.config.types
@@ -1145,6 +1144,7 @@ export class Client {
                         };
 
                         if (preflight.bind) {
+                            this.cleanupQueue.expect(Cleanup.ParameterDescription);
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
@@ -1154,6 +1154,8 @@ export class Client {
                             this.activeDataHandlerInfo = info;
                         }
                     }
+
+                    this.cleanupQueue.expect(Cleanup.PreFlight);
                     break;
                 }
                 default: {
