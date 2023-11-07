@@ -1,7 +1,7 @@
 import { createServer, AddressInfo, Socket } from 'net';
 import { testWithClient } from './helper';
 import { Query } from '../src/query';
-import { Client, Result, ResultIterator } from '../src/client';
+import { Client, PreparedStatement, Result, ResultIterator } from '../src/client';
 import { DataFormat, DataType, Value } from '../src/types';
 
 // Adjust for benchmarking mode.
@@ -321,7 +321,7 @@ describe('Query', () => {
         }
     );
 
-    interface Test {
+    interface QueryTest {
         query: ResultIterator;
         expectation: {
             names: string[];
@@ -330,7 +330,12 @@ describe('Query', () => {
         } | RegExp;
     }
 
-    const tests: Array<(client: Client, seed: number) => Test> = [
+    interface PrepareTest {
+        query: Promise<PreparedStatement>;
+        expectation: RegExp;
+    }
+
+    const tests: Array<(client: Client, seed: number) => QueryTest | PrepareTest> = [
         (client: Client) => {
             return {
                 query: client.query('select foo'),
@@ -386,6 +391,12 @@ describe('Query', () => {
             return {
                 query: client.query(query),
                 expectation: { names: names, rows: [row], status: 'SELECT 1' }
+            }
+        },
+        (client: Client) => {
+            return {
+                query: client.prepare('select $1::int as i from badtable'),
+                expectation: /badtable/
             }
         }
     ];
@@ -480,6 +491,13 @@ describe('Query', () => {
             const result = await stmt.execute([2]);
             expect(result.rows).toEqual([]);
             await stmt.close();
+        });
+
+    testWithClient(
+        'Prepare and execute error',
+        async (client) => {
+            const stmt = client.prepare('select $1::int as i from badtable');
+            await expect(stmt).rejects.toThrow(/badtable/);
         });
 
     testSelect(TestQuery.PgType, 1, false);

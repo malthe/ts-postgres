@@ -2,6 +2,8 @@
 
 - Added details of database error to thrown error message.
 
+- A statement error during the processing of a prepared statement is now handled correctly.
+
 - An internal error now cancels all queries.
 
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
