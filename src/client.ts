@@ -387,9 +387,13 @@ export class Client {
                 if (this.connecting) {
                     this.events.connect.emit(error as Error);
                 } else {
-                    while (this.handleError(error as Error)) {
-                        logger.info("Cancelled query due to an internal error");
-                    };
+                    try {
+                        while (this.handleError(error as Error)) {
+                            logger.info("Cancelled query due to an internal error");
+                        }
+                    } catch (error) {
+                        logger.error("Internal error occurred while cleaning up query stack");
+                    }
                 }
                 this.stream.destroy();
             }
@@ -725,7 +729,7 @@ export class Client {
 
     private handleError(error: Error): boolean {
         while (true) {
-            switch (this.cleanupQueue.shift()) {
+            switch (this.cleanupQueue.shiftMaybe()) {
                 case undefined: return false;
                 case Cleanup.Bind: {
                     this.bindQueue.shift();
@@ -1062,7 +1066,9 @@ export class Client {
 
                     this.events.error.emit(error);
                     loop:
-                    this.handleError(error);
+                    if (!this.handleError(error)) {
+                        throw new Error("Internal error occurred while processing database error");
+                    }
                     break;
                 }
                 case Message.Notice: {
