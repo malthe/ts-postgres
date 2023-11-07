@@ -383,10 +383,14 @@ export class Client {
                 offset += read;
                 remaining = size - read;
             } catch (error) {
+                logger.warn(error);
                 if (this.connecting) {
                     this.events.connect.emit(error as Error);
+                } else {
+                    while (this.handleError(error as Error)) {
+                        logger.info("Cancelled query due to an internal error");
+                    };
                 }
-                logger.warn(error);
                 this.stream.destroy();
             }
         });
@@ -719,6 +723,41 @@ export class Client {
         return result.iterator;
     }
 
+    private handleError(error: Error): boolean {
+        while (true) {
+            switch (this.cleanupQueue.shift()) {
+                case undefined: return false;
+                case Cleanup.Bind: {
+                    this.bindQueue.shift();
+                    break;
+                }
+                case Cleanup.Close: {
+                    this.closeHandlerQueue.shift();
+                    break;
+                }
+                case Cleanup.ErrorHandler: {
+                    const handler = this.errorHandlerQueue.shift();
+                    handler(error);
+                    this.error = true;
+                    return true;
+                }
+                case Cleanup.ParameterDescription: {
+                    // This does not seem to ever happen!
+                    this.parameterDescriptionQueue.shift();
+                    break;
+                }
+                case Cleanup.PreFlight: {
+                    this.preFlightQueue.shift();
+                    break;
+                }
+                case Cleanup.RowDescription: {
+                    this.rowDescriptionQueue.shift();
+                    break;
+                }
+            }
+        }
+    }
+
     private send() {
         // TODO refactor
         if (!this.connected && !this.ending) return;
@@ -1023,37 +1062,7 @@ export class Client {
 
                     this.events.error.emit(error);
                     loop:
-                    while (true) {
-                        switch (this.cleanupQueue.shift()) {
-                            case Cleanup.Bind: {
-                                this.bindQueue.shift();
-                                break;
-                            }
-                            case Cleanup.Close: {
-                                this.closeHandlerQueue.shift();
-                                break;
-                            }
-                            case Cleanup.ErrorHandler: {
-                                const handler = this.errorHandlerQueue.shift();
-                                handler(error);
-                                this.error = true;
-                                break loop;
-                            }
-                            case Cleanup.ParameterDescription: {
-                                // This does not seem to ever happen!
-                                this.parameterDescriptionQueue.shift();
-                                break;
-                            }
-                            case Cleanup.PreFlight: {
-                                this.preFlightQueue.shift();
-                                break;
-                            }
-                            case Cleanup.RowDescription: {
-                                this.rowDescriptionQueue.shift();
-                                break;
-                            }
-                        }
-                    }
+                    this.handleError(error);
                     break;
                 }
                 case Message.Notice: {

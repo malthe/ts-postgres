@@ -2,6 +2,8 @@
 
 In next release ...
 
+- An internal error now cancels all queries.
+
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
   dependency was updated to version 3.0.0.
 
