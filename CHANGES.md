@@ -1,6 +1,6 @@
 # Changes
 
-In next release ...
+- Added details of database error to thrown error message.
 
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
   dependency was updated to version 3.0.0.
