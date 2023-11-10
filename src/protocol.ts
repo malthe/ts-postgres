@@ -31,8 +31,11 @@ export const enum Command {
     Parse = 0x50,
     Password = 0x70,
     Query = 0x51,
-    Sync = 0x53,
-    SASLResponse = 0x70
+    Sync = 0x53
+}
+
+export const enum SASL {
+   SASLResponse = 0x70
 }
 
 export enum ErrorLevel {
@@ -1002,7 +1005,7 @@ export class Writer {
         if (mechanism !== 'SCRAM-SHA-256') return false;
         const response = Buffer.from('n,,n=*,r=' + clientNonce);
         this.enqueue(
-            Command.SASLResponse, [
+            SASL.SASLResponse, [
             makeBufferSegment(mechanism, this.encoding, true),
             [SegmentType.Int32BE, response.length],
             [SegmentType.Buffer, response]
@@ -1052,7 +1055,7 @@ export class Writer {
         const serverSignature = serverSignatureBytes.toString('base64');
 
         this.enqueue(
-            Command.SASLResponse, [
+            SASL.SASLResponse, [
             makeBufferSegment(response, this.encoding, false)
         ]);
 
