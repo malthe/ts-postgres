@@ -46,8 +46,6 @@ export enum DataType {
     ArrayVarchar = 1015,
     ArrayFloat4 = 1021,
     ArrayFloat8 = 1022,
-    _Text = 1009,
-    _Oid = 1028,
     Aclitem = 1033,
     Bpchar = 1042,
     Varchar = 1043,
