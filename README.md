@@ -91,7 +91,7 @@ default value when applicable.
 | keepAlive               | `boolean`                        | true                                       |
 | preparedStatementPrefix | `string`                         | "tsp_"                                     |
 | connectionTimeout       | `number`                         | 10                                         |
-| ssl                     | `(SSLMode.Disable | SSL)`        | `SSLMode.VerifyCA`                         |
+| ssl                     | `(SSLMode.Disable \| SSL)`        | `SSLMode.VerifyCA`                         |
 
 When applicable, "PG" environment variables used by _libpq_ apply, see
 the PostgreSQL documentation on [environment
