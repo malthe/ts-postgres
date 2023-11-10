@@ -1,13 +1,26 @@
-# Changes
+In next release ...
 
-- Added details of database error to thrown error message.
 
-- A statement error during the processing of a prepared statement is now handled correctly.
+- A statement error during the processing of a prepared statement is
+  now handled correctly (#73).
 
 - An internal error now cancels all queries.
 
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
   dependency was updated to version 3.0.0.
+
+
+1.3.1 (2023-06-19)
+------------------
+
+- Added details of database error to thrown error message (#64).
+
+
+1.3.0 (2022-08-22)
+------------------
+
+- Fix prepare statement with no return data (#56).
+
 
 1.2.1 (2021-12-23)
 ------------------
