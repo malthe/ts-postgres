@@ -144,7 +144,7 @@ export function isPoint(item: any): item is Point {
 export type Builtin =
     Buffer |
     Date |
-    BigInt |
+    bigint |
     boolean |
     number |
     null |

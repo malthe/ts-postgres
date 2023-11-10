@@ -99,7 +99,7 @@ describe('Types', () => {
     testType<string>(DataType.Text, '\'a\'::text', 'a');
     testType<number>(DataType.Int2, '1::int2', 1);
     testType<number>(DataType.Int4, '1::int4', 1);
-    testType<BigInt>(DataType.Int8, '1::int8', BigInt(1));
+    testType<bigint>(DataType.Int8, '1::int8', BigInt(1));
     testType<number>(DataType.Float4, '1::float4', 1.0);
     testType<number>(DataType.Float8, '1::float8', 1.0);
     testType<number>(DataType.Oid, '1::oid', 1);

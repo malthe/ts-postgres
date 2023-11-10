@@ -71,7 +71,7 @@ export const enum TransactionStatus {
     InError = 0x45
 }
 
-export type SegmentValue = Buffer | BigInt | number | null | string;
+export type SegmentValue = Buffer | bigint | number | null | string;
 export type Segment = [SegmentType, SegmentValue];
 
 export const enum SegmentType {
