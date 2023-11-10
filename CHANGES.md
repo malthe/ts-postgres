@@ -1,6 +1,5 @@
 In next release ...
 
-
 - A statement error during the processing of a prepared statement is
   now handled correctly (#73).
 
