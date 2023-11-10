@@ -23,6 +23,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    strategy:
+      matrix:
+        node-version: ['14.x', '16.x', '18.x']
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
