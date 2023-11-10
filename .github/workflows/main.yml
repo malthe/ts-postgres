@@ -25,9 +25,9 @@ jobs:
           --health-retries 5
     strategy:
       matrix:
-        node-version: ['14.x', '16.x', '18.x']
+        node-version: ['16.x', '18.x']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: npm ci
       - name: Run tests
