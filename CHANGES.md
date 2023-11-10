@@ -1,4 +1,5 @@
-In next release ...
+1.4.0 (2023-11-10)
+------------------
 
 - A statement error during the processing of a prepared statement is
   now handled correctly (#73).
