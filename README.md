@@ -90,6 +90,14 @@ default value when applicable.
 | extraFloatDigits        | `number`                         | 0                                          |
 | keepAlive               | `boolean`                        | true                                       |
 | preparedStatementPrefix | `string`                         | "tsp_"                                     |
+| ssl                     | `(SSLMode.Disable | SSL)`        | `SSLMode.VerifyCA`                         |
+
+When applicable, "PG" environment variables used by _libpq_ apply, see
+the PostgreSQL documentation on [environment
+variables](https://www.postgresql.org/docs/current/libpq-envars.html). In
+particular, to disable the use of SSL, you can define the environment
+variable "PGSSLMODE" as "disable".
+
 
 ### Querying
 
