@@ -90,6 +90,7 @@ default value when applicable.
 | extraFloatDigits        | `number`                         | 0                                          |
 | keepAlive               | `boolean`                        | true                                       |
 | preparedStatementPrefix | `string`                         | "tsp_"                                     |
+| connectionTimeout       | `number`                         | 10                                         |
 | ssl                     | `(SSLMode.Disable | SSL)`        | `SSLMode.VerifyCA`                         |
 
 When applicable, "PG" environment variables used by _libpq_ apply, see
