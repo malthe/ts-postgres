@@ -25,6 +25,11 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
     // Values are row values.
     expect(values).toEqual(expectation.map((i) => [i]));
 
+    // Rows are themselves iterable.
+    for (const [index, row] of rows.entries()) {
+	expect([...row]).toEqual([index]);
+    }
+
     // We could iterate multiple times over the same result.
     let count = 0;
     const result = query();

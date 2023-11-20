@@ -1,7 +1,8 @@
 In next release ...
 
-- Use `bigint` everywhere as a type instead of `BigInt`.
+- Result rows are now themselves iterable.
 
+- Use `bigint` everywhere as a type instead of `BigInt`.
 
 1.4.0 (2023-11-10)
 ------------------

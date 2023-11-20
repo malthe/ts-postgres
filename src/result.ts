@@ -14,6 +14,10 @@ export class ResultRow<T> {
         this.length = names.length;
     }
 
+    [Symbol.iterator](): Iterator<T> {
+	return this.data[Symbol.iterator]();
+    }
+
     get(name: string): T | undefined {
         for (let i = 0; i < this.length; i++) {
             if (this.names[i] === name) {
