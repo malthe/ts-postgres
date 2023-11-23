@@ -1,5 +1,7 @@
 In next release ...
 
+- Add additional client connection configuration options.
+
 - Result rows are now themselves iterable.
 
 - Use `bigint` everywhere as a type instead of `BigInt`.

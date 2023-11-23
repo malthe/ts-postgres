@@ -97,7 +97,16 @@ export interface ClientConnectionDefaults {
     user: string,
     database: string,
     clientEncoding: BufferEncoding,
+    clientMinMessages: ('DEBUG5' | 'DEBUG4' | 'DEBUG3' | 'DEBUG2' | 'DEBUG1' | 'LOG' | 'NOTICE' | 'WARNING' | 'ERROR'),
+    defaultTableAccessMethod: string,
+    defaultTablespace: string,
+    defaultTransactionIsolation: string,
     extraFloatDigits: number,
+    idleInTransactionSessionTimeout: number,
+    idleSessionTimeout: number,
+    lockTimeout: number,
+    searchPath: string,
+    statementTimeout: number,
 }
 
 export class DatabaseError extends Error {
