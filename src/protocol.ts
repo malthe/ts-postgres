@@ -600,20 +600,41 @@ function writeMessageInto(
 }
 
 export class Reader {
-    constructor(private readonly buffer: Buffer, private offset: number) { }
+    constructor(private readonly buffer: Buffer, private start: number, private end?: number) { }
 
     readInt32BE() {
-        const n = this.buffer.readInt32BE(this.offset);
-        this.offset += 4;
+        const n = this.buffer.readInt32BE(this.start);
+        this.start += 4;
         return n;
     }
 
     readCString(encoding: BufferEncoding) {
-        const offset = this.offset;
-        const i = this.buffer.indexOf(0, offset);
-        const s = this.buffer.toString(encoding, offset, i);
-        this.offset = i + 1;
+        const start = this.start;
+        const i = this.buffer.indexOf(0, start);
+        const s = this.buffer.toString(encoding, start, i);
+        this.start = i + 1;
         return s;
+    }
+
+    readRowData(
+        row: Array<Value>,
+        columnSpecification: Uint32Array,
+        encoding: BufferEncoding,
+        types: ReadonlyMap<DataType, ValueTypeReader> | null,
+        streams: ReadonlyArray<Writable | null> | null,
+    ) {
+        return readRowData(
+            this.buffer.slice(this.start, this.end),
+            row,
+            columnSpecification,
+            encoding,
+            types,
+            streams
+        );
+    }
+
+    readRowDescription(types?: ReadonlyMap<DataType, ValueTypeReader>) {
+        return readRowDescription(this.buffer, this.start, types);
     }
 }
 

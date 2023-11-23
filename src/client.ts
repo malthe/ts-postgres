@@ -22,8 +22,6 @@ import {
 } from './result';
 
 import {
-    readRowData,
-    readRowDescription,
     ClientConnectionDefaults,
     DatabaseError,
     ErrorLevel,
@@ -890,9 +888,8 @@ export class Client {
                     }
 
                     const startRowData = start + 2;
-                    const slice = buffer.slice(startRowData, bytes + read);
-                    const end = readRowData(
-                        slice,
+                    const reader = new Reader(buffer, startRowData, bytes + read);
+                    const end = reader.readRowData(
                         row,
                         columns,
                         this.encoding,
@@ -1140,9 +1137,8 @@ export class Client {
                 }
                 case Message.RowDescription: {
                     const preflight = this.preFlightQueue.shift();
-                    const description = readRowDescription(
-                        buffer, start, this.config.types
-                    );
+                    const reader = new Reader(buffer, start);
+                    const description = reader.readRowDescription(this.config.types);
 
                     preflight.descriptionHandler(description);
 
