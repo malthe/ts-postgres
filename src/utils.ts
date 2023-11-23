@@ -12,7 +12,3 @@ export function md5(...data: HashData[]): string {
             createHash('md5'))
         .digest('hex');
 }
-
-export function camelToSnake(s: string): string {
-    return s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
-}

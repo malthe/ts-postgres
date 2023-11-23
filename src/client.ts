@@ -260,12 +260,21 @@ export class Client {
                     mode: defaults.sslMode,
                 } as SSL;
 
-        const settings = {
+        const settings: Partial<ClientConnectionDefaults> = {
             user: this.config.user || defaults.user,
             database: this.config.database || defaults.database,
-            extraFloatDigits: this.config.extraFloatDigits,
             clientEncoding: this.encoding,
-        }
+            clientMinMessages: this.config.clientMinMessages,
+            defaultTableAccessMethod: this.config.defaultTableAccessMethod,
+            defaultTablespace: this.config.defaultTablespace,
+            defaultTransactionIsolation: this.config.defaultTransactionIsolation,
+            extraFloatDigits: this.config.extraFloatDigits,
+            idleInTransactionSessionTimeout: this.config.idleInTransactionSessionTimeout,
+            idleSessionTimeout: this.config.idleSessionTimeout,
+            lockTimeout: this.config.lockTimeout,
+            searchPath: this.config.searchPath,
+            statementTimeout: this.config.statementTimeout,
+        };
 
         if (ssl !== SSLMode.Disable) {
             writer.startupSSL();

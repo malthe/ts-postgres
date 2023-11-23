@@ -3,7 +3,7 @@ import { Writable } from 'stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { hi, hmacSha256, sha256, xorBuffers } from './sasl';
-import { camelToSnake, sum } from './utils';
+import { sum } from './utils';
 import {
     arrayDataTypeMapping,
     isPoint,
@@ -1087,15 +1087,30 @@ export class Writer {
         return socket.write(buffer);
     }
 
-    startup(config: Partial<ClientConnectionDefaults>) {
+    startup(defaults: Partial<ClientConnectionDefaults>) {
         const data = [];
-	for (const [k, v] of Object.entries(config)) {
-	    if (v !== undefined && v !== '') {
-		data.push(camelToSnake(k));
-		data.push(String(v));
-	    }
-	}
-	data.push('');
+        const options = {
+            "user": defaults.user,
+            "database": defaults.database,
+            "client_min_messages": defaults.clientMinMessages,
+            "default_table_access_method": defaults.defaultTableAccessMethod,
+            "default_tablespace": defaults.defaultTablespace,
+            "default_transaction_isolation": defaults.defaultTransactionIsolation,
+            "extra_float_digits": defaults.extraFloatDigits,
+            "idle_in_transaction_session_timeout": defaults.idleInTransactionSessionTimeout,
+            "idle_session_timeout": defaults.idleSessionTimeout,
+            "lock_timeout": defaults.lockTimeout,
+            "search_path": defaults.searchPath,
+            "statement_timeout": defaults.statementTimeout,
+        };
+
+        for (const [k, v] of Object.entries(options)) {
+            if (v !== undefined && v !== '') {
+                data.push(k);
+                data.push(String(v));
+            }
+        }
+        data.push('');
 
         const segments: Segment[] = [
             [SegmentType.Int16BE, 3],
