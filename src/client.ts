@@ -24,6 +24,7 @@ import {
 import {
     readRowData,
     readRowDescription,
+    ClientConnectionDefaults,
     DatabaseError,
     ErrorLevel,
     Message,
@@ -86,14 +87,11 @@ export interface SSL {
     options?: ConnectionOptions,
 }
 
-export interface Configuration {
+export interface Configuration extends Partial<ClientConnectionDefaults> {
     host?: string,
     port?: number,
-    user?: string,
-    database?: string,
     password?: string,
     types?: Map<DataType, ValueTypeReader>,
-    extraFloatDigits?: number,
     keepAlive?: boolean,
     preparedStatementPrefix?: string,
     connectionTimeout?: number,
@@ -185,7 +183,7 @@ export class Client {
     private connecting = false;
     private error = false;
 
-    private readonly encoding = 'utf-8';
+    private readonly encoding: BufferEncoding;
     private readonly writer: Writer;
 
     private readonly clientNonce = randomBytes(18).toString('base64');
@@ -213,6 +211,7 @@ export class Client {
     public transactionStatus: TransactionStatus | null = null;
 
     constructor(public readonly config: Configuration = {}) {
+        this.encoding = config.clientEncoding || defaults.clientEncoding as BufferEncoding || 'utf-8';
         this.writer = new Writer(this.encoding);
 
         this.stream.on('close', () => {
@@ -262,9 +261,10 @@ export class Client {
                 } as SSL;
 
         const settings = {
-            user: this.config.user || defaults.user || '',
-            database: this.config.database || defaults.database || '',
-            extraFloatDigits: this.config.extraFloatDigits || 0
+            user: this.config.user || defaults.user,
+            database: this.config.database || defaults.database,
+            extraFloatDigits: this.config.extraFloatDigits,
+            clientEncoding: this.encoding,
         }
 
         if (ssl !== SSLMode.Disable) {

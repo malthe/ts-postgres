@@ -3,7 +3,7 @@ import { Writable } from 'stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { hi, hmacSha256, sha256, xorBuffers } from './sasl';
-import { sum } from './utils';
+import { camelToSnake, sum } from './utils';
 import {
     arrayDataTypeMapping,
     isPoint,
@@ -93,10 +93,11 @@ export interface RowDescription {
     names: string[]
 }
 
-export interface StartupConfiguration {
+export interface ClientConnectionDefaults {
     user: string,
     database: string,
-    extraFloatDigits: number
+    clientEncoding: BufferEncoding,
+    extraFloatDigits: number,
 }
 
 export class DatabaseError extends Error {
@@ -1077,18 +1078,15 @@ export class Writer {
         return socket.write(buffer);
     }
 
-    startup(config: StartupConfiguration) {
-        const data = [
-            'user',
-            config.user,
-            'database',
-            config.database,
-            'extra_float_digits',
-            String(config.extraFloatDigits),
-            'client_encoding',
-            this.encoding,
-            ''
-        ];
+    startup(config: Partial<ClientConnectionDefaults>) {
+        const data = [];
+	for (const [k, v] of Object.entries(config)) {
+	    if (v !== undefined && v !== '') {
+		data.push(camelToSnake(k));
+		data.push(String(v));
+	    }
+	}
+	data.push('');
 
         const segments: Segment[] = [
             [SegmentType.Int16BE, 3],

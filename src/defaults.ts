@@ -17,3 +17,4 @@ export const sslMode = process.env.PGSSLMODE;
 export const connectionTimeout = secToMsec(
     parseInt(process.env.PGCONNECT_TIMEOUT as string, 10)
 );
+export const clientEncoding = process.env.PGCLIENTENCODING;
