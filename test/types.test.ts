@@ -33,11 +33,11 @@ function testType<T extends Value>(
     const testParam = (format: DataFormat) => {
         testWithClient('Param', async (client) => {
             expect.assertions(3);
-            const query = expected !== null
+            const query = expected !== undefined
                 ? getComparisonQueryFor(dataType, expression)
                 : 'select $1 is null';
             await client.query(
-                (expected !== null) ? query + ' where $1 is not null' : query,
+                (expected !== undefined) ? query + ' where $1 is not null' : query,
                 [expected], [dataType], format)
                 .then(
                     (result) => {
@@ -165,14 +165,14 @@ describe('Types', () => {
         DataType.Date,
         '\'0002-12-31 BC\'::date',
         utc_date(-1, 11, 31));
-    testType<(Date | null)[]>(
+    testType<(Date | undefined)[]>(
         DataType.ArrayTimestamptz,
         'ARRAY[null,\'1999-12-31 23:59:59Z\']::timestamptz[]',
-        [null, utc_date(1999, 11, 31, 23, 59, 59)]);
-    testType<(Date | null)[][]>(
+        [undefined, utc_date(1999, 11, 31, 23, 59, 59)]);
+    testType<(Date | undefined)[][]>(
         DataType.ArrayTimestamptz,
         'ARRAY[ARRAY[null],ARRAY[\'1999-12-31 23:59:59Z\']]::timestamptz[][]',
-        [[null], [utc_date(1999, 11, 31, 23, 59, 59)]]);
+        [[undefined], [utc_date(1999, 11, 31, 23, 59, 59)]]);
     testType<Point>(
         DataType.Point,
         '\'(1,2)\'::Point',
@@ -232,20 +232,20 @@ describe('Types', () => {
         DataType.ArrayText, '\'{a}\'::text[]', ['a']);
     testType<string[]>(
         DataType.ArrayText, '\'{"a,"}\'::text[]', ['a,']);
-    testType<(string | null)[]>(
+    testType<(string | undefined)[]>(
         DataType.ArrayText,
         'ARRAY[null]::text[]',
-        [null]
+        [undefined]
     );
-    testType<(string | null)[]>(
+    testType<(string | undefined)[]>(
         DataType.ArrayText,
         `ARRAY['a', null, 'b', null]::text[]`,
-        ['a', null, 'b', null]
+        ['a', undefined, 'b', undefined]
     );
-    testType<(string | null)[][]>(
+    testType<(string | undefined)[][]>(
         DataType.ArrayText,
         `ARRAY[ARRAY['a',null,'b'],ARRAY[null, 'c', null]]::text[][]`,
-        [['a', null, 'b'], [null, 'c', null]]
+        [['a', undefined, 'b'], [undefined, 'c', undefined]]
     );
     testType<Date[]>(
         DataType.ArrayDate,
@@ -280,41 +280,41 @@ describe('Types', () => {
         'ARRAY[\'{"foo": "bar"}\'::json]',
         [{ 'foo': 'bar' }]);
     // Test nulls
-    testType<boolean | null>(
+    testType<boolean | undefined>(
         DataType.Bool,
         'null::bool',
-        null
+        undefined
     );
-    testType<string | null>(
+    testType<string | undefined>(
         DataType.Uuid,
         'null::uuid',
-        null
+        undefined
     );
-    testType<string | null>(
+    testType<string | undefined>(
         DataType.Text,
         'null::text',
-        null
+        undefined
     );
-    testType<string[] | null>(
+    testType<string[] | undefined>(
         DataType.ArrayText,
         'null::text[]',
-        null
+        undefined
     );
-    testType<string[][] | null>(
+    testType<string[][] | undefined>(
         DataType.ArrayText,
         'null::text[][]',
-        null
+        undefined
     );
-    testType<Date | null>(
+    testType<Date | undefined>(
         DataType.ArrayTimestamptz,
         'null::timestamptz',
-        null);
-    testType<Date[] | null>(
+        undefined);
+    testType<Date[] | undefined>(
         DataType.ArrayTimestamptz,
         'null::timestamptz[]',
-        null);
-    testType<Date[] | null>(
+        undefined);
+    testType<Date[] | undefined>(
         DataType.ArrayTimestamptz,
         'null::timestamptz[][]',
-        null);
+        undefined);
 });

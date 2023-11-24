@@ -75,28 +75,28 @@ describe('Result', () => {
         expect(row.get('bad')).toEqual(undefined);
     });
 
-    testWithClient('Parse array containing null', async (client) => {
+    testWithClient('Parse array containing NULL', async (client) => {
         expect.assertions(1);
         const row = await client.query(
             'select ARRAY[null::text] as a'
         ).one();
-        expect(row.get('a')).toEqual([null]);
+        expect(row.get('a')).toEqual([undefined]);
     });
 
-    testWithClient('Format array containing null value', async (client) => {
+    testWithClient('Format array containing undefined value', async (client) => {
         expect.assertions(1);
         const row = await client.query(
-            'select $1::text[] as a', [[null]]
+            'select $1::text[] as a', [[undefined]]
         ).one();
-        expect(row.get('a')).toEqual([null]);
+        expect(row.get('a')).toEqual([undefined]);
     });
 
-    testWithClient('Format null-array', async (client) => {
+    testWithClient('Format undefined array', async (client) => {
         expect.assertions(1);
         const row = await client.query(
-            'select $1::text[] as a', [null]
+            'select $1::text[] as a', [undefined]
         ).one();
-        expect(row.get('a')).toEqual(null);
+        expect(row.get('a')).toEqual(undefined);
     });
 
     testWithClient('One', async (client) => {
@@ -127,15 +127,15 @@ describe('Result', () => {
         })
     });
 
-    testWithClient('Multiple null params', async (client) => {
+    testWithClient('Multiple undefined params', async (client) => {
         expect.assertions(3);
         const row = await client.query(
             'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
-            [null, null, null]
+            [undefined, undefined, undefined]
         ).one();
-        expect(row.get('a')).toBeNull()
-        expect(row.get('b')).toBeNull();
-        expect(row.get('c')).toBeNull();
+        expect(row.get('a')).toBeUndefined()
+        expect(row.get('b')).toBeUndefined();
+        expect(row.get('c')).toBeUndefined();
     });
 
     testWithClient('Synchronous iteration', async (client) => {
@@ -167,6 +167,6 @@ describe('Result', () => {
     testWithClient('Null typed array', async (client) => {
         expect.assertions(1);
         const row = await client.query('select null::text[] as value').one();
-        expect(row.get('value')).toEqual(null);
+        expect(row.get('value')).toEqual(undefined);
     });
 });
