@@ -147,8 +147,8 @@ export type Builtin =
     bigint |
     boolean |
     number |
-    null |
-    string;
+    string |
+    undefined;
 
 export type AnyJson = boolean | number | string | null | JsonArray | JsonMap;
 

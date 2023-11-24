@@ -834,7 +834,7 @@ export class Client {
     }
 
     private receive(buffer: Buffer, offset: number, size: number): number {
-        const types = this.config.types || null;
+        const types = this.config.types;
         let read = 0;
 
         while (size >= this.expect + read) {
@@ -867,8 +867,8 @@ export class Client {
 
                 const hasStreams = Object.keys(streams).length > 0;
                 const mappedStreams = hasStreams ? names.map(
-                    name => streams[name] || null
-                ) : null;
+                    name => streams[name]
+                ) : undefined;
 
                 while (true) {
                     mtype = buffer.readInt8(frame);
