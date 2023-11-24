@@ -1103,7 +1103,7 @@ export class Writer {
     }
 
     send(socket: Socket) {
-        if (this.outgoing.empty) return false;
+        if (this.outgoing.empty) return;
         const buffer = this.outgoing.consume();
         return socket.write(buffer);
     }

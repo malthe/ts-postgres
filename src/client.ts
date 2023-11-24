@@ -286,7 +286,7 @@ export class Client {
                 if (stream) this.stream = stream;
                 writer.startup(settings);
                 this.listen();
-                this.send2(writer);
+                this.sendUsing(writer);
             }
 
             const required =
@@ -357,7 +357,7 @@ export class Client {
             this.listen();
         }
 
-        this.send2(writer);
+        this.sendUsing(writer);
     }
 
     private listen() {
@@ -409,6 +409,7 @@ export class Client {
         this.stream.on('drain', () => {
             this.mustDrain = false;
             this.writer.flush();
+            this.send();
         });
     }
 
@@ -769,16 +770,17 @@ export class Client {
     }
 
     private send() {
-        // TODO refactor
-        if (!this.connected && !this.ending) return;
-        this.mustDrain = !this.writer.send(this.stream);
+        if (this.mustDrain || !this.connected) return;
+        this.sendUsing(this.writer);
     }
 
-    private send2(writer: Writer) {
-        if (this.mustDrain || !this.stream.writable) return;
-        this.mustDrain = !writer.send(this.stream);
+    private sendUsing(writer: Writer) {
+        if (!this.stream.writable) throw new Error('Stream not writable');
+        const full = writer.send(this.stream);
+        if (full !== undefined) {
+            this.mustDrain = !full;
+        }
     }
-
 
     private parseError(buffer: Buffer) {
         let level: DatabaseError['level'] | null = null;
@@ -1001,7 +1003,7 @@ export class Client {
                                 `Unsupported authentication scheme: ${code}`
                             );
                     }
-                    this.send2(writer);
+                    this.sendUsing(writer);
                     break;
                 }
                 case Message.BackendKeyData: {
