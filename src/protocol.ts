@@ -1116,6 +1116,7 @@ export class Writer {
         const options = {
             "user": settings.user,
             "database": settings.database,
+            "client_encoding": settings.clientEncoding,
             "client_min_messages": settings.clientMinMessages,
             "default_table_access_method": settings.defaultTableAccessMethod,
             "default_tablespace": settings.defaultTablespace,
