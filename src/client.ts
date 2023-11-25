@@ -23,6 +23,7 @@ import {
 
 import {
     ClientConnectionDefaults,
+    ClientConnectionOptions,
     DatabaseError,
     ErrorLevel,
     Message,
@@ -85,7 +86,9 @@ export interface SSL {
     options?: ConnectionOptions,
 }
 
-export interface Configuration extends Partial<ClientConnectionDefaults> {
+export interface Configuration extends Partial<ClientConnectionDefaults & ClientConnectionOptions> {
+    user?: string,
+    database?: string,
     host?: string,
     port?: number,
     password?: string,
@@ -258,7 +261,7 @@ export class Client {
                     mode: defaults.sslMode,
                 } as SSL;
 
-        const settings: Partial<ClientConnectionDefaults> = {
+        const settings: ClientConnectionOptions & Partial<ClientConnectionDefaults> = {
             user: this.config.user || defaults.user,
             database: this.config.database || defaults.database,
             clientEncoding: this.encoding,

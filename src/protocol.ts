@@ -93,10 +93,15 @@ export interface RowDescription {
     names: string[]
 }
 
+// See https://www.postgresql.org/docs/current/runtime-config-client.html for
+// details on client connection options (required) and defaults below.
+export interface ClientConnectionOptions {
+    user: string;
+    clientEncoding: BufferEncoding;
+}
+
 export interface ClientConnectionDefaults {
-    user: string,
-    database: string,
-    clientEncoding: BufferEncoding,
+    database: string;
     clientMinMessages: ('DEBUG5' | 'DEBUG4' | 'DEBUG3' | 'DEBUG2' | 'DEBUG1' | 'LOG' | 'NOTICE' | 'WARNING' | 'ERROR'),
     defaultTableAccessMethod: string,
     defaultTablespace: string,
@@ -1106,21 +1111,21 @@ export class Writer {
         return socket.write(buffer);
     }
 
-    startup(defaults: Partial<ClientConnectionDefaults>) {
+    startup(settings: ClientConnectionOptions & Partial<ClientConnectionDefaults>) {
         const data = [];
         const options = {
-            "user": defaults.user,
-            "database": defaults.database,
-            "client_min_messages": defaults.clientMinMessages,
-            "default_table_access_method": defaults.defaultTableAccessMethod,
-            "default_tablespace": defaults.defaultTablespace,
-            "default_transaction_isolation": defaults.defaultTransactionIsolation,
-            "extra_float_digits": defaults.extraFloatDigits,
-            "idle_in_transaction_session_timeout": defaults.idleInTransactionSessionTimeout,
-            "idle_session_timeout": defaults.idleSessionTimeout,
-            "lock_timeout": defaults.lockTimeout,
-            "search_path": defaults.searchPath,
-            "statement_timeout": defaults.statementTimeout,
+            "user": settings.user,
+            "database": settings.database,
+            "client_min_messages": settings.clientMinMessages,
+            "default_table_access_method": settings.defaultTableAccessMethod,
+            "default_tablespace": settings.defaultTablespace,
+            "default_transaction_isolation": settings.defaultTransactionIsolation,
+            "extra_float_digits": settings.extraFloatDigits,
+            "idle_in_transaction_session_timeout": settings.idleInTransactionSessionTimeout,
+            "idle_session_timeout": settings.idleSessionTimeout,
+            "lock_timeout": settings.lockTimeout,
+            "search_path": settings.searchPath,
+            "statement_timeout": settings.statementTimeout,
         };
 
         for (const [k, v] of Object.entries(options)) {

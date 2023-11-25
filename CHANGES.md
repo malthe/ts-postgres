@@ -1,5 +1,7 @@
 In next release ...
 
+- Database name now implicitly defaults to the user name.
+
 - Add additional client connection configuration options.
 
 - Result rows are now themselves iterable.
