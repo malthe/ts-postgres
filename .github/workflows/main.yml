@@ -8,6 +8,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  PGDATADIR: /var/lib/postgresql/data
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,6 +23,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
+          --mount type=tmpfs,destination=/var/lib/postgresql/data
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -28,13 +32,44 @@ jobs:
       matrix:
         node-version: ['18.x', '20.x']
     steps:
+      - run: |
+          function set() {
+              docker exec ${{ job.services.postgres.id }} sh -c "echo $1=\'$2\' >> $PGDATADIR/postgresql.conf"
+          }
+          set ssl on
+          set ssl_cert_file /etc/ssl/certs/ssl-cert-snakeoil.pem
+          set ssl_key_file /etc/ssl/private/ssl-cert-snakeoil.key
+          set fsync off
+          set full_page_writes off
+          set synchronous_commit off
+          docker kill --signal=SIGHUP ${{ job.services.postgres.id }}
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: npm ci
       - name: Run tests
-        run: npm run test:prod && npm run build
+        run: npm run test:prod
         env:
           PGSSLMODE: disable
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGPASSWORD: postgres
+      - name: Run tests (SSL)
+        run: |
+          docker cp ${{ job.services.postgres.id }}:/etc/ssl/certs/ssl-cert-snakeoil.pem ./
+          npm run test:prod || exit 1
+          npm run build
+          cat <<- EOF > test.mjs
+          import { Client } from './dist/src/index.js';
+          const client = new Client();
+          const secured = await client.connect();
+          console.log(secured);
+          await client.end();
+          EOF
+          set -o pipefail
+          node test.mjs | tee /dev/stderr | grep -q true
+        env:
+          NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
+          PGSSLMODE: require
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
