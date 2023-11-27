@@ -254,7 +254,7 @@ export function readRowDescription(
         const dataType = buffer.readInt32BE(j + 7);
         const innerDataType = arrayDataTypeMapping.get(dataType);
         const isArray = (typeof innerDataType !== 'undefined');
-        const typeReader = types ? types.get(dataType) : undefined;
+        const typeReader = (types) ? types.get(dataType) : undefined;
 
         columns[i] =
             ((innerDataType || dataType))
@@ -279,8 +279,8 @@ export function readRowData(
     row: Array<Value>,
     columnSpecification: Uint32Array,
     encoding: BufferEncoding,
-    types?: ReadonlyMap<DataType, ValueTypeReader>,
-    streams?: ReadonlyArray<Writable | undefined>,
+    types: ReadonlyMap<DataType, ValueTypeReader> | null,
+    streams: ReadonlyArray<Writable | null> | null,
 ): number {
     const columns = row.length;
     const bufferLength = buffer.length;
@@ -307,15 +307,15 @@ export function readRowData(
         const remaining = end - bufferLength;
         const partial = remaining > 0;
 
-        let value: Value = undefined;
+        let value: Value = null;
 
         if (start < end) {
             const spec = columnSpecification[j];
             let skip = false;
 
-            if (streams !== undefined && spec === DataType.Bytea) {
+            if (streams !== null && spec === DataType.Bytea) {
                 const stream = streams[j];
-                if (stream !== undefined) {
+                if (stream !== null) {
                     const slice = buffer.slice(start, end);
                     const alloc = Buffer.allocUnsafe(slice.length);
                     slice.copy(alloc, 0, 0, slice.length);
@@ -344,7 +344,7 @@ export function readRowData(
                 const isReader = (spec & readerMask) !== 0;
 
                 if (isReader) {
-                    const reader = types ? types.get(dataType) : undefined;
+                    const reader = (types) ? types.get(dataType) : null;
                     if (reader) {
                         value = reader(
                             buffer,
@@ -356,14 +356,14 @@ export function readRowData(
                     }
                 } else {
                     const read = (t: DataType, start: number, end: number) => {
-                        if (start === end) return undefined;
+                        if (start === end) return null;
 
                         /* Cutoff for system object OIDs;
                            see comments in src/include/access/transam.h
 
                            We do not support user object OIDs.
                         */
-                        if (t >= DataType.MinUserOid) return undefined;
+                        if (t >= DataType.MinUserOid) return null;
 
                         switch (t) {
                             case DataType.Bool:
@@ -440,7 +440,7 @@ export function readRowData(
                             case DataType.Uuid:
                                 return formatUuid(buffer.slice(start, end));
                         }
-                        return;
+                        return null;
                     };
 
                     if (isArray) {
@@ -453,7 +453,7 @@ export function readRowData(
                             for (let j = 0; j < size; j++) {
                                 const length = buffer.readInt32BE(offset);
                                 offset += 4;
-                                let value = undefined;
+                                let value = null;
                                 if (length >= 0) {
                                     const elementStart = offset;
                                     offset = elementStart + length;
@@ -625,8 +625,8 @@ export class Reader {
         row: Array<Value>,
         columnSpecification: Uint32Array,
         encoding: BufferEncoding,
-        types?: ReadonlyMap<DataType, ValueTypeReader>,
-        streams?: ReadonlyArray<Writable | undefined>,
+        types: ReadonlyMap<DataType, ValueTypeReader> | null,
+        streams: ReadonlyArray<Writable | null> | null,
     ) {
         return readRowData(
             this.buffer.slice(this.start, this.end),
@@ -692,7 +692,7 @@ export class Writer {
             let size = -1;
             const setSize = reserve(SegmentType.Int32BE);
 
-            if (value === undefined) {
+            if (value === null) {
                 setSize(-1);
                 return 0;
             }
@@ -873,8 +873,8 @@ export class Writer {
 
         const getTextFromValue = (
             value: Value,
-            dataType: DataType): undefined | string | string[] => {
-            if (value === undefined) return;
+            dataType: DataType): null | string | string[] => {
+            if (value === null) return null;
 
             switch (dataType) {
                 case DataType.Bool:
@@ -922,6 +922,8 @@ export class Writer {
                     throw new Error(`Unsupported data type: ${dataType}`);
                 }
             }
+
+            return null;
         }
 
         const getTextFromArray = (
@@ -945,7 +947,7 @@ export class Writer {
                 if (result instanceof Array) {
                     strings.push(...result);
                 } else {
-                    strings.push((result === undefined) ? 'null' : escape(result));
+                    strings.push((result === null) ? 'null' : escape(result));
                 }
             }
             strings.push('}');
@@ -968,7 +970,7 @@ export class Writer {
                                 add(SegmentType.Buffer,
                                     makeBuffer(s, this.encoding)))) :
                         add(SegmentType.Buffer,
-                            (result === undefined) ?
+                            (result === null) ?
                                 nullBuffer :
                                 makeBuffer(result, this.encoding)
                         );
