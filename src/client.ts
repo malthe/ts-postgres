@@ -261,10 +261,9 @@ export class Client {
                     mode: defaults.sslMode,
                 } as SSL;
 
-        const settings: ClientConnectionOptions & Partial<ClientConnectionDefaults> = {
+        const settings = {
             user: this.config.user || defaults.user,
             database: this.config.database || defaults.database,
-            clientEncoding: this.encoding,
             clientMinMessages: this.config.clientMinMessages,
             defaultTableAccessMethod: this.config.defaultTableAccessMethod,
             defaultTablespace: this.config.defaultTablespace,

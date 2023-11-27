@@ -114,6 +114,8 @@ export interface ClientConnectionDefaults {
     statementTimeout: number,
 }
 
+export type StartupConfiguration = Omit<ClientConnectionOptions, 'clientEncoding'> & Partial<ClientConnectionDefaults>;
+
 export class DatabaseError extends Error {
     constructor(
         public level: ErrorLevel,
@@ -1113,12 +1115,12 @@ export class Writer {
         return socket.write(buffer);
     }
 
-    startup(settings: ClientConnectionOptions & Partial<ClientConnectionDefaults>) {
+    startup(settings: StartupConfiguration) {
         const data = [];
         const options = {
             "user": settings.user,
             "database": settings.database,
-            "client_encoding": settings.clientEncoding,
+            "client_encoding": this.encoding,
             "client_min_messages": settings.clientMinMessages,
             "default_table_access_method": settings.defaultTableAccessMethod,
             "default_tablespace": settings.defaultTablespace,
