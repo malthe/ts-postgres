@@ -1,22 +1,12 @@
 In next release ...
 
-## New features
+- Database name now implicitly defaults to the user name.
 
 - Add additional client connection configuration options.
 
 - Result rows are now themselves iterable.
 
-
-## Changes
-
-- Database name now implicitly defaults to the user name.
-
-- The SQL NULL value is now mapped 1:1 with `undefined` rather than
-  `null`. This change is motivated by TypeScript's more natural use of
-  undefined values since it denotes an optional or missing property.
-
 - Use `bigint` everywhere as a type instead of `BigInt`.
-
 
 1.4.0 (2023-11-10)
 ------------------
