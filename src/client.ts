@@ -402,7 +402,7 @@ export class Client {
         });
     }
 
-    connect() {
+    connect(): Promise<boolean> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -410,16 +410,17 @@ export class Client {
         if (this.error) {
             throw new Error('Can\'t connect in error state');
         }
-
         this.connecting = true;
 
         const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
 
-        let p = this.events.connect.once().then((error) => {
-            if (!error) return;
-            this.connecting = false;
-            this.stream.destroy();
-            throw error;
+        let p = this.events.connect.once().then((error: Connect) => {
+            if (error) {
+                this.connecting = false;
+                this.stream.destroy();
+                throw error;
+            }
+            return this.stream instanceof TLSSocket;
         });
 
         const port = this.config.port || defaults.port;
@@ -439,7 +440,7 @@ export class Client {
                         new Error(`Timeout after ${timeout} ms`)
                     ), timeout
                 )),
-            ]) as Promise<void>
+            ]) as Promise<boolean>
         }
         return p;
     }
