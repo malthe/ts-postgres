@@ -764,6 +764,7 @@ export class Client {
     }
 
     private sendUsing(writer: Writer) {
+        if (this.ending) return;
         if (!this.stream.writable) throw new Error('Stream not writable');
         const full = writer.send(this.stream);
         if (full !== undefined) {
