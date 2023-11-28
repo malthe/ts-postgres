@@ -1,5 +1,10 @@
 In next release ...
 
+- The "verify-ca" SSL mode has been removed, favoring "require"; in addition, both
+  "prefer" and "require" imply certificate verification. To use a self-signed
+  certificate, use for example the `NODE_EXTRA_CA_CERTS` environment variable
+  to provide the public key to the runtime as a trusted certificate.
+
 - Database name now implicitly defaults to the user name.
 
 - Add additional client connection configuration options.
