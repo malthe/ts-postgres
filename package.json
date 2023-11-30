@@ -43,6 +43,8 @@
         "coveragePathIgnorePatterns": [
             "/node_modules/",
             "/test/",
+            "/src/defaults.ts",
+            "/src/index.ts",
             "/src/logging.ts",
             "/src/queue.ts",
             "/src/utils.ts"
