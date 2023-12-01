@@ -47,6 +47,7 @@
             "/src/index.ts",
             "/src/logging.ts",
             "/src/queue.ts",
+            "/src/sasl.ts",
             "/src/utils.ts"
         ],
         "coverageThreshold": {
