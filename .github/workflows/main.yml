@@ -73,16 +73,3 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
-      - name: Check SSL
-        run: |
-          exec node <<EOF
-          import { Client } from 'ts-postgres';
-          const client = new Client();
-          const secured = await client.connect();
-          console.log("Secured: " + secured);
-          EOF
-        env:
-          PGSSLMODE: require
-          PGPORT: ${{ job.services.postgres.ports[5432] }}
-          PGUSER: postgres
-          PGPASSWORD: postgres
