@@ -2,7 +2,6 @@ function secToMsec(value?: number) {
     if (typeof value === "number" && !isNaN(value)) {
         return value * 1000;
     }
-    return undefined;
 }
 
 export const host = process.env.PGHOST || 'localhost';

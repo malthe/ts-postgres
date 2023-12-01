@@ -11,7 +11,7 @@ import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
 import { Query } from './query';
 
-import { ConnectionOptions, connect as tls, createSecureContext } from 'tls';
+import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'tls';
 
 import {
     DataHandler,
@@ -70,19 +70,14 @@ export interface DataTypeError {
     value: Value
 }
 
-export const enum SSLMode {
+export enum SSLMode {
     Disable = 'disable',
     Prefer = 'prefer',
     Require = 'require',
-    VerifyCA = 'verify-ca'
 }
 
 export interface SSL {
-    mode?: (
-        SSLMode.Prefer |
-        SSLMode.Require |
-        SSLMode.VerifyCA
-    ),
+    mode: (SSLMode.Prefer | SSLMode.Require),
     options?: ConnectionOptions,
 }
 
@@ -206,7 +201,7 @@ export class Client {
     private nextPreparedStatementId = 0;
     private activeDataHandlerInfo: RowDataHandlerInfo | null = null;
 
-    public closed = false;
+    public closed = true;
     public processId: number | null = null;
     public secretKey: number | null = null;
     public transactionStatus: TransactionStatus | null = null;
@@ -216,7 +211,7 @@ export class Client {
         this.writer = new Writer(this.encoding);
 
         this.stream.on('close', () => {
-            this.connected = false;
+            this.closed = true;
             this.events.end.emit();
         });
 
@@ -248,18 +243,21 @@ export class Client {
         });
 
         this.stream.on('finish', () => {
-            this.closed = true;
+            this.connected = false;
         });
     }
 
     private startup() {
         const writer = new Writer(this.encoding);
 
-        const ssl =
-            defaults.sslMode === SSLMode.Disable ? SSLMode.Disable :
-                this.config.ssl || {
-                    mode: defaults.sslMode,
-                } as SSL;
+        if (defaults.sslMode && Object.values(SSLMode).indexOf(defaults.sslMode as SSLMode) < 0) {
+            throw new Error("Invalid SSL mode: " + defaults.sslMode);
+        }
+
+        const ssl = this.config.ssl ??
+            (defaults.sslMode as SSLMode || SSLMode.Disable) === SSLMode.Disable
+                ? SSLMode.Disable
+                : ({ mode: SSLMode.Prefer, options: undefined });
 
         const settings = {
             user: this.config.user || defaults.user,
@@ -279,7 +277,10 @@ export class Client {
         if (ssl !== SSLMode.Disable) {
             writer.startupSSL();
 
-            const abort = (error: Connect) => {
+            const abort = (error: Error) => {
+                if (!this.handleError(error)) {
+                    throw new Error("Internal error occurred while establishing connection");
+                }
                 this.events.connect.emit(error);
                 this.end();
             }
@@ -291,10 +292,6 @@ export class Client {
                 this.sendUsing(writer);
             }
 
-            const required =
-                ssl.mode === SSLMode.Require ||
-                ssl.mode === SSLMode.VerifyCA;
-
             this.stream.once('data', (buffer: Buffer) => {
                 const code = buffer.readInt8(0);
                 switch (code) {
@@ -304,7 +301,7 @@ export class Client {
 
                     // Server does not support SSL connections.
                     case SSLResponseCode.NotSupported:
-                        if (required) {
+                        if (ssl.mode === SSLMode.Require) {
                             abort(
                                 new Error(
                                     'Server does not support SSL connections'
@@ -330,27 +327,17 @@ export class Client {
                     undefined;
 
                 const options = {
-                    checkServerIdentity: ssl.options ?
-                        ssl.options.checkServerIdentity :
-                        undefined,
                     socket: this.stream,
-                    secureContext: context
+                    secureContext: context,
+                    ...(ssl.options ?? {})
                 };
 
-                const verify = ssl.mode == SSLMode.VerifyCA;
-
-                const stream = tls(
+                const stream: TLSSocket = tls(
                     options,
-                    () => {
-                        if (verify && !stream.authorized) {
-                            abort(stream.authorizationError)
-                        } else {
-                            startup(stream);
-                        }
-                    }
+                    () => startup(stream)
                 );
 
-                stream.on('error', (error) => {
+                stream.on('error', (error: Error) => {
                     abort(error);
                 });
             });
@@ -415,7 +402,7 @@ export class Client {
         });
     }
 
-    connect() {
+    connect(): Promise<boolean> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -423,16 +410,17 @@ export class Client {
         if (this.error) {
             throw new Error('Can\'t connect in error state');
         }
-
         this.connecting = true;
 
         const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
 
-        let p = this.events.connect.once().then((error) => {
-            if (!error) return;
-            this.connecting = false;
-            this.stream.destroy();
-            throw error;
+        let p = this.events.connect.once().then((error: Connect) => {
+            if (error) {
+                this.connecting = false;
+                this.stream.destroy();
+                throw error;
+            }
+            return this.stream instanceof TLSSocket;
         });
 
         const port = this.config.port || defaults.port;
@@ -452,7 +440,7 @@ export class Client {
                         new Error(`Timeout after ${timeout} ms`)
                     ), timeout
                 )),
-            ]) as Promise<void>
+            ]) as Promise<boolean>
         }
         return p;
     }
@@ -777,6 +765,7 @@ export class Client {
     }
 
     private sendUsing(writer: Writer) {
+        if (this.ending) return;
         if (!this.stream.writable) throw new Error('Stream not writable');
         const full = writer.send(this.stream);
         if (full !== undefined) {

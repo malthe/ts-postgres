@@ -2,7 +2,7 @@ import { Socket } from 'net';
 import { Writable } from 'stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
-import { hi, hmacSha256, sha256, xorBuffers } from './sasl';
+import { sign } from './sasl';
 import { sum } from './utils';
 import {
     arrayDataTypeMapping,
@@ -1052,52 +1052,12 @@ export class Writer {
     }
 
     saslResponse(data: string, password: string, clientNonce: string) {
-        const m = Object.fromEntries(data.split(',').map(
-            (attr) => [attr[0], attr.substring(2)])
-        );
-
-        if (!(m.i && m.r && m.s)) throw new Error("SASL message parse error");
-
-        const nonce = m.r;
-
-        if (!nonce.startsWith(clientNonce))
-            throw new Error("SASL nonce mismatch");
-        if (nonce.length === clientNonce.length)
-            throw new Error("SASL nonce too short");
-
-        const iterations = parseInt(m.i, 10);
-        const salt = Buffer.from(m.s, 'base64');
-        const saltedPassword = hi(password, salt, iterations)
-
-        const clientKey = hmacSha256(saltedPassword, 'Client Key');
-        const storedKey = sha256(clientKey);
-
-        const clientFinalMessageWithoutProof = 'c=biws,r=' + nonce;
-        const clientFirstMessageBare = 'n=*,r=' + clientNonce;
-        const serverFirstMessage = data;
-
-        const authMessage = (
-            clientFirstMessageBare + ',' +
-            serverFirstMessage + ',' +
-            clientFinalMessageWithoutProof
-        );
-
-        const clientSignature = hmacSha256(storedKey, authMessage);
-        const clientProofBytes = xorBuffers(clientKey, clientSignature);
-        const clientProof = clientProofBytes.toString('base64');
-
-        const serverKey = hmacSha256(saltedPassword, 'Server Key');
-        const serverSignatureBytes = hmacSha256(serverKey, authMessage);
-
-        const response = clientFinalMessageWithoutProof + ',p=' + clientProof;
-        const serverSignature = serverSignatureBytes.toString('base64');
-
+        const [response, signature] = sign(data, password, clientNonce);
         this.enqueue(
             SASL.SASLResponse, [
             makeBufferSegment(response, this.encoding, false)
         ]);
-
-        return serverSignature;
+        return signature;
     }
 
     saslFinal(data: string, serverSignature: string) {
