@@ -7,11 +7,8 @@ import { sum } from './utils';
 import {
     arrayDataTypeMapping,
     isPoint,
-    ArrayValue,
     DataFormat,
     DataType,
-    Primitive,
-    Value,
     ValueTypeReader
 } from './types';
 
@@ -278,7 +275,7 @@ export function readRowDescription(
 
 export function readRowData(
     buffer: Buffer,
-    row: Array<Value>,
+    row: Array<any>,
     columnSpecification: Uint32Array,
     encoding: BufferEncoding,
     types: ReadonlyMap<DataType, ValueTypeReader> | null,
@@ -309,7 +306,7 @@ export function readRowData(
         const remaining = end - bufferLength;
         const partial = remaining > 0;
 
-        let value: Value = null;
+        let value: any = null;
 
         if (start < end) {
             const spec = columnSpecification[j];
@@ -449,7 +446,7 @@ export function readRowData(
                         let offset = start;
 
                         const readArray = (size: number) => {
-                            const array: ArrayValue<Primitive> =
+                            const array: any[] =
                                 new Array(size);
 
                             for (let j = 0; j < size; j++) {
@@ -476,7 +473,7 @@ export function readRowData(
                             offset += 8;
                             value = readArray(size);
                         } else {
-                            const arrays: ArrayValue<Primitive>[] =
+                            const arrays: any[][] =
                                 new Array(dimCount);
                             const dims = new Uint32Array(dimCount);
 
@@ -624,7 +621,7 @@ export class Reader {
     }
 
     readRowData(
-        row: Array<Value>,
+        row: any[],
         columnSpecification: Uint32Array,
         encoding: BufferEncoding,
         types: ReadonlyMap<DataType, ValueTypeReader> | null,
@@ -654,7 +651,7 @@ export class Writer {
         name: string,
         portal: string,
         format: DataFormat | DataFormat[] = DataFormat.Binary,
-        values: Value[] = [],
+        values: any[] = [],
         types: DataType[] = []) {
         // We silently ignore any mismatch here, assuming that the
         // query will fail and make the error evident.
@@ -690,7 +687,7 @@ export class Writer {
             }
         };
 
-        const addBinaryValue = (value: Value, dataType: DataType): number => {
+        const addBinaryValue = (value: any, dataType: DataType): number => {
             let size = -1;
             const setSize = reserve(SegmentType.Int32BE);
 
@@ -836,7 +833,7 @@ export class Writer {
         };
 
         const addBinaryArray = (
-            value: Value[],
+            value: any[],
             dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
@@ -845,7 +842,7 @@ export class Writer {
             let bytes = 12;
             let dimCount = 0;
 
-            const go = (level: number, value: Value[]) => {
+            const go = (level: number, value: any[]) => {
                 const length = value.length;
                 if (length === 0) return;
 
@@ -874,7 +871,7 @@ export class Writer {
         }
 
         const getTextFromValue = (
-            value: Value,
+            value: any,
             dataType: DataType): null | string | string[] => {
             if (value === null) return null;
 
@@ -929,7 +926,7 @@ export class Writer {
         }
 
         const getTextFromArray = (
-            value: Value[],
+            value: any[],
             dataType: DataType): string[] => {
             const strings: string[] = [];
             strings.push('{');

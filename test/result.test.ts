@@ -1,5 +1,5 @@
 import { testWithClient } from './helper';
-import { Client, ResultIterator, ResultRow } from '../src/client';
+import { Client, ResultIterator, ResultRow } from '../src/index';
 
 type ResultFunction =
     (result: ResultIterator) =>
@@ -27,7 +27,7 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
 
     // Rows are themselves iterable.
     for (const [index, row] of rows.entries()) {
-	expect([...row]).toEqual([index]);
+        expect([...row]).toEqual([index]);
     }
 
     // We could iterate multiple times over the same result.
@@ -54,25 +54,35 @@ async function testIteratorResult(client: Client, f: ResultFunction) {
 }
 
 describe('Result', () => {
-    testWithClient('Names', async (client) => {
-        expect.assertions(2);
+    testWithClient('Default type', async (client) => {
+        expect.assertions(7);
         const result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
+        expect(result.status).toEqual('SELECT 1');
         expect(result.names.length).toEqual(1);
         expect(result.names[0]).toEqual('message');
+        expect(result.map()).toEqual([{message: 'Hello world!'}]);
+        const rows = [...result];
+        const row = rows[0];
+        expect(row.get('message')).toEqual('Hello world!');
+        expect(row.get('bad')).toEqual(undefined);
+        const mapped = row.map();
+        expect(mapped.message).toEqual('Hello world!');
     });
 
-    testWithClient('Get', async (client) => {
+    testWithClient('Typed', async (client) => {
         expect.assertions(3);
-        const result = await client.query(
+        const result = await client.query<{message: string}>(
             'select $1::text as message', ['Hello world!']
         );
         expect(result.status).toEqual('SELECT 1');
         const rows = [...result];
         const row = rows[0];
-        expect(row.get('message')).toEqual('Hello world!');
-        expect(row.get('bad')).toEqual(undefined);
+        const message: string = row.get('message');
+        expect(message).toEqual('Hello world!');
+        const mapped: {message: string} = row.map();
+        expect(mapped.message).toEqual('Hello world!');
     });
 
     testWithClient('Parse array containing null', async (client) => {
@@ -105,6 +115,19 @@ describe('Result', () => {
             'select $1::text as message', ['Hello world!']
         ).one();
         expect(row.get('message')).toEqual('Hello world!');
+    });
+
+    testWithClient('Map', async (client) => {
+        expect.assertions(1);
+        const mapped = client.query(
+            'select $1::text as message', ['Hello world!']
+        ).map();
+        for await (const item of mapped) {
+            expect(item).toEqual({message: 'Hello world!'});
+        }
+        for await (const item of mapped) {
+            expect(item).toEqual({message: 'Hello world!'});
+        }
     });
 
     testWithClient('One (empty query)', async (client) => {

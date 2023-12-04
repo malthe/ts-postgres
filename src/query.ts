@@ -2,7 +2,6 @@ import { Writable } from 'stream';
 import {
     DataFormat,
     DataType,
-    Value
 } from './types';
 
 export interface QueryOptions {
@@ -16,7 +15,7 @@ export interface QueryOptions {
 export class Query {
     constructor(
         public readonly text: string,
-        public readonly values?: Value[],
+        public readonly values?: any[],
         public readonly options?: Partial<QueryOptions>
     ) { }
 }

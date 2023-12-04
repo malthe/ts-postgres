@@ -2,9 +2,7 @@ import { testWithClient } from './helper';
 
 import {
     DataType,
-    JsonMap,
     Point,
-    Value,
     DataFormat
 } from '../src';
 
@@ -25,7 +23,7 @@ function getComparisonQueryFor(dataType: DataType, expression: string) {
     }
 }
 
-function testType<T extends Value>(
+function testType<T>(
     dataType: DataType,
     expression: string,
     expected: T,
@@ -263,19 +261,19 @@ describe('Types', () => {
         DataType.ArrayTimestamptz,
         '\'{1999-12-31 23:59:59Z}\'::timestamptz[]',
         [utc_date(1999, 11, 31, 23, 59, 59)]);
-    testType<JsonMap>(
+    testType<Record<string, any>>(
         DataType.Json,
         '\'{"foo": "bar"}\'::json',
         { 'foo': 'bar' });
-    testType<JsonMap>(
+    testType<Record<string, any>>(
         DataType.Jsonb,
         '\'{"foo": "bar"}\'::jsonb',
         { 'foo': 'bar' });
-    testType<JsonMap[]>(
+    testType<Record<string, any>[]>(
         DataType.ArrayJsonb,
         'ARRAY[\'{"foo": "bar"}\'::jsonb, \'{"bar": "baz"}\'::jsonb]',
         [{ 'foo': 'bar' }, { 'bar': 'baz' }]);
-    testType<JsonMap[]>(
+    testType<Record<string, any>[]>(
         DataType.ArrayJson,
         'ARRAY[\'{"foo": "bar"}\'::json]',
         [{ 'foo': 'bar' }]);

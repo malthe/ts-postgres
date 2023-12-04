@@ -35,14 +35,17 @@ The client uses an async/await-based programming model.
 ```typescript
 import { Client } from 'ts-postgres';
 
+interface Greeting {
+    message: string;
+}
+
 async function main() {
     const client = new Client();
     await client.connect();
 
     try {
-        // Querying the client returns a query result promise
-        // which is also an asynchronous result iterator.
-        const result = client.query(
+        // The query method is generic on the result row.
+        const result = client.query<Greeting>(
             "SELECT 'Hello ' || $1 || '!' AS message",
             ['world']
         );
@@ -112,8 +115,13 @@ const query = new Query(
     "SELECT 'Hello ' || $1 || '!' AS message",
     ['world']
 );
-const result = await client.execute(query);
+const result = await client.execute<Greeting>(query);
 ```
+
+If the row type is omitted, it defaults to `Record<string, any>`, but
+providing a type ensures that the row values are typed, both when
+accessed via the `get` method or if the row is mapped to a record
+using the `map` method.
 
 ### Passing query parameters
 
