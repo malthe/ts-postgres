@@ -50,7 +50,7 @@ export type ResultIterator = _ResultIterator<Value>;
 
 export type ResultRow = _ResultRow<Value>;
 
-export type Connect = (Error | string | null);
+export type Connect = Error | null;
 
 export type End = void;
 

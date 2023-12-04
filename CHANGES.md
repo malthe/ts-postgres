@@ -1,5 +1,7 @@
 In next release ...
 
+- Use lookup table to optimize `get` method.
+
 - The `connect` method now returns a boolean status of whether the
   connection is encrypted.
 

@@ -8,22 +8,25 @@ type ResultHandler = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
 export class ResultRow<T> {
-    private readonly length: number;
+    private readonly lookup: {[name: string]: number};
 
     constructor(public readonly names: string[], public readonly data: T[]) {
-        this.length = names.length;
+        const lookup: {[name: string]: number} = {};
+        let i = 0;
+        for (const name of names) {
+            lookup[name] = i;
+            i++;
+        }
+        this.lookup = lookup;
     }
 
     [Symbol.iterator](): Iterator<T> {
-	return this.data[Symbol.iterator]();
+        return this.data[Symbol.iterator]();
     }
 
     get(name: string): T | undefined {
-        for (let i = 0; i < this.length; i++) {
-            if (this.names[i] === name) {
-                return this.data[i];
-            }
-        }
+        const i = this.lookup[name];
+        return this.data[i];
     }
 }
 
