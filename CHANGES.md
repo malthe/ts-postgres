@@ -1,4 +1,5 @@
-In next release ...
+1.5.0 (2023-12-06)
+------------------
 
 - The `Value` type has been replaced with `any`, motivated by the new
   generic result type as well as the possibility to implement custom
