@@ -36,9 +36,16 @@ export const enum SASL {
 }
 
 export enum ErrorLevel {
-    error = 'ERROR',
-    fatal = 'FATAL',
-    panic = 'PANIC'
+    Debug1 = 'DEBUG1',
+    Debug2 = 'DEBUG2',
+    Debug3 = 'DEBUG3',
+    Debug4 = 'DEBUG4',
+    Debug5 = 'DEBUG5',
+    Error = 'ERROR',
+    Fatal = 'FATAL',
+    Log = 'LOG',
+    Notice = 'NOTICE',
+    Panic = 'PANIC',
 }
 
 export const enum Message {
@@ -99,7 +106,7 @@ export interface ClientConnectionOptions {
 
 export interface ClientConnectionDefaults {
     database: string;
-    clientMinMessages: ('DEBUG5' | 'DEBUG4' | 'DEBUG3' | 'DEBUG2' | 'DEBUG1' | 'LOG' | 'NOTICE' | 'WARNING' | 'ERROR'),
+    clientMinMessages: Uppercase<keyof typeof ErrorLevel>,
     defaultTableAccessMethod: string,
     defaultTablespace: string,
     defaultTransactionIsolation: string,

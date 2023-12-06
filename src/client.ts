@@ -101,7 +101,7 @@ export interface PreparedStatement<T = ResultRecord> {
     ) => ResultIterator<T>
 }
 
-type Callback<T> = (data: T) => void;
+export type Callback<T> = (data: T) => void;
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 type CallbackOf<U> = U extends any ? Callback<U> : never;
@@ -155,6 +155,11 @@ interface PreFlightQueue {
     bind: Bind | null;
 }
 
+/** A database client, opening a single connection to the database.
+ *
+ * @remarks
+ * You must open the connection using {@link connect}, otherwise no query will be processed.
+ */
 export class Client {
     private readonly events = {
         connect: new TypedEvent<Connect>(),
@@ -197,6 +202,11 @@ export class Client {
     public secretKey: number | null = null;
     public transactionStatus: TransactionStatus | null = null;
 
+    /**
+    * @param config - An optional configuration object, comprised of connection details
+    *     and client configuration. Most of the connection details can also be specified
+    *     using environment variables, see {@link Environment}.
+    */
     constructor(public readonly config: Configuration = {}) {
         this.encoding = config.clientEncoding || defaults.clientEncoding as BufferEncoding || 'utf-8';
         this.writer = new Writer(this.encoding);

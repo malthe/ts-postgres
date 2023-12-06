@@ -37,8 +37,21 @@ export class ResultRowImpl<T> {
     }
 }
 
+/** The default result type, used if no generic type parameter is specified. */
 export type ResultRecord = Record<string, any>
 
+/**
+ * A result row provides access to data for a single row.
+ *
+ * The generic type parameter is carried over from the query method.
+ * @interface
+ *
+ * To retrieve a column value by name use the {@link get} method; or use {@link reify} to convert
+ * the row into an object.
+ *
+ * The {@link data} attribute provides raw access to the row data, but it's also possible to use the
+ * spread operator to destructure into a tuple.
+ */
 export type ResultRow<T = ResultRecord> = Omit<ResultRowImpl<T>, 'get'> & {
     get<K extends keyof T>(name: K): T[K];
 }
