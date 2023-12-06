@@ -29,7 +29,7 @@ export class ResultRowImpl<T> {
         return this.data[i];
     }
 
-    map(): T {
+    reify(): T {
         const data = this.data;
         const result: Record<string, any> = {};
         this.names.forEach((key, i) => result[key] = data[i]);
@@ -71,7 +71,7 @@ export class Result<T = ResultRecord> {
         }
     }
 
-    map(): T[] {
+    reify(): T[] {
         return this.rows.map(data => {
             const result: Record<string, any> = {};
             this.names.forEach((key, i) => result[key] = data[i]);
@@ -116,7 +116,7 @@ export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
         throw new Error('Query returned an empty result');
     }
 
-    map(): AsyncIterable<T> {
+    reify(): AsyncIterable<T> {
         const iterator: AsyncIterator<ResultRow<T>> = this[Symbol.asyncIterator]();
         return {
             [Symbol.asyncIterator]() {
@@ -124,7 +124,7 @@ export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
                     async next() {
                         const { done, value } = await iterator.next();
                         if (done) return { done, value: null };
-                        return { done, value: value.map() };
+                        return { done, value: value.reify() };
                     },
                     async return() {
                         if (iterator?.return) await iterator?.return();

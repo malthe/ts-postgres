@@ -62,12 +62,12 @@ describe('Result', () => {
         expect(result.status).toEqual('SELECT 1');
         expect(result.names.length).toEqual(1);
         expect(result.names[0]).toEqual('message');
-        expect(result.map()).toEqual([{message: 'Hello world!'}]);
+        expect(result.reify()).toEqual([{message: 'Hello world!'}]);
         const rows = [...result];
         const row = rows[0];
         expect(row.get('message')).toEqual('Hello world!');
         expect(row.get('bad')).toEqual(undefined);
-        const mapped = row.map();
+        const mapped = row.reify();
         expect(mapped.message).toEqual('Hello world!');
     });
 
@@ -81,7 +81,7 @@ describe('Result', () => {
         const row = rows[0];
         const message: string = row.get('message');
         expect(message).toEqual('Hello world!');
-        const mapped: {message: string} = row.map();
+        const mapped: {message: string} = row.reify();
         expect(mapped.message).toEqual('Hello world!');
     });
 
@@ -121,7 +121,7 @@ describe('Result', () => {
         expect.assertions(1);
         const mapped = client.query(
             'select $1::text as message', ['Hello world!']
-        ).map();
+        ).reify();
         for await (const item of mapped) {
             expect(item).toEqual({message: 'Hello world!'});
         }

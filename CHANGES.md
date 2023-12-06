@@ -7,7 +7,7 @@ In next release ...
 - Query results are now generic with typing support for the `get`
   method on each row.
 
-  In addition, a new `map` method now produces records which conform
+  In addition, a new `reify` method now produces records which conform
   to the specified type. This method is available on all of the result
   objects.
 
