@@ -7,10 +7,10 @@ type Resolver = (resolution: Resolution) => void;
 type ResultHandler = (resolve: Resolver) => void;
 type Callback<T> = (item: T) => void;
 
-export class ResultRow<T> {
+export class ResultRowImpl<T> {
     private readonly lookup: {[name: string]: number};
 
-    constructor(public readonly names: string[], public readonly data: T[]) {
+    constructor(public readonly names: string[], public readonly data: any[]) {
         const lookup: {[name: string]: number} = {};
         let i = 0;
         for (const name of names) {
@@ -20,20 +20,33 @@ export class ResultRow<T> {
         this.lookup = lookup;
     }
 
-    [Symbol.iterator](): Iterator<T> {
+    [Symbol.iterator](): Iterator<any> {
         return this.data[Symbol.iterator]();
     }
 
-    get(name: string): T | undefined {
+    get(name: string): any {
         const i = this.lookup[name];
         return this.data[i];
     }
+
+    map(): T {
+        const data = this.data;
+        const result: Record<string, any> = {};
+        this.names.forEach((key, i) => result[key] = data[i]);
+        return result as T;
+    }
 }
 
-export class Result<T> {
+export type ResultRecord = Record<string, any>
+
+export type ResultRow<T = ResultRecord> = Omit<ResultRowImpl<T>, 'get'> & {
+    get<K extends keyof T>(name: K): T[K];
+}
+
+export class Result<T = ResultRecord> {
     constructor(
         public names: string[],
-        public rows: T[][],
+        public rows: any[][],
         public status: null | string
     ) { }
 
@@ -47,7 +60,7 @@ export class Result<T> {
             const names = this.names;
             const values = rows[i];
             i++;
-            return new ResultRow<T>(names, values);
+            return new ResultRowImpl<T>(names, values) as unknown as ResultRow<T>;
         };
 
         return {
@@ -57,18 +70,26 @@ export class Result<T> {
             }
         }
     }
+
+    map(): T[] {
+        return this.rows.map(data => {
+            const result: Record<string, any> = {};
+            this.names.forEach((key, i) => result[key] = data[i]);
+            return result;
+        }) as T[];
+    }
 }
 
-export class ResultIterator<T> extends Promise<Result<T>> {
+export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
     private subscribers: (
         (done: boolean, error?: (string | DatabaseError | Error)
         ) => void)[] = [];
     private done = false;
 
-    public rows: T[][] | null = null;
+    public rows: any[][] | null = null;
     public names: string[] | null = null;
 
-    constructor(private container: T[][], executor: ResultHandler) {
+    constructor(private container: any[][], executor: ResultHandler) {
         super((resolve, reject) => {
             executor((resolution) => {
                 if (resolution instanceof Error) {
@@ -95,6 +116,25 @@ export class ResultIterator<T> extends Promise<Result<T>> {
         throw new Error('Query returned an empty result');
     }
 
+    map(): AsyncIterable<T> {
+        const iterator: AsyncIterator<ResultRow<T>> = this[Symbol.asyncIterator]();
+        return {
+            [Symbol.asyncIterator]() {
+                return {
+                    async next() {
+                        const { done, value } = await iterator.next();
+                        if (done) return { done, value: null };
+                        return { done, value: value.map() };
+                    },
+                    async return() {
+                        if (iterator?.return) await iterator?.return();
+                        return { done: true, value: null };
+                    }
+                };
+            }
+        }
+    }
+
     notify(done: boolean, status?: (string | DatabaseError | Error)) {
         if (done) this.done = true;
         for (const subscriber of this.subscribers) subscriber(done, status);
@@ -115,7 +155,7 @@ export class ResultIterator<T> extends Promise<Result<T>> {
                 throw new Error("Column name mapping missing.");
             }
 
-            return new ResultRow<T>(names, values);
+            return new ResultRowImpl<T>(names, values) as unknown as ResultRow<T>;
         };
 
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -164,13 +204,13 @@ export type NameHandler = Callback<string[]>;
 ResultIterator.prototype.constructor = Promise
 
 export function makeResult<T>() {
-    let dataHandler: DataHandler<T[] | null> | null = null;
+    let dataHandler: DataHandler<any[] | null> | null = null;
     const nameHandler = (names: string[]) => {
         p.names = names;
     }
-    const rows: T[][] = [];
+    const rows: any[][] = [];
     const p = new ResultIterator<T>(rows, (resolve) => {
-        dataHandler = ((row: T[] | Resolution) => {
+        dataHandler = ((row: any[] | Resolution) => {
             if (row === null || typeof row === 'string') {
                 p.rows = rows;
                 resolve(row);

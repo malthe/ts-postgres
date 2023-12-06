@@ -1,5 +1,16 @@
 In next release ...
 
+- The `Value` type has been replaced with `any`, motivated by the new
+  generic result type as well as the possibility to implement custom
+  value readers which could return objects of any type.
+
+- Query results are now generic with typing support for the `get`
+  method on each row.
+
+  In addition, a new `map` method now produces records which conform
+  to the specified type. This method is available on all of the result
+  objects.
+
 - Use lookup table to optimize `get` method.
 
 - The `connect` method now returns a boolean status of whether the

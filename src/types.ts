@@ -129,7 +129,7 @@ export type ValueTypeReader = (
     end: number,
     format: DataFormat,
     encoding?: BufferEncoding
-) => Value;
+) => any;
 
 export interface Point {
     x: number,
@@ -140,26 +140,3 @@ export interface Point {
 export function isPoint(item: any): item is Point {
     return 'x' in item && 'y' in item;
 }
-
-export type Builtin =
-    Buffer |
-    Date |
-    bigint |
-    boolean |
-    number |
-    null |
-    string;
-
-export type AnyJson = boolean | number | string | null | JsonArray | JsonMap;
-
-export interface JsonMap { [key: string]: AnyJson; }
-
-export type JsonArray = Array<AnyJson>;
-
-export type ArrayValue<T> = Array<ArrayValue<T> | T>;
-
-export type Primitive = Builtin | Point | JsonMap;
-
-export type Value = Primitive | ArrayValue<Primitive>;
-
-export type Row = ArrayValue<Primitive>;

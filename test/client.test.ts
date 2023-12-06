@@ -1,8 +1,14 @@
 import { createServer, AddressInfo, Socket } from 'net';
 import { testWithClient } from './helper';
-import { Query } from '../src/query';
-import { Client, PreparedStatement, Result, ResultIterator } from '../src/client';
-import { DataFormat, DataType, Value } from '../src/types';
+import {
+    Client,
+    DataFormat,
+    DataType,
+    PreparedStatement,
+    Query,
+    Result,
+    ResultIterator,
+} from '../src/index';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
@@ -325,7 +331,7 @@ describe('Query', () => {
         query: ResultIterator;
         expectation: {
             names: string[];
-            rows: Value[];
+            rows: any[];
             status: string;
         } | RegExp;
     }

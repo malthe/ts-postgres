@@ -15,9 +15,8 @@ import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } fro
 
 import {
     DataHandler,
-    Result as _Result,
-    ResultIterator as _ResultIterator,
-    ResultRow as _ResultRow,
+    ResultIterator,
+    ResultRecord,
     makeResult
 } from './result';
 
@@ -37,18 +36,10 @@ import {
 import {
     DataFormat,
     DataType,
-    Row,
-    Value,
     ValueTypeReader
 } from './types';
 
 import { md5 } from './utils';
-
-export type Result = _Result<Value>;
-
-export type ResultIterator = _ResultIterator<Value>;
-
-export type ResultRow = _ResultRow<Value>;
 
 export type Connect = Error | null;
 
@@ -67,7 +58,7 @@ export interface ClientNotice extends DatabaseError {
 
 export interface DataTypeError {
     dataType: DataType,
-    value: Value
+    value: any
 }
 
 export enum SSLMode {
@@ -100,14 +91,14 @@ export interface Notification {
     payload?: string
 }
 
-export interface PreparedStatement {
+export interface PreparedStatement<T = ResultRecord> {
     close: (portal?: string) => Promise<void>;
     execute: (
-        values?: Value[],
+        values?: any[],
         portal?: string,
         format?: DataFormat | DataFormat[],
         streams?: Record<string, Writable>,
-    ) => ResultIterator
+    ) => ResultIterator<T>
 }
 
 type Callback<T> = (data: T) => void;
@@ -127,7 +118,7 @@ type Event = (
 type CloseHandler = () => void;
 
 interface RowDataHandler {
-    callback: DataHandler<Row>,
+    callback: DataHandler<any[]>,
     streams: Record<string, Writable>,
 }
 
@@ -154,7 +145,7 @@ interface Bind {
     name: string;
     format: DataFormat | DataFormat[]
     portal: string;
-    values: Value[],
+    values: any[],
     close: boolean
 }
 
@@ -188,7 +179,7 @@ export class Client {
     private expect = 5;
     private stream = new Socket();
     private mustDrain = false;
-    private activeRow: Array<Value> | null = null;
+    private activeRow: Array<any> | null = null;
 
     private bindQueue = new Queue<RowDataHandlerInfo | null>();
     private closeHandlerQueue = new Queue<CloseHandler | null>();
@@ -513,10 +504,10 @@ export class Client {
         }
     }
 
-    prepare(
+    prepare<T = ResultRecord>(
         text: string,
         name?: string,
-        types?: DataType[]): Promise<PreparedStatement> {
+        types?: DataType[]): Promise<PreparedStatement<T>> {
 
         const providedNameOrGenerated = name || (
             (this.config.preparedStatementPrefix ||
@@ -524,7 +515,7 @@ export class Client {
                 this.nextPreparedStatementId++
             ));
 
-        return new Promise<PreparedStatement>(
+        return new Promise<PreparedStatement<T>>(
             (resolve, reject) => {
                 const errorHandler: ErrorHandler = (error) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
@@ -551,12 +542,12 @@ export class Client {
                                 );
                             },
                             execute: (
-                                values?: Value[],
+                                values?: any[],
                                 portal?: string,
                                 format?: DataFormat | DataFormat[],
                                 streams?: Record<string, Writable>,
                             ) => {
-                                const result = makeResult<Value>();
+                                const result = makeResult<T>();
                                 result.nameHandler(description.names);
                                 const info = {
                                     handler: {
@@ -587,13 +578,13 @@ export class Client {
             });
     }
 
-    query(
+    query<T = ResultRecord>(
         text: string,
-        values?: Value[],
+        values?: any[],
         types?: DataType[],
         format?: DataFormat | DataFormat[],
         streams?: Record<string, Writable>):
-        ResultIterator {
+        ResultIterator<T> {
         const query =
             (typeof text === 'string') ?
                 new Query(
@@ -604,7 +595,7 @@ export class Client {
                     streams: streams,
                 }) :
                 text;
-        return this.execute(query);
+        return this.execute<T>(query);
     }
 
     private bindAndExecute(
@@ -642,7 +633,7 @@ export class Client {
         this.send();
     }
 
-    execute(query: Query): ResultIterator {
+    execute<T = ResultRecord>(query: Query): ResultIterator<T> {
         if (this.closed && !this.connecting) {
             throw new Error('Connection is closed.');
         }
@@ -654,7 +645,7 @@ export class Client {
         const types = options ? options.types : undefined;
         const streams = options ? options.streams : undefined;
         const portal = (options ? options.portal : undefined) || '';
-        const result = makeResult<Value>();
+        const result = makeResult<T>();
 
         const descriptionHandler = (description: RowDescription) => {
             result.nameHandler(description.names);
@@ -877,7 +868,7 @@ export class Client {
 
                     if (row === null) {
                         const count = buffer.readInt16BE(start);
-                        row = new Array<Value>(count);
+                        row = new Array<any>(count);
                     }
 
                     const startRowData = start + 2;
