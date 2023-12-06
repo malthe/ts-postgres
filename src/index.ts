@@ -1,5 +1,20 @@
 export * from './client';
-export * from './types';
+export {
+    DataFormat,
+    DataType,
+    Point,
+    ValueTypeReader,
+} from './types';
 export * from './query';
-export * from './result';
-export { DatabaseError } from './protocol';
+export {
+    Result,
+    ResultIterator,
+    ResultRecord,
+    ResultRow,
+} from './result';
+export { Environment } from './defaults';
+export {
+    DatabaseError,
+    ErrorLevel,
+    TransactionStatus,
+} from './protocol';

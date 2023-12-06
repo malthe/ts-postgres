@@ -73,3 +73,5 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
+      - name: Docs
+        run: npx typedoc
