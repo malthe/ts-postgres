@@ -1,3 +1,4 @@
+import { test } from '@jest/globals';
 import { Client } from '../src/client';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */

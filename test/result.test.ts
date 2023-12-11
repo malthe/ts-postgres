@@ -1,3 +1,4 @@
+import { describe, expect } from '@jest/globals';
 import { testWithClient } from './helper';
 import { Client, ResultIterator, ResultRow } from '../src/index';
 
