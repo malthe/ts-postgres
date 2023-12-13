@@ -24,27 +24,4 @@ export interface QueryOptions {
  * to the {@link Client.query} method.
  * @interface
  */
-export type QueryParameter = Partial<QueryOptions> & { text: string };
-
-/**
- * A complete query object, ready to send to the database.
- */
-export class Query {
-    public readonly text: string;
-    public readonly values?: any[];
-    public readonly options?: Partial<QueryOptions>;
-
-    constructor(
-        text: QueryParameter | string,
-        values?: any[],
-        options?: Partial<QueryOptions>
-    ) {
-        this.values = values;
-        this.options = options;
-        if (typeof text === 'string') {
-            this.text = text;
-        } else {
-            ({ text: this.text, ...this.options } = {...this.options, ...text});
-        }
-    }
-}
+export type Query = Partial<QueryOptions> & { text: string };

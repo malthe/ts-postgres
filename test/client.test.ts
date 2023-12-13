@@ -6,7 +6,6 @@ import {
     DataFormat,
     DataType,
     PreparedStatement,
-    Query,
     Result,
     ResultIterator,
 } from '../src/index';
@@ -18,6 +17,11 @@ const timedQueryTime = benchmarkEnabled ? 5000 : 500;
 const enum TestQuery {
     PgType,
     Array
+}
+
+interface Query {
+    text: string;
+    values?: any[]
 }
 
 function makeRandomizer(seed: number) {
@@ -40,7 +44,7 @@ function unsafeToSimpleQuery(query: Query) {
         const param = params[i];
         text = text.replace('$' + (i + 1), param);
     }
-    return new Query(text);
+    return {text};
 }
 
 function testSelect(
@@ -52,18 +56,18 @@ function testSelect(
         switch (testQuery) {
             case TestQuery.Array: return {
                 name: 'Array',
-                query: new Query(
+                query: {
                     // tslint:disable-next-line
-                    'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)'
-                )
+                    text: 'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)'
+                }
             };
             case TestQuery.PgType: return {
                 name: 'PgType',
-                query: new Query(
+                query: {
                     // tslint:disable-next-line
-                    'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
-                    [-1, true]
-                )
+                    text: 'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
+                    values: [-1, true]
+                }
             };
         }
     })();
@@ -94,7 +98,7 @@ function testSelect(
                     const promises: Promise<void>[] = [];
 
                     while (i--) {
-                        const p = client.execute(query).then(
+                        const p = client.query(query.text, query.values).then(
                             (result: Result) => {
                                 acknowledged += 1;
                                 results += result.rows.length;
@@ -199,22 +203,19 @@ describe('Timeout', () => {
 describe('Query', () => {
     testWithClient('Without parameters', async (client) => {
         expect.assertions(1);
-        const query = new Query('select 1');
-        const result = await client.execute(query);
+        const result = await client.query('select 1');
         expect(result.rows.length).toEqual(1);
     });
 
     testWithClient('With parameters', async (client) => {
         expect.assertions(1);
-        const query = new Query('select $1::int', [1]);
-        const result = await client.execute(query);
+        const result = await client.query('select $1::int', [1]);
         expect(result.rows.length).toEqual(1);
     });
 
     testWithClient('Named portal', async (client) => {
         expect.assertions(1);
-        const query = new Query('select $1::int', [1]);
-        const result = await client.execute(query);
+        const result = await client.query('select $1::int', [1]);
         expect(result.rows.length).toEqual(1);
     });
 
@@ -285,12 +286,10 @@ describe('Query', () => {
         const address = server.address() as AddressInfo;
         const socket = new Socket();
         socket.connect(address.port);
-        const query = new Query(
-            'select upper($1)::bytea as col',
-            [Buffer.from(s)],
-            { streams: { col: socket } }
-        );
-        await client.execute(query);
+        await client.query({
+            text: 'select upper($1)::bytea as col',
+            streams: { col: socket }
+        }, [Buffer.from(s)]);
 
         // At this point we're done really done streaming, and how can
         // we know when that happens?
