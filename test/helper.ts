@@ -24,8 +24,8 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
             }
             if (!client.closed) {
                 await client.end();
-                if (!client.closed) throw new Error("Expected client to be closed");
             }
         }
+        if (!client.closed) throw new Error("Expected client to be closed");
     }, timeout);
 }

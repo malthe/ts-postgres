@@ -17,6 +17,8 @@ export interface QueryOptions {
     readonly streams: Record<string, Writable>;
     /** Allows the transformation of column names as returned by the database. */
     readonly transform: (name: string) => string;
+    /** Use bigint for the INT8 (64-bit integer) data type. */
+    readonly bigints: boolean; 
 }
 
 /**

@@ -28,17 +28,19 @@ function testType<T>(
     dataType: DataType,
     expression: string,
     expected: T,
-    excludeTextMode = false) {
+    excludeTextMode = false,
+    bigints?: boolean) {
     const testParam = (format: DataFormat) => {
         testWithClient('Param', async (client) => {
             expect.assertions(3);
-            const query = expected !== null
-                ? getComparisonQueryFor(dataType, expression)
+            const text = expected !== null
+                ? getComparisonQueryFor(dataType, expression) + ' where $1 is not null'
                 : 'select $1 is null';
             await client.query({
-                text: expected !== null ? query + ' where $1 is not null' : query,
+                text,
                 types: [dataType],
-                format
+                format,
+                bigints,
             }, [expected])
                 .then(
                     (result) => {
@@ -53,13 +55,13 @@ function testType<T>(
     const testValue = (format: DataFormat) => {
         testWithClient('Value', async (client) => {
             expect.assertions(3);
-            const query = 'select ' + expression;
-            await client.query({text: query, format}, []).then(
+            const text = 'select ' + expression;
+            await client.query({text, format, bigints}, []).then(
                 (result) => {
                     const rows = result.rows;
                     expect(rows.length).toEqual(1);
                     expect(rows[0].length).toEqual(1);
-                    expect(rows[0][0]).toEqual(expected)
+                    expect(rows[0][0]).toEqual(expected);
                 });
         })
     };
@@ -101,6 +103,7 @@ describe('Types', () => {
     testType<number>(DataType.Int2, '1::int2', 1);
     testType<number>(DataType.Int4, '1::int4', 1);
     testType<bigint>(DataType.Int8, '1::int8', BigInt(1));
+    testType<number>(DataType.Int8, '1::int8', 1, undefined, false);
     testType<number>(DataType.Float4, '1::float4', 1.0);
     testType<number>(DataType.Float8, '1::float8', 1.0);
     testType<number>(DataType.Oid, '1::oid', 1);
@@ -190,6 +193,10 @@ describe('Types', () => {
         ['123e4567-e89b-12d3-a456-426655440000']
     );
     testType<number[]>(
+        DataType.ArrayInt2,
+        '\'{1,2,3}\'::int2[3]',
+        [1, 2, 3]);
+    testType<number[]>(
         DataType.ArrayInt4,
         '\'{1,2,3}\'::int4[3]',
         [1, 2, 3]);
@@ -201,6 +208,16 @@ describe('Types', () => {
         DataType.ArrayInt4,
         '\'{{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}}\'::int4[]',
         [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]);
+    testType<bigint[]>(
+        DataType.ArrayInt8,
+        '\'{1,2,3}\'::int8[3]',
+        [BigInt(1), BigInt(2), BigInt(3)]);
+    testType<number[]>(
+        DataType.ArrayInt8,
+        '\'{1,2,3}\'::int8[3]',
+        [1, 2, 3],
+        undefined,
+        false);
     testType<number[]>(
         DataType.ArrayFloat4,
         '\'{1.0, 2.0, 3.0}\'::float4[3]',
