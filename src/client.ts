@@ -9,7 +9,7 @@ import * as logger from './logging';
 
 import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
-import { Query } from './query';
+import { Query, QueryParameter } from './query';
 
 import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'tls';
 
@@ -515,10 +515,11 @@ export class Client {
     }
 
     prepare<T = ResultRecord>(
-        text: string,
+        text: QueryParameter | string,
         name?: string,
         types?: DataType[]): Promise<PreparedStatement<T>> {
 
+        const query = typeof text === 'string' ? {text} : text;
         const providedNameOrGenerated = name || (
             (this.config.preparedStatementPrefix ||
                 defaults.preparedStatementPrefix) + (
@@ -529,7 +530,7 @@ export class Client {
             (resolve, reject) => {
                 const errorHandler: ErrorHandler = (error) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
-                this.writer.parse(providedNameOrGenerated, text, types || []);
+                this.writer.parse(providedNameOrGenerated, query.text, types || query.types || []);
                 this.writer.describe(providedNameOrGenerated, 'S');
                 this.preFlightQueue.push({
                     descriptionHandler: (description: RowDescription) => {
@@ -557,7 +558,7 @@ export class Client {
                                 format?: DataFormat | DataFormat[],
                                 streams?: Record<string, Writable>,
                             ) => {
-                                const result = makeResult<T>();
+                                const result = makeResult<T>(query?.transform);
                                 result.nameHandler(description.names);
                                 const info = {
                                     handler: {
@@ -568,11 +569,11 @@ export class Client {
                                 };
                                 this.bindAndExecute(info, {
                                     name: providedNameOrGenerated,
-                                    portal: portal || '',
-                                    format: format || DataFormat.Binary,
+                                    portal: portal || query.portal || '',
+                                    format: format || query.format || DataFormat.Binary,
                                     values: values || [],
                                     close: false
-                                }, types);
+                                }, types || query.types);
 
                                 return result.iterator
                             }
@@ -588,23 +589,35 @@ export class Client {
             });
     }
 
+    /**
+     * Send a query to the database.
+     *
+     * The query string is given as the first argument, or pass a {@link QueryParameter}
+     * object which provides more control.
+     *
+     * @param text - The query string, or pass a {@link QueryParameter}
+     *     object which provides more control (including streaming values into a socket).
+     * @param values - The query parameters, corresponding to $1, $2, etc.
+     * @param types - Allows making the database native type explicit for some or all
+     *     columns.
+     * @param format - Whether column data should be transferred using text or binary mode.
+     * @param streams - A mapping from column name to a socket, e.g. an open file.
+     * @returns A promise for the query results.
+     */
     query<T = ResultRecord>(
-        text: string,
+        text: QueryParameter | string,
         values?: any[],
         types?: DataType[],
         format?: DataFormat | DataFormat[],
         streams?: Record<string, Writable>):
         ResultIterator<T> {
-        const query =
-            (typeof text === 'string') ?
-                new Query(
-                    text,
-                    values, {
-                    types: types,
-                    format: format,
-                    streams: streams,
-                }) :
-                text;
+        const query = new Query(
+            text,
+            values, {
+            types: types,
+            format: format,
+            streams: streams,
+        });
         return this.execute<T>(query);
     }
 
@@ -651,11 +664,11 @@ export class Client {
         const text = query.text;
         const values = query.values || [];
         const options = query.options;
-        const format = options ? options.format : undefined;
-        const types = options ? options.types : undefined;
-        const streams = options ? options.streams : undefined;
-        const portal = (options ? options.portal : undefined) || '';
-        const result = makeResult<T>();
+        const format = options?.format;
+        const types = options?.types;
+        const streams = options?.streams;
+        const portal = options?.portal || '';
+        const result = makeResult<T>(options?.transform);
 
         const descriptionHandler = (description: RowDescription) => {
             result.nameHandler(description.names);
@@ -667,7 +680,7 @@ export class Client {
         };
 
         if (values && values.length) {
-            const name = (options ? options.name : undefined) || (
+            const name = (options?.name) || (
                 (this.config.preparedStatementPrefix ||
                     defaults.preparedStatementPrefix) + (
                     this.nextPreparedStatementId++

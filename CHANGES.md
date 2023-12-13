@@ -1,3 +1,13 @@
+In the next release ...
+
+- The query options now supports an optional `transform` parameter which takes
+  a column name input, allowing the transformation of column names into for
+  example camelcase.
+
+- The `query` method now accepts a `QueryParameter` object as the
+  first value, in addition to the query string, making it easier to
+  make a query with additional configuration.
+
 1.6.0 (2023-12-13)
 ------------------
 

@@ -7,7 +7,7 @@ type Callback<T> = (item: T) => void;
 type ResultHandler = (resolve: Callback<Resolution>, reject: Callback<Error | DatabaseError>) => void;
 
 /** The default result type, used if no generic type parameter is specified. */
-export type ResultRecord = Record<string, any>
+export type ResultRecord<T = any> = Record<string, T>;
 
 
 function makeRecord<T>(names: string[], data: ReadonlyArray<any>): T {
@@ -209,7 +209,7 @@ export type NameHandler = Callback<string[]>;
 
 ResultIterator.prototype.constructor = Promise
 
-export function makeResult<T>() {
+export function makeResult<T>(transform?: (name: string) => string) {
     let dataHandler: DataHandler | null = null;
 
     const names: string[] = [];
@@ -232,6 +232,9 @@ export function makeResult<T>() {
 
     const nameHandler = (ns: string[]) => {
         names.length = 0;
+        if (transform) {
+            ns = ns.map(transform);
+        }
         names.push(...ns);
     }
 
