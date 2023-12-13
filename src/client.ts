@@ -780,7 +780,7 @@ export class Client {
             const next = buffer.indexOf(0, offset);
             if (next < 0) break;
 
-            const value = buffer.slice(offset + 1, next).toString();
+            const value = buffer.subarray(offset + 1, next).toString();
             switch (buffer[offset]) {
                 case 0x53: {
                     if (level === null) {
@@ -953,7 +953,7 @@ export class Client {
                         }
                         case 5: {
                             const { user = '', password = '' } = this.config;
-                            const salt = buffer.slice(start + 4, start + 8);
+                            const salt = buffer.subarray(start + 4, start + 8);
                             const shadow = md5(
                                 `${password || defaults.password}` +
                                 `${user || defaults.user}`
@@ -976,13 +976,13 @@ export class Client {
                             );
                         }
                         case 11: {
-                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            const data = buffer.subarray(start + 4, start + length).toString("utf8");
                             const password = this.config.password || defaults.password || '';
                             this.serverSignature = writer.saslResponse(data, password, this.clientNonce);
                             break;
                         }
                         case 12: {
-                            const data = buffer.slice(start + 4, start + length).toString("utf8");
+                            const data = buffer.subarray(start + 4, start + length).toString("utf8");
                             if (!this.serverSignature) throw new Error('Server signature missing');
                             writer.saslFinal(data, this.serverSignature);
                             break;
@@ -1038,7 +1038,7 @@ export class Client {
                 case Message.CommandComplete: {
                     const info = this.activeDataHandlerInfo;
                     if (info) {
-                        const status = buffer.slice(
+                        const status = buffer.subarray(
                             start, start + length - 1
                         ).toString();
 
@@ -1057,7 +1057,7 @@ export class Client {
                 }
                 case Message.ErrorResponse: {
                     const error = this.parseError(
-                        buffer.slice(start, start + length));
+                        buffer.subarray(start, start + length));
 
                     if (this.connecting) throw error;
 
@@ -1070,7 +1070,7 @@ export class Client {
                 }
                 case Message.Notice: {
                     const notice = this.parseError(
-                        buffer.slice(start, start + length));
+                        buffer.subarray(start, start + length));
                     this.events.notice.emit(notice);
                     break;
                 }

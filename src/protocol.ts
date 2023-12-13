@@ -173,7 +173,7 @@ function dateToStringUTC(date: Date, includeTime: boolean) {
 
 function formatUuid(bytes: Buffer) {
     const slice = (start: number, end: number) => {
-        return bytes.slice(start, end).toString('hex');
+        return bytes.subarray(start, end).toString('hex');
     }
 
     return [
@@ -256,7 +256,7 @@ export function readRowDescription(
 
     while (i < length) {
         const j = buffer.indexOf('\0', offset);
-        const name = buffer.slice(offset, j).toString();
+        const name = buffer.subarray(offset, j).toString();
         const dataType = buffer.readInt32BE(j + 7);
         const innerDataType = arrayDataTypeMapping.get(dataType);
         const isArray = (typeof innerDataType !== 'undefined');
@@ -323,7 +323,7 @@ export function readRowData(
             if (streams && spec === DataType.Bytea) {
                 const stream = streams[j];
                 if (stream) {
-                    const slice = buffer.slice(start, end);
+                    const slice = buffer.subarray(start, end);
                     const alloc = Buffer.allocUnsafe(slice.length);
                     slice.copy(alloc, 0, 0, slice.length);
                     stream.write(alloc);
@@ -451,7 +451,7 @@ export function readRowData(
                                     y: buffer.readDoubleBE(start + 8)
                                 }
                             case DataType.Uuid:
-                                return formatUuid(buffer.slice(start, end));
+                                return formatUuid(buffer.subarray(start, end));
                         }
                         return null;
                     };
@@ -643,7 +643,7 @@ export class Reader {
         streams?: ReadonlyArray<Writable | null>,
     ) {
         return readRowData(
-            this.buffer.slice(this.start, this.end),
+            this.buffer.subarray(this.start, this.end),
             row,
             columnSpecification,
             encoding,

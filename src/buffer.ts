@@ -31,7 +31,7 @@ export class ElasticBuffer {
         const offset = this.offset;
         this.reserve(size);
         this.offset += size;
-        return this.buffer.slice(offset, offset + size);
+        return this.buffer.subarray(offset, offset + size);
     }
 
     consume() {
