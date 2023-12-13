@@ -1,4 +1,4 @@
-export * from './client';
+export { Client, PreparedStatement } from './client';
 export {
     DataFormat,
     DataType,

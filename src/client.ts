@@ -9,7 +9,7 @@ import * as logger from './logging';
 
 import { postgresqlErrorCodes } from './errors';
 import { Queue } from './queue';
-import { Query, QueryParameter } from './query';
+import { Query } from './query';
 
 import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'tls';
 
@@ -515,7 +515,7 @@ export class Client {
     }
 
     prepare<T = ResultRecord>(
-        text: QueryParameter | string,
+        text: Query | string,
         name?: string,
         types?: DataType[]): Promise<PreparedStatement<T>> {
 
@@ -592,10 +592,10 @@ export class Client {
     /**
      * Send a query to the database.
      *
-     * The query string is given as the first argument, or pass a {@link QueryParameter}
+     * The query string is given as the first argument, or pass a {@link Query}
      * object which provides more control.
      *
-     * @param text - The query string, or pass a {@link QueryParameter}
+     * @param text - The query string, or pass a {@link Query}
      *     object which provides more control (including streaming values into a socket).
      * @param values - The query parameters, corresponding to $1, $2, etc.
      * @param types - Allows making the database native type explicit for some or all
@@ -605,20 +605,90 @@ export class Client {
      * @returns A promise for the query results.
      */
     query<T = ResultRecord>(
-        text: QueryParameter | string,
+        text: Query | string,
         values?: any[],
         types?: DataType[],
         format?: DataFormat | DataFormat[],
         streams?: Record<string, Writable>):
         ResultIterator<T> {
-        const query = new Query(
-            text,
-            values, {
-            types: types,
-            format: format,
-            streams: streams,
-        });
-        return this.execute<T>(query);
+        const query = typeof text === 'string' ? {text} : text;
+
+        if (this.closed && !this.connecting) {
+            throw new Error('Connection is closed.');
+        }
+
+        format = format || query?.format;
+        types = types || query?.types;
+        streams = streams || query?.streams;
+        const portal = query?.portal || '';
+        const result = makeResult<T>(query?.transform);
+
+        const descriptionHandler = (description: RowDescription) => {
+            result.nameHandler(description.names);
+        };
+
+        const dataHandler: RowDataHandler = {
+            callback: result.dataHandler,
+            streams: streams || {},
+        };
+
+        if (values && values.length) {
+            const name = (query?.name) || (
+                (this.config.preparedStatementPrefix ||
+                    defaults.preparedStatementPrefix) + (
+                    this.nextPreparedStatementId++
+                ));
+
+            this.writer.parse(name, query.text, types || []);
+            this.writer.describe(name, 'S');
+            this.preFlightQueue.push({
+                descriptionHandler: descriptionHandler,
+                dataHandler: dataHandler,
+                bind: {
+                    name: name,
+                    portal: portal,
+                    format: format || DataFormat.Binary,
+                    values: values,
+                    close: true
+                }
+            });
+            this.cleanupQueue.push(Cleanup.PreFlight);
+        } else {
+            const name = query.name || '';
+            this.writer.parse(name, query.text);
+            this.writer.bind(name, portal);
+            this.bindQueue.push(null);
+            this.writer.describe(portal, 'P');
+            this.preFlightQueue.push({
+                descriptionHandler: descriptionHandler,
+                dataHandler: dataHandler,
+                bind: null
+            });
+            this.writer.execute(portal);
+            this.writer.close(name, 'S');
+            this.cleanupQueue.push(Cleanup.Bind);
+            this.cleanupQueue.push(Cleanup.PreFlight);
+            this.closeHandlerQueue.push(null);
+            this.cleanupQueue.push(Cleanup.Close);
+        }
+
+        const stack = new Error().stack;
+        this.errorHandlerQueue.push(
+            (error) => {
+                if (stack !== undefined)
+                    error.stack = stack.replace(
+                        /(?<=^Error: )\n/,
+                        error.toString() + "\n"
+                    );
+                result.dataHandler(error)
+            }
+        );
+
+        this.cleanupQueue.push(Cleanup.ErrorHandler);
+
+        this.writer.sync();
+        this.send();
+        return result.iterator;
     }
 
     private bindAndExecute(
@@ -654,88 +724,6 @@ export class Client {
         );
         this.cleanupQueue.push(Cleanup.ErrorHandler);
         this.send();
-    }
-
-    execute<T = ResultRecord>(query: Query): ResultIterator<T> {
-        if (this.closed && !this.connecting) {
-            throw new Error('Connection is closed.');
-        }
-
-        const text = query.text;
-        const values = query.values || [];
-        const options = query.options;
-        const format = options?.format;
-        const types = options?.types;
-        const streams = options?.streams;
-        const portal = options?.portal || '';
-        const result = makeResult<T>(options?.transform);
-
-        const descriptionHandler = (description: RowDescription) => {
-            result.nameHandler(description.names);
-        };
-
-        const dataHandler: RowDataHandler = {
-            callback: result.dataHandler,
-            streams: streams || {},
-        };
-
-        if (values && values.length) {
-            const name = (options?.name) || (
-                (this.config.preparedStatementPrefix ||
-                    defaults.preparedStatementPrefix) + (
-                    this.nextPreparedStatementId++
-                ));
-
-            this.writer.parse(name, text, types || []);
-            this.writer.describe(name, 'S');
-            this.preFlightQueue.push({
-                descriptionHandler: descriptionHandler,
-                dataHandler: dataHandler,
-                bind: {
-                    name: name,
-                    portal: portal,
-                    format: format || DataFormat.Binary,
-                    values: values,
-                    close: true
-                }
-            });
-            this.cleanupQueue.push(Cleanup.PreFlight);
-        } else {
-            const name = (options ? options.name : undefined) || '';
-            this.writer.parse(name, text);
-            this.writer.bind(name, portal);
-            this.bindQueue.push(null);
-            this.writer.describe(portal, 'P');
-            this.preFlightQueue.push({
-                descriptionHandler: descriptionHandler,
-                dataHandler: dataHandler,
-                bind: null
-            });
-            this.writer.execute(portal);
-            this.writer.close(name, 'S');
-            this.cleanupQueue.push(Cleanup.Bind);
-            this.cleanupQueue.push(Cleanup.PreFlight);
-            this.closeHandlerQueue.push(null);
-            this.cleanupQueue.push(Cleanup.Close);
-        }
-
-        const stack = new Error().stack;
-        this.errorHandlerQueue.push(
-            (error) => {
-                if (stack !== undefined)
-                    error.stack = stack.replace(
-                        /(?<=^Error: )\n/,
-                        error.toString() + "\n"
-                    );
-                result.dataHandler(error)
-            }
-        );
-
-        this.cleanupQueue.push(Cleanup.ErrorHandler);
-
-        this.writer.sync();
-        this.send();
-        return result.iterator;
     }
 
     private handleError(error: Error): boolean {
