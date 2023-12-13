@@ -289,7 +289,7 @@ export class Client {
             const startup = (stream?: Socket) => {
                 if (stream) this.stream = stream;
                 writer.startup(settings);
-                this.listen();
+                this.receive();
                 this.sendUsing(writer);
             }
 
@@ -344,13 +344,13 @@ export class Client {
             });
         } else {
             writer.startup(settings);
-            this.listen();
+            this.receive();
         }
 
         this.sendUsing(writer);
     }
 
-    private listen() {
+    private receive() {
         let buffer: Buffer | null = null;
         let offset = 0;
         let remaining = 0;
@@ -376,7 +376,7 @@ export class Client {
             }
 
             try {
-                const read = this.receive(buffer, offset, size);
+                const read = this.handle(buffer, offset, size);
                 offset += read;
                 remaining = size - read;
             } catch (error) {
@@ -826,7 +826,7 @@ export class Client {
         throw new Error('Unable to parse error message.');
     }
 
-    private receive(buffer: Buffer, offset: number, size: number): number {
+    private handle(buffer: Buffer, offset: number, size: number): number {
         const types = this.config.types || null;
         let read = 0;
 

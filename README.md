@@ -267,6 +267,9 @@ The copy commands are not supported.
    const result = client.query({text: ..., transform: camelcase})
    ```
 
+3. _How do I use LISTEN/NOTIFY?_ Send `LISTEN` as a regular query, then subscribe to notifications
+   using `on(event: 'notification', callback: Callback<Notification>)`.
+
 ## Benchmarking
 
 Use the following environment variable to run tests in "benchmark" mode.
