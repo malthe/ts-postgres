@@ -1,3 +1,12 @@
+In next release ...
+
+- The `Connect` and `End` events have been removed, in addition to the `Parameter`
+  event; the `connect` method now returns an object with information about the
+  established connection, namely whether the connection is encrypted and the
+  connection parameters sent by the server.
+
+- Fixed a regression where some symbols were not correctly exposed for importing.
+
 1.7.0 (2023-12-13)
 ------------------
 

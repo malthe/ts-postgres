@@ -11,10 +11,7 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
     });
     client.on('notice', console.log);
     test(name, async () => {
-        let closed = true;
         let connected = false;
-        client.on('connect', () => { closed = false; });
-        client.on('end', () => { closed = true; });
         const p2 = client.connect();
         const p1 = fn(client);
         try {
@@ -25,9 +22,8 @@ export function testWithClient(name: string, fn: Test, timeout?: number) {
             if (!connected) {
                 await p2;
             }
-            if (!closed) {
+            if (!client.closed) {
                 await client.end();
-                if (!closed) throw new Error("Expected client close event");
                 if (!client.closed) throw new Error("Expected client to be closed");
             }
         }

@@ -1,4 +1,13 @@
-export { Client, PreparedStatement } from './client';
+export {
+    Client,
+    ClientNotice,
+    Configuration,
+    DataTypeError,
+    Notification,
+    PreparedStatement,
+    SSL,
+    SSLMode
+} from './client';
 export {
     DataFormat,
     DataType,
@@ -14,6 +23,8 @@ export {
 } from './result';
 export { Environment } from './defaults';
 export {
+    ClientConnectionDefaults,
+    ClientConnectionOptions,
     DatabaseError,
     ErrorLevel,
     TransactionStatus,

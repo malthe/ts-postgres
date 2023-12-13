@@ -1,5 +1,5 @@
 import { createServer, AddressInfo, Socket } from 'net';
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 import { testWithClient } from './helper';
 import {
     Client,
@@ -135,37 +135,6 @@ function testSelect(
             expect(diff).toEqual(0);
         });
 }
-
-describe('Events', () => {
-    testWithClient('End', async (client) => {
-        expect.assertions(1);
-        const f = jest.fn();
-        client.on('end', f);
-        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-        const p = new Promise((resolve, _) => {
-            client.on('connect', async () => {
-                await client.end();
-                resolve(undefined);
-            });
-        });
-        await p;
-        expect(f).toBeCalled();
-    });
-
-    testWithClient('Connect', async (client) => {
-        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-        const p = new Promise((resolve, _) => {
-            client.on('connect', () => {
-                setTimeout(() => {
-                    expect(true).toBeTruthy();
-                    resolve(undefined);
-                }, 125);
-            });
-        });
-        expect.assertions(1);
-        return p;
-    });
-});
 
 describe('Timeout', () => {
     test('Connection timeout', async () => {
