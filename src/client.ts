@@ -403,6 +403,13 @@ export class Client {
         });
     }
 
+    /** Connect to the database.
+     *
+     * @remarks
+     * Don't forget to close the connection using {@link end} before exiting.
+     *
+     * @returns The connection encryption status.
+     */
     connect(): Promise<boolean> {
         if (this.connecting) {
             throw new Error('Already connecting');
@@ -446,6 +453,9 @@ export class Client {
         return p;
     }
 
+    /** End the database connection.
+     *
+     */
     end() {
         if (this.ending) {
             throw new Error('Already ending');
@@ -514,13 +524,13 @@ export class Client {
         }
     }
 
-    prepare<T = ResultRecord>(
-        text: Query | string,
-        name?: string,
-        types?: DataType[]): Promise<PreparedStatement<T>> {
-
+    /** Prepare a statement for later execution.
+     *
+     * @returns A prepared statement object.
+     */
+    prepare<T = ResultRecord>(text: Query | string): Promise<PreparedStatement<T>> {
         const query = typeof text === 'string' ? {text} : text;
-        const providedNameOrGenerated = name || (
+        const providedNameOrGenerated = query.name || (
             (this.config.preparedStatementPrefix ||
                 defaults.preparedStatementPrefix) + (
                 this.nextPreparedStatementId++
@@ -530,7 +540,7 @@ export class Client {
             (resolve, reject) => {
                 const errorHandler: ErrorHandler = (error) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
-                this.writer.parse(providedNameOrGenerated, query.text, types || query.types || []);
+                this.writer.parse(providedNameOrGenerated, query.text, query.types || []);
                 this.writer.describe(providedNameOrGenerated, 'S');
                 this.preFlightQueue.push({
                     descriptionHandler: (description: RowDescription) => {
@@ -598,28 +608,18 @@ export class Client {
      * @param text - The query string, or pass a {@link Query}
      *     object which provides more control (including streaming values into a socket).
      * @param values - The query parameters, corresponding to $1, $2, etc.
-     * @param types - Allows making the database native type explicit for some or all
-     *     columns.
-     * @param format - Whether column data should be transferred using text or binary mode.
-     * @param streams - A mapping from column name to a socket, e.g. an open file.
      * @returns A promise for the query results.
      */
-    query<T = ResultRecord>(
-        text: Query | string,
-        values?: any[],
-        types?: DataType[],
-        format?: DataFormat | DataFormat[],
-        streams?: Record<string, Writable>):
-        ResultIterator<T> {
+    query<T = ResultRecord>(text: Query | string, values?: any[]): ResultIterator<T> {
         const query = typeof text === 'string' ? {text} : text;
 
         if (this.closed && !this.connecting) {
             throw new Error('Connection is closed.');
         }
 
-        format = format || query?.format;
-        types = types || query?.types;
-        streams = streams || query?.streams;
+        const format = query?.format;
+        const types = query?.types;
+        const streams =query?.streams;
         const portal = query?.portal || '';
         const result = makeResult<T>(query?.transform);
 
