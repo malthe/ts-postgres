@@ -2,13 +2,16 @@ In the next release ...
 
 - The `execute` method has been removed.
 
-- The query options now supports an optional `transform` parameter which takes
-  a column name input, allowing the transformation of column names into for
-  example camelcase.
+- The querying options now include an optional `transform` property which must be
+  a function which takes a column name input, allowing the transformation of column
+  names into for example _camel-case_.
 
-- The `query` method now accepts a `Query` object as the
-  first value, in addition to the query string, making it easier to
-  make a query with additional configuration.
+- The `query` method now accepts a `Query` object as the first argument in
+  addition to a string argument, but no longer accepts any additional arguments
+  after `values`. The query options must now be provided using the query argument
+  instead.
+
+  The same change has been made to `prepare`.
 
 1.6.0 (2023-12-13)
 ------------------
