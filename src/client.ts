@@ -41,13 +41,9 @@ import {
 
 import { md5 } from './utils';
 
-export type Connect = Error | null;
-
-export type End = void;
-
-export interface Parameter {
-    name: string;
-    value: string;
+export interface ConnectionInfo  {
+    encrypted: boolean;
+    parameters: ReadonlyMap<string, string>;
 }
 
 export interface ClientNotice extends DatabaseError {
@@ -108,12 +104,13 @@ type CallbackOf<U> = U extends any ? Callback<U> : never;
 
 type Event = (
     ClientNotice |
-    Connect |
     DatabaseError |
-    End |
-    Parameter |
     Notification
 );
+
+type Connect = Error | null;
+
+type End = NodeJS.ErrnoException | null;
 
 type CloseHandler = () => void;
 
@@ -164,7 +161,6 @@ export class Client {
     private readonly events = {
         connect: new TypedEvent<Connect>(),
         end: new TypedEvent<End>(),
-        parameter: new TypedEvent<Parameter>(),
         error: new TypedEvent<DatabaseError>(),
         notice: new TypedEvent<ClientNotice>(),
         notification: new TypedEvent<Notification>()
@@ -196,6 +192,7 @@ export class Client {
 
     private nextPreparedStatementId = 0;
     private activeDataHandlerInfo: RowDataHandlerInfo | null = null;
+    private readonly parameters: Map<string, string> = new Map();
 
     public closed = true;
     public processId: number | null = null;
@@ -213,7 +210,7 @@ export class Client {
 
         this.stream.on('close', () => {
             this.closed = true;
-            this.events.end.emit();
+            this.events.end.emit(null);
         });
 
         this.stream.on('connect', () => {
@@ -239,7 +236,7 @@ export class Client {
                 if (this.ending && error.errno ===
                     constants.errno.ECONNRESET) return;
 
-                this.events.end.emit();
+                this.events.end.emit(error);
             }
         });
 
@@ -408,9 +405,9 @@ export class Client {
      * @remarks
      * Don't forget to close the connection using {@link end} before exiting.
      *
-     * @returns The connection encryption status.
+     * @returns The connection information.
      */
-    connect(): Promise<boolean> {
+    connect(): Promise<ConnectionInfo> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -428,7 +425,10 @@ export class Client {
                 this.stream.destroy();
                 throw error;
             }
-            return this.stream instanceof TLSSocket;
+            return {
+                encrypted: this.stream instanceof TLSSocket,
+                parameters: this.parameters as ReadonlyMap<string, string>,
+            }
         });
 
         const port = this.config.port || defaults.port;
@@ -448,7 +448,7 @@ export class Client {
                         new Error(`Timeout after ${timeout} ms`)
                     ), timeout
                 )),
-            ]) as Promise<boolean>
+            ]) as Promise<ConnectionInfo>
         }
         return p;
     }
@@ -479,28 +479,21 @@ export class Client {
         } else {
             this.stream.destroy();
         }
-
-        return this.events.end.once();
+        return new Promise<void>((resolve, reject) =>
+            this.events.end.once().then(
+                value => {
+                    if (value === null) resolve();
+                    reject(value);
+                }
+            )
+        );
     }
 
-    on(event: 'connect', callback: Callback<Connect>): void;
-    on(event: 'end', callback: Callback<End>): void;
-    on(event: 'parameter', callback: Callback<Parameter>): void;
     on(event: 'notification', callback: Callback<Notification>): void;
     on(event: 'error', callback: Callback<DatabaseError>): void;
     on(event: 'notice', callback: Callback<ClientNotice>): void;
     on(event: string, callback: CallbackOf<Event>): void {
         switch (event) {
-            case 'connect': {
-                this.events.connect.on(
-                    callback as Callback<Connect>);
-                break;
-            }
-            case 'end': {
-                this.events.end.on(
-                    callback as Callback<End>);
-                break;
-            }
             case 'error': {
                 this.events.error.on(
                     callback as Callback<DatabaseError>);
@@ -514,11 +507,6 @@ export class Client {
             case 'notification': {
                 this.events.notification.on(
                     callback as Callback<Notification>);
-                break
-            }
-            case 'parameter': {
-                this.events.parameter.on(
-                    callback as Callback<Parameter>);
                 break
             }
         }
@@ -1109,10 +1097,7 @@ export class Client {
                     const reader = new Reader(buffer, start);
                     const name = reader.readCString(this.encoding);
                     const value = reader.readCString(this.encoding);
-                    this.events.parameter.emit({
-                        name: name,
-                        value: value
-                    });
+                    this.parameters.set(name, value);
                     break;
                 }
                 case Message.ReadyForQuery: {
