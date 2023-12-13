@@ -260,6 +260,13 @@ The copy commands are not supported.
    pool.use(...)
    ```
 
+2. _How do I convert column names to camelcase?_ Use the `transform` option:
+
+   ```typescript
+   const camelcase = (s: string) => s.replace(/(_\w)/g, k => k[1].toUpperCase());
+   const result = client.query({text: ..., transform: camelcase})
+   ```
+
 ## Benchmarking
 
 Use the following environment variable to run tests in "benchmark" mode.

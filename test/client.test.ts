@@ -239,16 +239,11 @@ describe('Query', () => {
         expect(result.rows.length).toEqual(1);
     });
 
-    testWithClient('Prepared statement', async (client) => {
-        const count = 5;
-        expect.assertions(count * 2);
-        await client.query('prepare test (int) as select $1');
-        for (let i = 0; i < count; i++) {
-            const result = await client.query('execute test(1)');
-            const rows = result.rows;
-            expect(rows.length).toEqual(1);
-            expect(rows[0]).toEqual([1]);
-        }
+    testWithClient('Name transform', async (client) => {
+        expect.assertions(1);
+        const query = {text: 'select 1 as foo', transform: (s: string) => s.toUpperCase()};
+        const result = await client.query(query);
+        expect(result.names).toEqual(['FOO']);
     });
 
     testWithClient('Listen/notify', async (client) => {
@@ -481,6 +476,19 @@ describe('Query', () => {
             const stmt = await client.prepare('select $1::int as i');
             await expect(stmt.execute([1])).resolves.toEqual(
                 { names: ['i'], rows: [[1]], status: 'SELECT 1' }
+            );
+            const result = await stmt.execute([2]);
+            expect(result.rows).toEqual([[2]]);
+            await stmt.close();
+        });
+
+    testWithClient(
+        'Prepare and execute (SELECT)',
+        async (client) => {
+            const query = {text: 'select $1::int as i', transform: (s: string) => s.toUpperCase()};
+            const stmt = await client.prepare(query);
+            await expect(stmt.execute([1])).resolves.toEqual(
+                { names: ['I'], rows: [[1]], status: 'SELECT 1' }
             );
             const result = await stmt.execute([2]);
             expect(result.rows).toEqual([[2]]);

@@ -515,10 +515,11 @@ export class Client {
     }
 
     prepare<T = ResultRecord>(
-        text: string,
+        text: QueryParameter | string,
         name?: string,
         types?: DataType[]): Promise<PreparedStatement<T>> {
 
+        const query = typeof text === 'string' ? {text} : text;
         const providedNameOrGenerated = name || (
             (this.config.preparedStatementPrefix ||
                 defaults.preparedStatementPrefix) + (
@@ -529,7 +530,7 @@ export class Client {
             (resolve, reject) => {
                 const errorHandler: ErrorHandler = (error) => reject(error);
                 this.errorHandlerQueue.push(errorHandler);
-                this.writer.parse(providedNameOrGenerated, text, types || []);
+                this.writer.parse(providedNameOrGenerated, query.text, types || query.types || []);
                 this.writer.describe(providedNameOrGenerated, 'S');
                 this.preFlightQueue.push({
                     descriptionHandler: (description: RowDescription) => {
@@ -557,7 +558,7 @@ export class Client {
                                 format?: DataFormat | DataFormat[],
                                 streams?: Record<string, Writable>,
                             ) => {
-                                const result = makeResult<T>();
+                                const result = makeResult<T>(query?.transform);
                                 result.nameHandler(description.names);
                                 const info = {
                                     handler: {
@@ -568,11 +569,11 @@ export class Client {
                                 };
                                 this.bindAndExecute(info, {
                                     name: providedNameOrGenerated,
-                                    portal: portal || '',
-                                    format: format || DataFormat.Binary,
+                                    portal: portal || query.portal || '',
+                                    format: format || query.format || DataFormat.Binary,
                                     values: values || [],
                                     close: false
-                                }, types);
+                                }, types || query.types);
 
                                 return result.iterator
                             }
@@ -667,7 +668,7 @@ export class Client {
         const types = options?.types;
         const streams = options?.streams;
         const portal = options?.portal || '';
-        const result = makeResult<T>();
+        const result = makeResult<T>(options?.transform);
 
         const descriptionHandler = (description: RowDescription) => {
             result.nameHandler(description.names);
