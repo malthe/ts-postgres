@@ -65,7 +65,7 @@
         "singleQuote": true
     },
     "devDependencies": {
-        "@types/jest": "^29.5.8",
+        "@jest/globals": "^29.7.0",
         "@types/node": "^18.15.3",
         "@typescript-eslint/eslint-plugin": "^6.10.0",
         "@typescript-eslint/parser": "^6.10.0",

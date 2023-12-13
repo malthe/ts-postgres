@@ -2,78 +2,82 @@
 
 import { DatabaseError } from './protocol';
 
-type Resolution = null | string | Error | DatabaseError;
-type Resolver = (resolution: Resolution) => void;
-type ResultHandler = (resolve: Resolver) => void;
+type Resolution = null | string;
 type Callback<T> = (item: T) => void;
-
-export class ResultRowImpl<T> {
-    private readonly lookup: {[name: string]: number};
-
-    constructor(public readonly names: string[], public readonly data: any[]) {
-        const lookup: {[name: string]: number} = {};
-        let i = 0;
-        for (const name of names) {
-            lookup[name] = i;
-            i++;
-        }
-        this.lookup = lookup;
-    }
-
-    [Symbol.iterator](): Iterator<any> {
-        return this.data[Symbol.iterator]();
-    }
-
-    get(name: string): any {
-        const i = this.lookup[name];
-        return this.data[i];
-    }
-
-    reify(): T {
-        const data = this.data;
-        const result: Record<string, any> = {};
-        this.names.forEach((key, i) => result[key] = data[i]);
-        return result as T;
-    }
-}
+type ResultHandler = (resolve: Callback<Resolution>, reject: Callback<Error | DatabaseError>) => void;
 
 /** The default result type, used if no generic type parameter is specified. */
 export type ResultRecord = Record<string, any>
 
+
+function makeRecord<T>(names: string[], data: ReadonlyArray<any>): T {
+    const result: Record<string, any> = {};
+    names.forEach((key, j) => result[key] = data[j]);
+    return result as T;
+}
+
+class ResultRowImpl<T> extends Array<any> {
+    #names?: string[];
+    #lookup?: Map<keyof T, number>;
+
+    set(names: string[], lookup: Map<keyof T, number>, values: any[]) {
+        this.#names = names;
+        this.#lookup = lookup;
+        this.push(...values);
+    }
+
+    /**
+     * Return value for the provided column name.
+     */
+    get<K extends string & keyof T>(name: keyof T): T[K] {
+        const i = this.#lookup?.get(name);
+        if (i === undefined) throw new Error(`Invalid column name: ${String(name)}`);
+        return this[i];
+    }
+
+    /**
+     * Return an object mapping column names to values.
+     */
+    reify() {
+        if (this.#names === undefined) throw new Error('Column names not available'); 
+        return makeRecord<T>(this.#names, this);
+    }
+}
+
 /**
- * A result row provides access to data for a single row.
+ * A result row provides access to data for a single row, extending an array.
+ * @interface
  *
  * The generic type parameter is carried over from the query method.
- * @interface
  *
  * To retrieve a column value by name use the {@link get} method; or use {@link reify} to convert
  * the row into an object.
  *
- * The {@link data} attribute provides raw access to the row data, but it's also possible to use the
- * spread operator to destructure into a tuple.
  */
-export type ResultRow<T = ResultRecord> = Omit<ResultRowImpl<T>, 'get'> & {
-    get<K extends keyof T>(name: K): T[K];
-}
+export type ResultRow<T> = ReadonlyArray<T> & Pick<ResultRowImpl<T>, 'get' | 'reify'>;
 
+/**
+ * The awaited query result.
+ *
+ * Iterating over the result yields objects of the generic type parameter.
+ */
 export class Result<T = ResultRecord> {
     constructor(
         public names: string[],
-        public rows: any[][],
+        public rows: ResultRow<T>[],
         public status: null | string
     ) { }
 
-    [Symbol.iterator](): Iterator<ResultRow<T>> {
+    [Symbol.iterator](): Iterator<T> {
         let i = 0;
 
         const rows = this.rows;
         const length = rows.length;
+        const names = this.names;
 
         const shift = () => {
-            const names = this.names;
-            const values = rows[i];
-            i++;
-            return new ResultRowImpl<T>(names, values) as unknown as ResultRow<T>;
+            const data = rows[i++];
+            return makeRecord<T>(names, data);
         };
 
         return {
@@ -83,69 +87,58 @@ export class Result<T = ResultRecord> {
             }
         }
     }
-
-    reify(): T[] {
-        return this.rows.map(data => {
-            const result: Record<string, any> = {};
-            this.names.forEach((key, i) => result[key] = data[i]);
-            return result;
-        }) as T[];
-    }
 }
 
+/**
+ * The query result iterator.
+ *
+ * Iterating asynchronously yields objects of the generic type parameter.
+ */
 export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
     private subscribers: (
         (done: boolean, error?: (string | DatabaseError | Error)
         ) => void)[] = [];
     private done = false;
 
-    public rows: any[][] | null = null;
-    public names: string[] | null = null;
-
-    constructor(private container: any[][], executor: ResultHandler) {
+    constructor(private names: string[], private data: any[][], executor: ResultHandler) {
         super((resolve, reject) => {
-            executor((resolution) => {
-                if (resolution instanceof Error) {
-                    reject(resolution);
-                } else {
-                    const names = this.names || [];
-                    const rows = this.rows || [];
-                    resolve(new Result(names, rows, resolution));
+            executor((status) => {
+                const names = this.names || [];
+                const data = this.data || [];
+
+                const lookup: Map<keyof T, number> = new Map();
+                let i = 0;
+                for (const name of names) {
+                    lookup.set(name as keyof T, i);
+                    i++;
                 }
-            });
+
+                resolve(new Result(names, data.map(values => {
+                    const row = new ResultRowImpl<T>();
+                    row.set(names, lookup, values);
+                    return row;
+                }), status));
+            }, reject);
         });
     }
 
+    /**
+     * Return the first item (if any) from the query results.
+     */
     async first() {
         for await (const row of this) {
             return row;
         }
     }
 
+    /**
+     * Return the first item from the query results, or throw an error.
+     */
     async one() {
         for await (const row of this) {
             return row;
         }
         throw new Error('Query returned an empty result');
-    }
-
-    reify(): AsyncIterable<T> {
-        const iterator: AsyncIterator<ResultRow<T>> = this[Symbol.asyncIterator]();
-        return {
-            [Symbol.asyncIterator]() {
-                return {
-                    async next() {
-                        const { done, value } = await iterator.next();
-                        if (done) return { done, value: null };
-                        return { done, value: value.reify() };
-                    },
-                    async return() {
-                        if (iterator?.return) await iterator?.return();
-                        return { done: true, value: null };
-                    }
-                };
-            }
-        }
     }
 
     notify(done: boolean, status?: (string | DatabaseError | Error)) {
@@ -154,21 +147,21 @@ export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
         this.subscribers.length = 0;
     }
 
-    [Symbol.asyncIterator](): AsyncIterator<ResultRow<T>> {
+    [Symbol.asyncIterator](): AsyncIterator<T> {
         let i = 0;
 
-        const container = this.container;
+        //const container = this.container;
 
         const shift = () => {
             const names = this.names;
-            const values = container[i];
+            const values = this.data[i];
             i++;
 
             if (names === null) {
                 throw new Error("Column name mapping missing.");
             }
 
-            return new ResultRowImpl<T>(names, values) as unknown as ResultRow<T>;
+            return makeRecord<T>(names, values);
         };
 
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -184,7 +177,7 @@ export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
                     throw error;
                 }
 
-                if (container.length <= i) {
+                if (this.data.length <= i) {
                     if (this.done) {
                         return { done: true, value: undefined! };
                     }
@@ -210,33 +203,37 @@ export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
     }
 }
 
-export type DataHandler<T> = Callback<T | Resolution>;
+export type DataHandler = Callback<any[] | Resolution | Error>;
 
 export type NameHandler = Callback<string[]>;
 
 ResultIterator.prototype.constructor = Promise
 
 export function makeResult<T>() {
-    let dataHandler: DataHandler<any[] | null> | null = null;
-    const nameHandler = (names: string[]) => {
-        p.names = names;
-    }
+    let dataHandler: DataHandler | null = null;
+
+    const names: string[] = [];
     const rows: any[][] = [];
-    const p = new ResultIterator<T>(rows, (resolve) => {
-        dataHandler = ((row: any[] | Resolution) => {
+
+    const p = new ResultIterator<T>(names, rows, (resolve, reject) => {
+        dataHandler = ((row: any[] | Resolution | Error) => {
             if (row === null || typeof row === 'string') {
-                p.rows = rows;
                 resolve(row);
                 p.notify(true);
             } else if (Array.isArray(row)) {
                 rows.push(row);
                 p.notify(false);
             } else {
-                resolve(row);
+                reject(row);
                 p.notify(true, row);
             }
         });
     });
+
+    const nameHandler = (ns: string[]) => {
+        names.length = 0;
+        names.push(...ns);
+    }
 
     return {
         iterator: p,

@@ -1,3 +1,13 @@
+In next release ...
+
+- The iterator methods now return reified representations of the query result
+  (i.e. objects), carrying the generic type parameter specified for the query
+  (#83).
+
+- The result rows now extend the array type, providing `get` and `reify` methods.
+  This separates the query results interface into an iterator interface (providing
+  objects) and a result interface (providing rows and column names).
+
 1.5.0 (2023-12-06)
 ------------------
 
