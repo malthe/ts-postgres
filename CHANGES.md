@@ -1,4 +1,5 @@
-In the next release ...
+1.7.0 (2023-12-13)
+------------------
 
 - The `execute` method has been removed.
 
