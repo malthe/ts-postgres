@@ -1,4 +1,5 @@
-In next release ...
+1.6.0 (2023-12-13)
+------------------
 
 - The iterator methods now return reified representations of the query result
   (i.e. objects), carrying the generic type parameter specified for the query
