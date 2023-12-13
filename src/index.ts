@@ -2,6 +2,7 @@ export {
     Client,
     ClientNotice,
     Configuration,
+    ConnectionInfo,
     DataTypeError,
     Notification,
     PreparedStatement,
