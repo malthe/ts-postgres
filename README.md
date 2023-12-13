@@ -244,14 +244,11 @@ The copy commands are not supported.
    const pool = createPool({
        create: async () => {
            const client = new Client();
-           return client.connect().then(() => {
-               client.on('error', console.log);
-               return client;
-           });
+           await client.connect();
+           client.on('error', console.log);
+           return client;
        },
-       destroy: async (client: Client) => {
-           return client.end().then(() => { })
-       },
+       destroy: async (client: Client) => client.end(),
        validate: (client: Client) => {
            return Promise.resolve(!client.closed);
        }
@@ -267,8 +264,20 @@ The copy commands are not supported.
    const result = client.query({text: ..., transform: camelcase})
    ```
 
-3. _How do I use LISTEN/NOTIFY?_ Send `LISTEN` as a regular query, then subscribe to notifications
-   using `on(event: 'notification', callback: Callback<Notification>)`.
+3. _How do I use LISTEN/NOTIFY?_ Send `LISTEN` as a regular query, then subscribe to
+   notifications, filtering out the relevant channels.
+
+   ```typescript
+   import { Notification } from 'ts-postgres';
+
+   const channel = 'test';
+   client.on('notification', (message: Notification) => {
+        if (message.channel === channel) {
+            // Do stuff
+        }
+   });
+   await client.query(`LISTEN ${channel}`);
+   ```
 
 ## Benchmarking
 
