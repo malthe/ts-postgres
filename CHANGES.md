@@ -1,5 +1,7 @@
 In next release ...
 
+- Add support for the INT2 and INT8 array types.
+
 - The `Connect` and `End` events have been removed, in addition to the `Parameter`
   event; the `connect` method now returns an object with information about the
   established connection, namely whether the connection is encrypted and the

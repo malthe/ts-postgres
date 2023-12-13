@@ -190,6 +190,10 @@ describe('Types', () => {
         ['123e4567-e89b-12d3-a456-426655440000']
     );
     testType<number[]>(
+        DataType.ArrayInt2,
+        '\'{1,2,3}\'::int2[3]',
+        [1, 2, 3]);
+    testType<number[]>(
         DataType.ArrayInt4,
         '\'{1,2,3}\'::int4[3]',
         [1, 2, 3]);
@@ -201,6 +205,10 @@ describe('Types', () => {
         DataType.ArrayInt4,
         '\'{{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}}\'::int4[]',
         [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]);
+    testType<bigint[]>(
+        DataType.ArrayInt8,
+        '\'{1,2,3}\'::int8[3]',
+        [BigInt(1), BigInt(2), BigInt(3)]);
     testType<number[]>(
         DataType.ArrayFloat4,
         '\'{1.0, 2.0, 3.0}\'::float4[3]',
