@@ -663,10 +663,10 @@ export class Client {
         const text = query.text;
         const values = query.values || [];
         const options = query.options;
-        const format = options ? options.format : undefined;
-        const types = options ? options.types : undefined;
-        const streams = options ? options.streams : undefined;
-        const portal = (options ? options.portal : undefined) || '';
+        const format = options?.format;
+        const types = options?.types;
+        const streams = options?.streams;
+        const portal = options?.portal || '';
         const result = makeResult<T>();
 
         const descriptionHandler = (description: RowDescription) => {
@@ -679,7 +679,7 @@ export class Client {
         };
 
         if (values && values.length) {
-            const name = (options ? options.name : undefined) || (
+            const name = (options?.name) || (
                 (this.config.preparedStatementPrefix ||
                     defaults.preparedStatementPrefix) + (
                     this.nextPreparedStatementId++
