@@ -1,5 +1,9 @@
 In next release ...
 
+- Both the `Query` object and client configuration now provide an optional `bigints`
+  setting which decides whether to use bigints or the number type for the INT8
+  data type. The setting is enabled by default.
+
 - Add support for the INT2 and INT8 array types.
 
 - The `Connect` and `End` events have been removed, in addition to the `Parameter`

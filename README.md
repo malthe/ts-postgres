@@ -126,7 +126,7 @@ accessed via the iterator or record interface (see below).
 
 Query parameters use the format `$1`, `$2` etc.
 
-When a specific data type is not inferrable from the query, PostgreSQL
+When a specific data type can't be inferred from the query, PostgreSQL
 uses `DataType.Text` as the default data type (which is mapped to the
 string type in TypeScript). An explicit type can be provided in two
 different ways:
@@ -143,9 +143,19 @@ different ways:
     ```
 
 Note that the `number` type in TypeScript has a maximum safe integer
-value which lies between and `DataType.Int8` – given by
-`Number.MAX_SAFE_INTEGER`. To use `DataType.Int8` the `bigint` type
-should be used.
+value which is 2⁵³ – 1 (also given in the `Number.MAX_SAFE_INTEGER` constant),
+a value which lies between `DataType.Int4` and `DataType.Int8`. For numbers
+which can take on a value that's outside the safe range, use `DataType.Int8`
+(which translates to a `bigint` in TypeScript.)
+
+There's an optional setting `bigints` which can be configured on the client and/or
+specified for each query. It defaults to _true_, but can be set to _false_ in which
+case `number` is always used instead of `bigint` for `DataType.Int8` (throwing an 
+error if a query returns a value outside of the safe integer range.)
+
+Using a [check constraint](https://www.postgresql.org/docs/current/ddl-constraints.html)
+is recommended to ensure that values fit into the safe
+integer range, e.g. `CHECK (id < POWER(2, 53) - 1)`.
 
 ### Iterator interface
 

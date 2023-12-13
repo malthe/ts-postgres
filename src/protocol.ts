@@ -285,8 +285,9 @@ export function readRowData(
     row: Array<any>,
     columnSpecification: Uint32Array,
     encoding: BufferEncoding,
-    types: ReadonlyMap<DataType, ValueTypeReader> | null,
-    streams: ReadonlyArray<Writable | null> | null,
+    bigints: boolean,
+    types?: ReadonlyMap<DataType, ValueTypeReader>,
+    streams?: ReadonlyArray<Writable | null>,
 ): number {
     const columns = row.length;
     const bufferLength = buffer.length;
@@ -319,9 +320,9 @@ export function readRowData(
             const spec = columnSpecification[j];
             let skip = false;
 
-            if (streams !== null && spec === DataType.Bytea) {
+            if (streams && spec === DataType.Bytea) {
                 const stream = streams[j];
-                if (stream !== null) {
+                if (stream) {
                     const slice = buffer.slice(start, end);
                     const alloc = Buffer.allocUnsafe(slice.length);
                     slice.copy(alloc, 0, 0, slice.length);
@@ -350,7 +351,7 @@ export function readRowData(
                 const isReader = (spec & readerMask) !== 0;
 
                 if (isReader) {
-                    const reader = (types) ? types.get(dataType) : null;
+                    const reader = types?.get(dataType);
                     if (reader) {
                         value = reader(
                             buffer,
@@ -404,8 +405,14 @@ export function readRowData(
                             case DataType.Int4:
                             case DataType.Oid:
                                 return buffer.readInt32BE(start);
-                            case DataType.Int8:
-                                return buffer.readBigInt64BE(start);
+                            case DataType.Int8: {
+                                const value = buffer.readBigInt64BE(start);
+                                if (bigints) return value;
+                                if (value > Number.MAX_SAFE_INTEGER) {
+                                    throw new Error("INT8 value too big for 'number' type");
+                                }
+                                return Number(value);
+                            }
                             case DataType.Float4:
                                 return buffer.readFloatBE(start);
                             case DataType.Float8:
@@ -631,14 +638,16 @@ export class Reader {
         row: any[],
         columnSpecification: Uint32Array,
         encoding: BufferEncoding,
-        types: ReadonlyMap<DataType, ValueTypeReader> | null,
-        streams: ReadonlyArray<Writable | null> | null,
+        bigints: boolean,
+        types?: ReadonlyMap<DataType, ValueTypeReader>,
+        streams?: ReadonlyArray<Writable | null>,
     ) {
         return readRowData(
             this.buffer.slice(this.start, this.end),
             row,
             columnSpecification,
             encoding,
+            bigints,
             types,
             streams
         );

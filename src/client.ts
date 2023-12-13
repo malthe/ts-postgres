@@ -75,6 +75,7 @@ export interface Configuration extends Partial<ClientConnectionDefaults & Client
     port?: number,
     password?: string,
     types?: Map<DataType, ValueTypeReader>,
+    bigints?: boolean,
     keepAlive?: boolean,
     preparedStatementPrefix?: string,
     connectionTimeout?: number,
@@ -117,6 +118,7 @@ type CloseHandler = () => void;
 interface RowDataHandler {
     callback: DataHandler,
     streams: Record<string, Writable>,
+    bigints: boolean,
 }
 
 type DescriptionHandler = (description: RowDescription) => void;
@@ -562,6 +564,7 @@ export class Client {
                                     handler: {
                                         callback: result.dataHandler,
                                         streams: streams || {},
+                                        bigints: query.bigints ?? this.config.bigints ?? true,
                                     },
                                     description: description,
                                 };
@@ -607,7 +610,7 @@ export class Client {
 
         const format = query?.format;
         const types = query?.types;
-        const streams =query?.streams;
+        const streams = query?.streams;
         const portal = query?.portal || '';
         const result = makeResult<T>(query?.transform);
 
@@ -618,6 +621,7 @@ export class Client {
         const dataHandler: RowDataHandler = {
             callback: result.dataHandler,
             streams: streams || {},
+            bigints: query.bigints ?? this.config.bigints ?? true,
         };
 
         if (values && values.length) {
@@ -815,7 +819,6 @@ export class Client {
     }
 
     private handle(buffer: Buffer, offset: number, size: number): number {
-        const types = this.config.types || null;
         let read = 0;
 
         while (size >= this.expect + read) {
@@ -825,6 +828,7 @@ export class Client {
             // Fast path: retrieve data rows.
             if (mtype === Message.RowData) {
                 const info = this.activeDataHandlerInfo;
+
                 if (!info) {
                     throw new Error('No active data handler');
                 }
@@ -835,8 +839,9 @@ export class Client {
 
                 const {
                     handler: {
-                        streams,
                         callback,
+                        streams,
+                        bigints,
                     },
                     description: {
                         columns,
@@ -846,15 +851,17 @@ export class Client {
 
                 let row = this.activeRow;
 
+                const types = this.config.types;
+                const encoding = this.encoding;
+
                 const hasStreams = Object.keys(streams).length > 0;
                 const mappedStreams = hasStreams ? names.map(
-                    name => streams[name] || null
-                ) : null;
+                    name => streams[name]
+                ) : undefined;
 
                 while (true) {
                     mtype = buffer.readInt8(frame);
                     if (mtype !== Message.RowData) break;
-
 
                     const bytes = buffer.readInt32BE(frame + 1) + 1;
                     const start = frame + 5;
@@ -875,7 +882,8 @@ export class Client {
                     const end = reader.readRowData(
                         row,
                         columns,
-                        this.encoding,
+                        encoding,
+                        bigints,
                         types,
                         mappedStreams
                     );
