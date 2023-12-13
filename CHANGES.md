@@ -1,5 +1,8 @@
 In next release ...
 
+- Reduce buffer allocation and intelligently scale initial allocation when creating
+  a new buffer.
+
 - Both the `Query` object and client configuration now provide an optional `bigints`
   setting which decides whether to use bigints or the number type for the INT8
   data type. The setting is enabled by default.

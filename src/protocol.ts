@@ -659,7 +659,7 @@ export class Reader {
 }
 
 export class Writer {
-    private outgoing: ElasticBuffer = new ElasticBuffer(4096);
+    private outgoing: ElasticBuffer = new ElasticBuffer();
 
     constructor(private readonly encoding: BufferEncoding) { }
 
@@ -1085,7 +1085,10 @@ export class Writer {
     send(socket: Socket) {
         if (this.outgoing.empty) return;
         const buffer = this.outgoing.consume();
-        return socket.write(buffer);
+        if (buffer) {
+            return socket.write(buffer, () => this.outgoing.offer(buffer));
+        }
+        return true;
     }
 
     startup(settings: StartupConfiguration) {
