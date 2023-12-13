@@ -118,7 +118,7 @@ type Event = (
 type CloseHandler = () => void;
 
 interface RowDataHandler {
-    callback: DataHandler<any[]>,
+    callback: DataHandler,
     streams: Record<string, Writable>,
 }
 

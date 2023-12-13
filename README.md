@@ -20,9 +20,9 @@ $ npm install ts-postgres@latest
 * Multiple queries can be sent at once (pipeline)
 * Extensible value model
 * Hybrid query result object
-  * Iterable (synchronous or asynchronous; one row at a time)
-  * Promise-based
-  * Streaming
+  * Iterable (synchronous or asynchronous; one object at a time)
+  * Rows and column names
+  * Streaming data directly into a socket
 
 See the [documentation](https://malthe.github.io/ts-postgres/) for a complete reference.
 
@@ -50,9 +50,9 @@ async function main() {
             ['world']
         );
 
-        for await (const row of result) {
+        for await (const obj of result) {
             // 'Hello world!'
-            console.log(row.get('message'));
+            console.log(obj.message);
         }
     } finally {
         await client.end();
@@ -118,10 +118,9 @@ const query = new Query(
 const result = await client.execute<Greeting>(query);
 ```
 
-If the row type is omitted, it defaults to `Record<string, any>`, but
-providing a type ensures that the row values are typed, both when
-accessed via the `get` method or if the row is mapped to a record
-using the `map` method.
+If the object type is omitted, it defaults to `Record<string, any>`, but
+providing a type ensures that the object values are typed, both when
+accessed via the iterator or record interface (see below).
 
 ### Passing query parameters
 
@@ -139,7 +138,7 @@ different ways:
    ```typescript
    import { DataType } from 'ts-postgres';
    const result = await client.query(
-      "select $1 || ' bottles of beer'", [99], [DataType.Int4]
+      "SELECT $1 || ' bottles of beer'", [99], [DataType.Int4]
    );
     ```
 
@@ -150,30 +149,39 @@ should be used.
 
 ### Iterator interface
 
-Whether we're operating on a stream or an already waited for result set, the iterator interface provides the most high-level row interface. This also applies when using the _spread_ operator:
+The query result can be iterated over, either asynchronously, or after being awaited. The returned objects are reified representations of the result rows, provided as _objects_ of the generic type parameter specified for the query (optional, it defaults to `Record<string, any>`).
+
+To extract all objects from the query result, you can use the _spread_ operator:
 
 ```typescript
-const rows = [...result];
+const result = await client.query("SELECT generate_series(0, 9) AS i");
+const objects = [...result];
 ```
 
-Each row provides direct access to values through its ``data`` attribute, but we can also get a value by name using the ``get(name)`` method.
+The asynchronous await syntax around for-loops is another option:
 
 ```typescript
-for (const row of rows) {
-  console.log('The number is: ' + row.get('i')); // 1, 2, 3, ...
+const result = client.query(...);
+for await (const obj of result) {
+  console.log('The number is: ' + obj.i); // 1, 2, 3, ...
 }
 ```
-Note that values are polymorphic and need to be explicitly cast to a concrete type such as ``number`` or ``string``.
 
 ### Result interface
 
-This interface is available on the already waited for result object. It makes data available in the ``rows`` attribute as an array of arrays (of values).
+The awaited result object provides an interface based on rows and column names.
+
 ```typescript
 for (const row of result.rows) {
+  // Using the array indices:
   console.log('The number is: ' + row[0]); // 1, 2, 3, ...
+
+  // Using the column name:
+  console.log('The number is: ' + row.get('i')); // 1, 2, 3, ...
 }
 ```
-This is the most efficient way to work with result data. Column names are available as the ``names`` attribute of a result.
+
+Column names are available via the ``names`` property.
 
 ### Streaming
 
@@ -208,8 +216,8 @@ You can prepare a query and subsequently execute it multiple times. This is also
 const statement = await client.prepare(
     `SELECT 'Hello ' || $1 || '!' AS message`
 );
-for await (const row of statement.execute(['world'])) {
-    console.log(row.get('message')); // 'Hello world!'
+for await (const object of statement.execute(['world'])) {
+    console.log(object.message); // 'Hello world!'
 }
 ```
 When the prepared statement is no longer needed, it should be closed to release the resource.

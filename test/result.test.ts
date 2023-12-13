@@ -2,56 +2,36 @@ import { describe, expect } from '@jest/globals';
 import { testWithClient } from './helper';
 import { Client, ResultIterator, ResultRow } from '../src/index';
 
-type ResultFunction =
-    (result: ResultIterator) =>
-        Promise<ResultRow[]>;
+type ResultFunction<T> = (result: ResultIterator<T>) => Promise<T[]>;
 
-async function testIteratorResult(client: Client, f: ResultFunction) {
-    const query = () => client.query(
+async function testIteratorResult<T>(client: Client, f: ResultFunction<T>) {
+    const query = () => client.query<T>(
         'select generate_series($1::int, $2::int) as i', [0, 9]
     );
-    const rows = await f(query());
+    const iterator = query();
+    const items = await f(iterator);
+    //const result = await iterator;
 
-    expect(rows.length).toEqual(10);
-    const expectation = [...Array(10).keys()];
-    const keys = rows.map((row) => [...row.names]);
-    const values = rows.map((row) => [...row.data]);
+    expect(items.length).toEqual(10);
+    expect(items).toEqual([...Array(10).keys()].map(i => ({i: i})));
 
-    // The get method returns a column using name lookup.
-    expect(values).toEqual(rows.map((row) => [row.get('i')]));
+    const result = await iterator;
+    expect(result.names).toEqual(['i']);
 
-    // Keys are column names.
-    expect(keys).toEqual(expectation.map(() => ['i']));
-
-    // Values are row values.
-    expect(values).toEqual(expectation.map((i) => [i]));
-
-    // Rows are themselves iterable.
-    for (const [index, row] of rows.entries()) {
-        expect([...row]).toEqual([index]);
-    }
-
-    // We could iterate multiple times over the same result.
     let count = 0;
-    const result = query();
 
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    for await (const _ of result) {
+    for await (const _ of iterator) {
         count += 1;
     }
     expect(count).toEqual(10);
 
+    // We could iterate multiple times over the same result.
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    for await (const _ of result) {
+    for await (const _ of iterator) {
         count += 1;
     }
     expect(count).toEqual(20);
-
-    // The result is also available in the public rows attribute.
-    expect(result.rows).toEqual(
-        expectation.map((i) => { return [i] })
-    );
-
 }
 
 describe('Result', () => {
@@ -63,27 +43,29 @@ describe('Result', () => {
         expect(result.status).toEqual('SELECT 1');
         expect(result.names.length).toEqual(1);
         expect(result.names[0]).toEqual('message');
-        expect(result.reify()).toEqual([{message: 'Hello world!'}]);
+        expect([...result]).toEqual([{message: 'Hello world!'}]);
         const rows = [...result];
         const row = rows[0];
-        expect(row.get('message')).toEqual('Hello world!');
-        expect(row.get('bad')).toEqual(undefined);
-        const mapped = row.reify();
+        expect(row.message).toEqual('Hello world!');
+        expect(row.bad).toEqual(undefined);
+        const mapped = result.rows[0].reify();
         expect(mapped.message).toEqual('Hello world!');
     });
 
     testWithClient('Typed', async (client) => {
         expect.assertions(3);
-        const result = await client.query<{message: string}>(
+        type T = {
+            message: string
+        };
+        const result = await client.query<T>(
             'select $1::text as message', ['Hello world!']
         );
         expect(result.status).toEqual('SELECT 1');
         const rows = [...result];
-        const row = rows[0];
-        const message: string = row.get('message');
-        expect(message).toEqual('Hello world!');
-        const mapped: {message: string} = row.reify();
-        expect(mapped.message).toEqual('Hello world!');
+        const row: ResultRow<T> = result.rows[0];
+        const obj: T = rows[0];
+        expect(row.get('message')).toEqual('Hello world!');
+        expect(obj.message).toEqual('Hello world!');
     });
 
     testWithClient('Parse array containing null', async (client) => {
@@ -91,7 +73,7 @@ describe('Result', () => {
         const row = await client.query(
             'select ARRAY[null::text] as a'
         ).one();
-        expect(row.get('a')).toEqual([null]);
+        expect(row.a).toEqual([null]);
     });
 
     testWithClient('Format array containing null value', async (client) => {
@@ -99,7 +81,7 @@ describe('Result', () => {
         const row = await client.query(
             'select $1::text[] as a', [[null]]
         ).one();
-        expect(row.get('a')).toEqual([null]);
+        expect(row.a).toEqual([null]);
     });
 
     testWithClient('Format null-array', async (client) => {
@@ -107,7 +89,7 @@ describe('Result', () => {
         const row = await client.query(
             'select $1::text[] as a', [null]
         ).one();
-        expect(row.get('a')).toEqual(null);
+        expect(row.a).toEqual(null);
     });
 
     testWithClient('One', async (client) => {
@@ -115,20 +97,7 @@ describe('Result', () => {
         const row = await client.query(
             'select $1::text as message', ['Hello world!']
         ).one();
-        expect(row.get('message')).toEqual('Hello world!');
-    });
-
-    testWithClient('Map', async (client) => {
-        expect.assertions(1);
-        const mapped = client.query(
-            'select $1::text as message', ['Hello world!']
-        ).reify();
-        for await (const item of mapped) {
-            expect(item).toEqual({message: 'Hello world!'});
-        }
-        for await (const item of mapped) {
-            expect(item).toEqual({message: 'Hello world!'});
-        }
+        expect(row.message).toEqual('Hello world!');
     });
 
     testWithClient('One (empty query)', async (client) => {
@@ -157,9 +126,9 @@ describe('Result', () => {
             'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
             [null, null, null]
         ).one();
-        expect(row.get('a')).toBeNull()
-        expect(row.get('b')).toBeNull();
-        expect(row.get('c')).toBeNull();
+        expect(row.a).toBeNull()
+        expect(row.b).toBeNull();
+        expect(row.c).toBeNull();
     });
 
     testWithClient('Synchronous iteration', async (client) => {
@@ -167,7 +136,7 @@ describe('Result', () => {
             client,
             async (p) => {
                 return p.then((result) => {
-                    const rows: ResultRow[] = [];
+                    const rows = [];
                     for (const row of result) {
                         rows.push(row);
                     }
@@ -180,7 +149,7 @@ describe('Result', () => {
         await testIteratorResult(
             client,
             async (result) => {
-                const rows: ResultRow[] = [];
+                const rows = [];
                 for await (const row of result) {
                     rows.push(row);
                 }
@@ -191,6 +160,6 @@ describe('Result', () => {
     testWithClient('Null typed array', async (client) => {
         expect.assertions(1);
         const row = await client.query('select null::text[] as value').one();
-        expect(row.get('value')).toEqual(null);
+        expect(row.value).toBeNull();
     });
 });
