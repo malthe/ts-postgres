@@ -12,10 +12,24 @@ export interface QueryOptions {
     readonly streams: Record<string, Writable>;
 }
 
+export type QueryParameter = Partial<QueryOptions> & { text: string };
+
 export class Query {
+    public readonly text: string;
+    public readonly values?: any[];
+    public readonly options?: Partial<QueryOptions>;
+
     constructor(
-        public readonly text: string,
-        public readonly values?: any[],
-        public readonly options?: Partial<QueryOptions>
-    ) { }
+        text: QueryParameter | string,
+        values?: any[],
+        options?: Partial<QueryOptions>
+    ) {
+        this.values = values;
+        this.options = options;
+        if (typeof text === 'string') {
+            this.text = text;
+        } else {
+            ({ text: this.text, ...this.options } = {...this.options, ...text});
+        }
+    }
 }

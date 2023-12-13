@@ -7,7 +7,7 @@ type Callback<T> = (item: T) => void;
 type ResultHandler = (resolve: Callback<Resolution>, reject: Callback<Error | DatabaseError>) => void;
 
 /** The default result type, used if no generic type parameter is specified. */
-export type ResultRecord = Record<string, any>
+export type ResultRecord<T = any> = Record<string, T>;
 
 
 function makeRecord<T>(names: string[], data: ReadonlyArray<any>): T {
