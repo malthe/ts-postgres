@@ -5,11 +5,6 @@ export class Queue<T> {
     #capacityMask = 0b11;
     #list: (T | undefined)[] = new Array(this.#capacityMask + 1);
 
-    /** Returns the capacity of the queue. That is, that of the inner buffer. */
-    get capacity() {
-        return this.#list.length;
-    }
-
     /** Returns the current number of elements in the queue. */
     get length() {
         return this.#head <= this.#tail
@@ -20,11 +15,6 @@ export class Queue<T> {
     /** Returns whether the deque is empty. */
     get empty() {
         return this.#head === this.#tail;
-    }
-
-    /** Performs a "soft" clear. This does **not** reset capacity. */
-    clear() {
-        this.#head = this.#tail = 0;
     }
 
     /** Inserts item to first slot. Returns the new length of the deque. */
@@ -79,53 +69,6 @@ export class Queue<T> {
         if (this.#head < this.#tail) return this.#tail - this.#head;
 
         return this.#capacityMask + 1 - (this.#head - this.#tail);
-    }
-
-    /** Removes and returns the last element. */
-    pop() {
-        if (this.empty) return;
-
-        const tail = this.#tail;
-        const len = this.#list.length;
-        this.#tail = (tail - 1 + len) & this.#capacityMask;
-
-        const item = this.#list[this.#tail];
-        this.#list[this.#tail] = undefined;
-
-        if (this.#head < 2 && tail > 10000 && tail <= len >>> 2) this.shrinkArray();
-
-        return item;
-    }
-
-    /** View the item at the specific index (without removing). */
-    at(index: number) {
-        // Disallow out of bounds access
-        const len = this.length;
-        if (index >= len || index < -len) return;
-
-        // Wrap-around index
-        if (index < 0) index += len;
-        index = (this.#head + index) & this.#capacityMask;
-
-        return this.#list[index];
-    }
-
-    *[Symbol.iterator]() {
-        const head = this.#head;
-        const tail = this.#tail;
-
-        // Simply yield elements from left to right
-        if (head <= tail) {
-            for (let i = head; i < tail; ++i) yield this.#list[i];
-            return;
-        }
-
-        // Yield elements from the head to the end
-        const capacity = this.capacity;
-        for (let i = head; i < capacity; ++i) yield this.#list[i];
-
-        // Then, wrap around and yield elements from start to tail
-        for (let i = 0; i < tail; ++i) yield this.#list[i];
     }
 
     private shrinkArray() {

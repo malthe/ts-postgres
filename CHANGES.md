@@ -1,4 +1,5 @@
-In next release ...
+1.8.0 (2023-12-14)
+------------------
 
 - Reduce buffer allocation and intelligently scale initial allocation when creating
   a new buffer.

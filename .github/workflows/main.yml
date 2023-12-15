@@ -17,9 +17,16 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  docs:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 1
+    steps:
+      - name: Docs
+        run: npx typedoc
+      - uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./docs
+  test:
     services:
       postgres:
         image: postgres
@@ -35,7 +42,12 @@ jobs:
           --health-retries 5
     strategy:
       matrix:
-        node-version: ['18.x', '20.x']
+        environment:
+        - type: node
+          version: 18.x
+        - type: node
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - run: |
           function set() {
@@ -49,11 +61,23 @@ jobs:
           set synchronous_commit off
           docker kill --signal=SIGHUP ${{ job.services.postgres.id }}
       - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.environment.version }}
+        if: matrix.environment.type == 'node'
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.environment.version }}
       - name: Install dependencies
+        if: matrix.environment.type == 'node'
         run: npm ci
       - name: Run tests
-        run: npm run test:prod
+        run: |
+          case $ENVIRONMENT in
+            node)
+              npm run test:prod
+              ;;
+          esac
         env:
+          ENVIRONMENT: ${{ matrix.environment.type }}
           PGSSLMODE: disable
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
@@ -61,34 +85,38 @@ jobs:
       - name: Run tests (SSL)
         run: |
           docker cp ${{ job.services.postgres.id }}:/etc/ssl/certs/ssl-cert-snakeoil.pem ./
-          npm run test:prod || exit 1
-          npm run build
-          cat <<- EOF > test.mjs
-          import { Client } from './dist/src/index.js';
-          const client = new Client();
-          const secured = await client.connect();
-          console.log(secured);
-          await client.end();
+          gen_code() {
+          cat <<- EOF
+            import { Client } from '$1';
+            const client = new Client();
+            const secured = await client.connect();
+            console.log(secured);
+            await client.end();
           EOF
+          }
           set -o pipefail
-          node test.mjs | tee /dev/stderr | grep -q true
+          case $ENVIRONMENT in
+            node)
+              npm run test:prod || exit 1
+              npm run build
+              gen_code ./dist/src/index.js > test.mjs
+              node test.mjs | tee /dev/stderr | grep -q true
+              ;;
+          esac
         env:
+          ENVIRONMENT: ${{ matrix.environment.type }}
           NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
           PGSSLMODE: require
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
-      - name: Docs
-        run: npx typedoc
-      - uses: actions/upload-pages-artifact@v2
-        with:
-          path: ./docs
   deploy:
+    if: github.ref_name == 'master'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
+    needs: [test, docs]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
