@@ -94,8 +94,8 @@ jobs:
           cat <<- EOF
             import { Client } from '$1';
             const client = new Client();
-            const secured = await client.connect();
-            console.log(secured);
+            const info = await client.connect();
+            console.log("Encrypted: " + info.encrypted);
             await client.end();
           EOF
           }
@@ -105,16 +105,18 @@ jobs:
               npm run test:prod || exit 1
               npm run build
               gen_code ./dist/src/index.js > test.mjs
-              node test.mjs | tee /dev/stderr | grep -q true
+              node test.mjs | tee /dev/stderr | grep true
               ;;
             bun)
               # Workaround: https://github.com/oven-sh/bun/issues/1590
               dependencies=`jq -r '.dependencies|to_entries|map("\(.key)@\(.value)")|join(" ")' package.json`
               ( set -x; mkdir /tmp/bun && cd "$_" && ls -lah && bun install "$dependencies" && rm -rf `pwd`; )
+              set -x
               bun install -p --ignore-scripts
               bun build src/index.ts --target bun > ts-postgres.js
               gen_code ./ts-postgres.js > test.mjs
-              bun test.mjs | tee /dev/stderr | grep -q true
+              bun test.mjs
+              bun test.mjs | tee /dev/stderr | grep true
               ;;
           esac
         env:
