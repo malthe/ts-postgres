@@ -1,3 +1,7 @@
+In the next release ...
+
+- Fix issue handling connection error during secure startup.
+
 1.8.0 (2023-12-14)
 ------------------
 
