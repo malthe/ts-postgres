@@ -46,6 +46,8 @@ jobs:
         - type: node
           version: 18.x
         - type: node
+          version: 20.x
+        - type: bun
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -66,6 +68,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.environment.version }}
+      - name: Use Bun ${{ matrix.environment.version }}
+        if: matrix.environment.type == 'bun'
+        uses: oven-sh/setup-bun@v1
       - name: Install dependencies
         if: matrix.environment.type == 'node'
         run: npm ci
@@ -101,6 +106,15 @@ jobs:
               npm run build
               gen_code ./dist/src/index.js > test.mjs
               node test.mjs | tee /dev/stderr | grep -q true
+              ;;
+            bun)
+              # Workaround: https://github.com/oven-sh/bun/issues/1590
+              dependencies=`jq -r '.dependencies|to_entries|map("\(.key)@\(.value)")|join(" ")' package.json`
+              ( set -x; mkdir /tmp/bun && cd "$_" && ls -lah && bun install "$dependencies" && rm -rf `pwd`; )
+              bun install -p --ignore-scripts
+              bun build src/index.ts --target bun > ts-postgres.js
+              gen_code ./ts-postgres.js > test.mjs
+              bun test.mjs | tee /dev/stderr | grep -q true
               ;;
           esac
         env:
