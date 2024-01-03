@@ -112,6 +112,7 @@ jobs:
             bun)
               # Workaround: https://github.com/oven-sh/bun/issues/1590
               set -x
+              TRAPERR() print -u2 Exit status: $?
               dependencies=`jq -r '.dependencies|to_entries|map("\(.key)@\(.value)")|join(" ")' package.json`
               ( mkdir /tmp/bun && cd "$_" && ls -lah && bun install "$dependencies" && rm -rf `pwd`; )
               bun install -p --ignore-scripts
