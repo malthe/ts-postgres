@@ -117,6 +117,7 @@ jobs:
               bun install -p --ignore-scripts
               bun build src/index.ts --target bun > ts-postgres.js
               gen_code ./ts-postgres.js > test.mjs
+              bun test.mjs
               bun test.mjs | tee /dev/stderr | grep true
               ;;
           esac
