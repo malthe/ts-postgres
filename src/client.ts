@@ -278,11 +278,8 @@ export class Client {
             writer.startupSSL();
 
             const abort = (error: Error) => {
-                if (!this.handleError(error)) {
-                    throw new Error("Internal error occurred while establishing connection");
-                }
+                this.handleError(error);
                 this.events.connect.emit(error);
-                this.end();
             }
 
             const startup = (stream?: Socket) => {
