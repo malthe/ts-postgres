@@ -51,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install zsh
       - run: |
           function set() {
               docker exec ${{ job.services.postgres.id }} sh -c "echo $1=\'$2\' >> $PGDATADIR/postgresql.conf"
@@ -117,6 +119,7 @@ jobs:
               bun test.mjs | tee /dev/stderr | grep true
               ;;
           esac
+        shell: zsh {0}
         env:
           ENVIRONMENT: ${{ matrix.environment.type }}
           NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
