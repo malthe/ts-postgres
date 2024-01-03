@@ -111,8 +111,9 @@ jobs:
               ;;
             bun)
               # Workaround: https://github.com/oven-sh/bun/issues/1590
+              set -x
               dependencies=`jq -r '.dependencies|to_entries|map("\(.key)@\(.value)")|join(" ")' package.json`
-              ( set -x; mkdir /tmp/bun && cd "$_" && ls -lah && bun install "$dependencies" && rm -rf `pwd`; )
+              ( mkdir /tmp/bun && cd "$_" && ls -lah && bun install "$dependencies" && rm -rf `pwd`; )
               bun install -p --ignore-scripts
               bun build src/index.ts --target bun > ts-postgres.js
               gen_code ./ts-postgres.js > test.mjs
