@@ -68,7 +68,7 @@ jobs:
           node-version: ${{ matrix.environment.version }}
       - name: Install dependencies
         if: matrix.environment.type == 'node'
-        run: npm ci
+        run: npm i
       - name: Run tests
         run: |
           case $ENVIRONMENT in
