@@ -406,7 +406,7 @@ export class Client {
      *
      * @returns The connection information.
      */
-    connect(): Promise<ConnectionInfo> {
+    connect(host?: string, port?: number, connectionTimeout?: number): Promise<ConnectionInfo> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -416,7 +416,7 @@ export class Client {
         }
         this.connecting = true;
 
-        const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
+        const timeout = connectionTimeout ?? this.config.connectionTimeout ?? defaults.connectionTimeout;
 
         let p = this.events.connect.once().then((error: Connect) => {
             if (error) {
@@ -430,8 +430,8 @@ export class Client {
             }
         });
 
-        const port = this.config.port || defaults.port;
-        const host = this.config.host || defaults.host;
+        host = host ?? this.config.host ?? defaults.host;
+        port = port ?? this.config.port ?? defaults.port;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
