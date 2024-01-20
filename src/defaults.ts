@@ -1,8 +1,5 @@
-function secToMsec(value?: number) {
-    if (typeof value === "number" && !isNaN(value)) {
-        return value * 1000;
-    }
-}
+import { userInfo } from 'node:os';
+
 
 /** Environment variables providing connection configuration defaults.
  *
@@ -19,18 +16,25 @@ export interface Environment {
     PGUSER: string;
 }
 
-const env = process.env as Partial<Environment>;
+function secToMsec(value?: number) {
+    if (typeof value === "number" && !isNaN(value)) {
+        return value * 1000;
+    }
+}
 
-export const host = env.PGHOST || 'localhost';
-export const port = parseInt(env.PGPORT as string, 10) || 5432;
-export const user = env.PGUSER || (
-    process.platform === 'win32' ? process.env.USERNAME : process.env.USER
-) as string;
-export const database = env.PGDATABASE;
-export const password = env.PGPASSWORD;
-export const preparedStatementPrefix = 'tsp_';
-export const sslMode = env.PGSSLMODE;
-export const connectionTimeout = secToMsec(
-    parseInt(env.PGCONNECT_TIMEOUT as string, 10)
-);
-export const clientEncoding = env.PGCLIENTENCODING;
+export class Defaults {
+    constructor(
+        env: Environment,
+        readonly host = env.PGHOST || 'localhost',
+        readonly port = parseInt(env.PGPORT as string, 10) || 5432,
+        readonly user = env.PGUSER || userInfo().username,
+        readonly database = env.PGDATABASE,
+        readonly password = env.PGPASSWORD,
+        readonly preparedStatementPrefix = 'tsp_',
+        readonly sslMode = env.PGSSLMODE,
+        readonly connectionTimeout = secToMsec(
+            parseInt(env.PGCONNECT_TIMEOUT as string, 10)
+        ),
+        readonly clientEncoding = env.PGCLIENTENCODING,
+    ) {}
+}

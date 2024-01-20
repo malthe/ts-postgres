@@ -1,4 +1,5 @@
-import { describe, expect } from '@jest/globals';
+import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
+import { describe } from 'node:test';
 import { testWithClient } from './helper';
 import { Client, ResultIterator, ResultRow } from '../src/index';
 
@@ -12,11 +13,11 @@ async function testIteratorResult<T>(client: Client, f: ResultFunction<T>) {
     const items = await f(iterator);
     //const result = await iterator;
 
-    expect(items.length).toEqual(10);
-    expect(items).toEqual([...Array(10).keys()].map(i => ({i: i})));
+    equal(items.length, 10);
+    deepEqual(items, [...Array(10).keys()].map(i => ({i: i})));
 
     const result = await iterator;
-    expect(result.names).toEqual(['i']);
+    deepEqual(result.names, ['i']);
 
     let count = 0;
 
@@ -24,111 +25,105 @@ async function testIteratorResult<T>(client: Client, f: ResultFunction<T>) {
     for await (const _ of iterator) {
         count += 1;
     }
-    expect(count).toEqual(10);
+    equal(count, 10);
 
     // We could iterate multiple times over the same result.
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     for await (const _ of iterator) {
         count += 1;
     }
-    expect(count).toEqual(20);
+    equal(count, 20);
 }
 
 describe('Result', () => {
     testWithClient('Default type', async (client) => {
-        expect.assertions(7);
         const result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
-        expect(result.status).toEqual('SELECT 1');
-        expect(result.names.length).toEqual(1);
-        expect(result.names[0]).toEqual('message');
-        expect([...result]).toEqual([{message: 'Hello world!'}]);
+        equal(result.status, 'SELECT 1');
+        equal(result.names.length, 1);
+        equal(result.names[0], 'message');
+        deepEqual([...result], [{message: 'Hello world!'}]);
         const rows = [...result];
         const row = rows[0];
-        expect(row.message).toEqual('Hello world!');
-        expect(row.bad).toEqual(undefined);
+        equal(row.message, 'Hello world!');
+        equal(row.bad, undefined);
         const mapped = result.rows[0].reify();
-        expect(mapped.message).toEqual('Hello world!');
+        equal(mapped.message, 'Hello world!');
     });
 
     testWithClient('Typed', async (client) => {
-        expect.assertions(3);
         type T = {
             message: string
         };
         const result = await client.query<T>(
             'select $1::text as message', ['Hello world!']
         );
-        expect(result.status).toEqual('SELECT 1');
+        equal(result.status, 'SELECT 1');
         const rows = [...result];
         const row: ResultRow<T> = result.rows[0];
         const obj: T = rows[0];
-        expect(row.get('message')).toEqual('Hello world!');
-        expect(obj.message).toEqual('Hello world!');
+        equal(row.get('message'), 'Hello world!');
+        equal(obj.message, 'Hello world!');
     });
 
     testWithClient('Parse array containing null', async (client) => {
-        expect.assertions(1);
         const row = await client.query(
             'select ARRAY[null::text] as a'
         ).one();
-        expect(row.a).toEqual([null]);
+        deepEqual(row.a, [null]);
     });
 
     testWithClient('Format array containing null value', async (client) => {
-        expect.assertions(1);
         const row = await client.query(
             'select $1::text[] as a', [[null]]
         ).one();
-        expect(row.a).toEqual([null]);
+        deepEqual(row.a, [null]);
     });
 
     testWithClient('Format null-array', async (client) => {
-        expect.assertions(1);
         const row = await client.query(
             'select $1::text[] as a', [null]
         ).one();
-        expect(row.a).toEqual(null);
+        equal(row.a, null);
     });
 
     testWithClient('One', async (client) => {
-        expect.assertions(1);
         const row = await client.query(
             'select $1::text as message', ['Hello world!']
         ).one();
-        expect(row.message).toEqual('Hello world!');
+        equal(row.message, 'Hello world!');
     });
 
     testWithClient('One (empty query)', async (client) => {
-        expect.assertions(1);
-        await expect(client.query('select true where false').one())
-            .rejects.toThrow(/empty/);
+        await rejects(
+            client.query('select true where false').one(),
+            /empty/
+        );
     });
 
     testWithClient('First (error)', async (client) => {
         const query = client.query('select does-not-exist');
-        return expect(query.first()).rejects.toMatchObject({
+        return rejects(query.first(), {
             message: 'column "does" does not exist'
-        })
+        });
     });
 
     testWithClient('One (error)', async (client) => {
         const query = client.query('select does-not-exist');
-        return expect(query.one()).rejects.toMatchObject({
+        return rejects(query.one(), {
             message: 'column "does" does not exist'
-        })
+        });
     });
 
     testWithClient('Multiple null params', async (client) => {
-        expect.assertions(3);
         const row = await client.query(
             'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
             [null, null, null]
         ).one();
-        expect(row.a).toBeNull()
-        expect(row.b).toBeNull();
-        expect(row.c).toBeNull();
+        strictEqual(row.a, null);
+        strictEqual(row.b, null);
+        strictEqual(row.c, null);
     });
 
     testWithClient('Synchronous iteration', async (client) => {
@@ -136,7 +131,7 @@ describe('Result', () => {
             client,
             async (p) => {
                 return p.then((result) => {
-                    const rows = [];
+                    const rows: unknown[] = [];
                     for (const row of result) {
                         rows.push(row);
                     }
@@ -149,7 +144,7 @@ describe('Result', () => {
         await testIteratorResult(
             client,
             async (result) => {
-                const rows = [];
+                const rows: unknown[] = [];
                 for await (const row of result) {
                     rows.push(row);
                 }
@@ -158,8 +153,7 @@ describe('Result', () => {
     });
 
     testWithClient('Null typed array', async (client) => {
-        expect.assertions(1);
         const row = await client.query('select null::text[] as value').one();
-        expect(row.value).toBeNull();
+        equal(row.value, null);
     });
 });

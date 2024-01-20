@@ -1,3 +1,8 @@
+import { Buffer } from 'node:buffer';
+
+// This type isn't really exposed, but we can tease it out using some type gymnastics.
+export type BufferEncoding = NonNullable<Required<Parameters<Buffer["toString"]>[0]>>;
+
 export enum DataType {
     Bool = 16,
     Bytea = 17,
@@ -132,7 +137,7 @@ export type ValueTypeReader = (
     start: number,
     end: number,
     format: DataFormat,
-    encoding?: BufferEncoding
+    encoding?: BufferEncoding,
 ) => any;
 
 export interface Point {

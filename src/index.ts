@@ -1,5 +1,7 @@
 export {
     Client,
+} from './client';
+export type {
     ClientNotice,
     Configuration,
     ConnectionInfo,
@@ -7,23 +9,26 @@ export {
     Notification,
     PreparedStatement,
     SSL,
-    SSLMode
+    SSLMode,
 } from './client';
 export {
     DataFormat,
     DataType,
+} from './types';
+export type {
+    BufferEncoding,
     Point,
     ValueTypeReader,
 } from './types';
-export * from './query';
-export {
+export type * from './query';
+export type {
     Result,
     ResultIterator,
     ResultRecord,
     ResultRow,
 } from './result';
-export { Environment } from './defaults';
-export {
+export type { Environment } from './defaults';
+export type {
     ClientConnectionDefaults,
     ClientConnectionOptions,
     DatabaseError,

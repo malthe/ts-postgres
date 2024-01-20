@@ -1,5 +1,6 @@
-import { Socket } from 'net';
-import { Writable } from 'stream';
+import { Buffer } from 'node:buffer';
+import { Socket } from 'node:net';
+import { Writable } from 'node:stream';
 import { ElasticBuffer } from './buffer';
 import { postgresqlErrorCodes } from './errors';
 import { sign } from './sasl';
@@ -7,6 +8,7 @@ import { sum } from './utils';
 import {
     arrayDataTypeMapping,
     isPoint,
+    BufferEncoding,
     DataFormat,
     DataType,
     ValueTypeReader
@@ -1092,7 +1094,7 @@ export class Writer {
     }
 
     startup(settings: StartupConfiguration) {
-        const data = [];
+        const data: string[] = [];
         const options = {
             "user": settings.user,
             "database": settings.database,

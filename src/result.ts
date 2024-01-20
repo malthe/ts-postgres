@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { DatabaseError } from './protocol';
 
 type Resolution = null | string;
