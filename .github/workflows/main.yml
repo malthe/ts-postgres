@@ -96,7 +96,7 @@ jobs:
       - name: Run tests (SSL)
         run: npm run test:prod
         env:
-          NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
@@ -121,6 +121,7 @@ jobs:
           PGSSLMODE=disable node test.cjs | tee /dev/stderr | grep -q false
           PGSSLMODE=require node test.cjs | tee /dev/stderr | grep -q true
         env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
@@ -142,6 +143,7 @@ jobs:
           PGSSLMODE=disable node test.mjs | tee /dev/stderr | grep -q false
           PGSSLMODE=require node test.mjs | tee /dev/stderr | grep -q true
         env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
