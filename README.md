@@ -39,27 +39,23 @@ interface Greeting {
     message: string;
 }
 
-async function main() {
-    const client = new Client();
-    await client.connect();
+const client = new Client();
+await client.connect();
 
-    try {
-        // The query method is generic on the result row.
-        const result = client.query<Greeting>(
-            "SELECT 'Hello ' || $1 || '!' AS message",
-            ['world']
-        );
+try {
+    // The query method is generic on the result row.
+    const result = client.query<Greeting>(
+        "SELECT 'Hello ' || $1 || '!' AS message",
+        ['world']
+    );
 
-        for await (const obj of result) {
-            // 'Hello world!'
-            console.log(obj.message);
-        }
-    } finally {
-        await client.end();
+    for await (const obj of result) {
+        // 'Hello world!'
+        console.log(obj.message);
     }
+} finally {
+    await client.end();
 }
-
-await main();
 ```
 Waiting on the result (i.e., result iterator) returns the complete query result.
 
