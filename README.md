@@ -9,7 +9,7 @@ Non-blocking PostgreSQL client for Node.js written in TypeScript.
 To install the latest version of this library:
 
 ```sh
-$ npm install ts-postgres@latest
+$ npm install ts-postgres
 ```
 
 ### Features
