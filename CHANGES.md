@@ -1,5 +1,7 @@
 In the next release ...
 
+- Add support for ESM modules.
+
 - The database host, port and connection timeout options can now be
   specified directly for `connect` (taking priority over the
   provided configuration).

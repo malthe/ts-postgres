@@ -15,14 +15,14 @@ $ npm install ts-postgres
 ### Features
 
 * Fast!
-* Supports both binary and text value formats
-  * Result data is currently sent in binary format only
+* Supports binary and text value formats (result data always uses binary)
 * Multiple queries can be sent at once (pipeline)
 * Extensible value model
 * Hybrid query result object
   * Iterable (synchronous or asynchronous; one object at a time)
   * Rows and column names
   * Streaming data directly into a socket
+* Supports CommonJS and ESM modules
 
 See the [documentation](https://malthe.github.io/ts-postgres/) for a complete reference.
 
