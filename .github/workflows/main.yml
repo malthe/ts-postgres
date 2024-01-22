@@ -17,15 +17,32 @@ permissions:
   id-token: write
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
+      - uses: actions/checkout@v4
+      - name: NPM
+        run: |
+          set -ex
+          npm i
+          npm run prebuild
+          npm run build:cjs
+          npm run build:esm
+          echo '{"type": "commonjs"}' > dist/commonjs/package.json
+          echo '{"type": "module"}' > dist/module/package.json
+          mkdir dest
+          npm pack --pack-destination=dest
       - name: Docs
         run: npx typedoc
       - uses: actions/upload-pages-artifact@v2
         with:
           path: ./docs
+      - name: Package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg
+          path: dest
   test:
     services:
       postgres:
@@ -42,11 +59,11 @@ jobs:
           --health-retries 5
     strategy:
       matrix:
-        environment:
-        - type: node
-          version: 18.x
-        - type: node
+        version:
+        - 18.x
+        - 20.x
     runs-on: ubuntu-latest
+    needs: [build]
     timeout-minutes: 3
     steps:
       - run: |
@@ -60,53 +77,71 @@ jobs:
           set full_page_writes off
           set synchronous_commit off
           docker kill --signal=SIGHUP ${{ job.services.postgres.id }}
-      - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.environment.version }}
-        if: matrix.environment.type == 'node'
+      - name: Use Node.js ${{ matrix.version }}
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.environment.version }}
+          node-version: ${{ matrix.version }}
+      - uses: actions/checkout@v4
       - name: Install dependencies
-        if: matrix.environment.type == 'node'
         run: npm i
       - name: Run tests
-        run: |
-          case $ENVIRONMENT in
-            node)
-              npm run test:prod
-              ;;
-          esac
+        run: npm run test:prod
         env:
-          ENVIRONMENT: ${{ matrix.environment.type }}
           PGSSLMODE: disable
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
+      - name: Extract SSL cert
+        run: docker cp ${{ job.services.postgres.id }}:/etc/ssl/certs/ssl-cert-snakeoil.pem ./
       - name: Run tests (SSL)
+        run: npm run test:prod
+        env:
+          NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGPASSWORD: postgres
+      - uses: actions/download-artifact@v4
+      - name: Test CJS
         run: |
-          docker cp ${{ job.services.postgres.id }}:/etc/ssl/certs/ssl-cert-snakeoil.pem ./
-          gen_code() {
-          cat <<- EOF
-            import { Client } from '$1';
+          pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
+          mkdir /tmp/cjs && cd "$_"
+          cat <<- EOF > test.cjs
+            const { Client } = require('ts-postgres');
+            const client = new Client();
+            module.exports = client.connect().then(
+              (info) => {
+                console.log("Encrypted: " + info.encrypted);
+                return client.end();
+              }
+            );
+          EOF
+          set -e
+          npm i "$pkg_path"
+          set -o pipefail
+          PGSSLMODE=disable node test.cjs | tee /dev/stderr | grep -q false
+          PGSSLMODE=require node test.cjs | tee /dev/stderr | grep -q true
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGPASSWORD: postgres
+      - name: Test ESM
+        run: |
+          pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
+          mkdir /tmp/esm && cd "$_"
+          cat <<- EOF > test.mts
+            import { Client } from 'ts-postgres';
             const client = new Client();
             const info = await client.connect();
             console.log("Encrypted: " + info.encrypted);
             await client.end();
           EOF
-          }
+          set -e
+          npm i "$pkg_path" typescript @types/node
+          npx tsc --strict --noImplicitAny --moduleResolution node16 -m node16 test.mts
           set -o pipefail
-          case $ENVIRONMENT in
-            node)
-              npm run test:prod || exit 1
-              npm run build
-              gen_code ./dist/src/index.js > test.mjs
-              node test.mjs | tee /dev/stderr | grep -q true
-              ;;
-          esac
+          PGSSLMODE=disable node test.mjs | tee /dev/stderr | grep -q false
+          PGSSLMODE=require node test.mjs | tee /dev/stderr | grep -q true
         env:
-          ENVIRONMENT: ${{ matrix.environment.type }}
-          NODE_EXTRA_CA_CERTS: ssl-cert-snakeoil.pem
-          PGSSLMODE: require
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
@@ -116,7 +151,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: [test, docs]
+    needs: [build, test]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

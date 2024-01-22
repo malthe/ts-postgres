@@ -1,10 +1,10 @@
 import { Buffer } from 'node:buffer';
 import { Socket } from 'node:net';
 import { Writable } from 'node:stream';
-import { ElasticBuffer } from './buffer';
-import { postgresqlErrorCodes } from './errors';
-import { sign } from './sasl';
-import { sum } from './utils';
+import { ElasticBuffer } from './buffer.js';
+import { postgresqlErrorCodes } from './errors.js';
+import { sign } from './sasl.js';
+import { sum } from './utils.js';
 import {
     arrayDataTypeMapping,
     isPoint,
@@ -12,7 +12,7 @@ import {
     DataFormat,
     DataType,
     ValueTypeReader
-} from './types';
+} from './types.js';
 
 const arrayMask = 1 << 31;
 const readerMask = 1 << 29;
@@ -280,7 +280,6 @@ export function readRowDescription(
         names: names
     }
 }
-
 
 export function readRowData(
     buffer: Buffer,

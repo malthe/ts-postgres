@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "moduleResolution": "Node10",
+        "moduleResolution": "Node16",
         "target": "ES2020",
-        "module": "ES2020",
+        "module": "Node16",
         "lib": [
             "ES2019",
             "ESNext.AsyncIterable",
@@ -16,7 +16,6 @@
         "isolatedModules": true,
         "noUnusedParameters": true,
         "noUnusedLocals": true,
-        "declarationDir": "dist",
         "inlineSources": true,
         "types": [
           "node"
@@ -29,7 +28,6 @@
         "esm": true
     },
     "include": [
-        "src",
-        "test"
+        "src/*.ts"
     ]
 }

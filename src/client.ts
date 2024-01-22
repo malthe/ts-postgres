@@ -8,19 +8,19 @@ import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } fro
 
 import { Event as TypedEvent } from 'ts-typed-events';
 
-import { Defaults, Environment } from './defaults';
-import * as logger from './logging';
+import { Defaults, Environment } from './defaults.js';
+import * as logger from './logging.js';
 
-import { postgresqlErrorCodes } from './errors';
-import { Queue } from './queue';
-import { Query } from './query';
+import { postgresqlErrorCodes } from './errors.js';
+import { Queue } from './queue.js';
+import { Query } from './query.js';
 
 import {
     DataHandler,
     ResultIterator,
     ResultRecord,
     makeResult
-} from './result';
+} from './result.js';
 
 import {
     ClientConnectionDefaults,
@@ -33,16 +33,16 @@ import {
     SSLResponseCode,
     TransactionStatus,
     Writer
-} from './protocol';
+} from './protocol.js';
 
 import {
     BufferEncoding,
     DataFormat,
     DataType,
     ValueTypeReader
-} from './types';
+} from './types.js';
 
-import { md5 } from './utils';
+import { md5 } from './utils.js';
 
 export interface ConnectionInfo  {
     encrypted: boolean;

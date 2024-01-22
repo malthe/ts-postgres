@@ -1,6 +1,7 @@
 {
     "name": "ts-postgres",
-    "version": "1.8.0",
+    "type": "module",
+    "version": "1.9.0-dev",
     "description": "PostgreSQL client in TypeScript",
     "declaration": true,
     "keywords": [
@@ -10,15 +11,16 @@
         "rdbms"
     ],
     "homepage": "https://github.com/malthe/ts-postgres",
-    "main": "dist/src/index.js",
-    "types": "dist/src/index.d.ts",
     "author": "Malthe Borch <mborch@gmail.com>",
     "dependencies": {
         "ts-typed-events": "^3.0.0"
     },
+    "exports": {
+        "require": "./dist/commonjs/index.js",
+        "import": "./dist/module/index.js"
+    },
     "files": [
-        "/dist",
-        "/src"
+        "/dist"
     ],
     "repository": {
         "type": "git",
@@ -32,8 +34,9 @@
     "scripts": {
         "lint": "eslint -c .eslintrc.json --ext .ts src test",
         "prebuild": "rimraf dist",
-        "build": "tsc",
-        "test": "node --experimental-default-type module --loader ts-node/esm --enable-source-maps --test test/*.test.ts --test-timeout 5000",
+        "build:cjs": "tsc --module commonjs --moduleResolution node --outDir dist/commonjs",
+        "build:esm": "tsc --outDir dist/module",
+        "test": "node --experimental-default-type module --loader ts-node/esm --enable-source-maps --test test/*.test.ts",
         "test:prod": "npm run lint && npm run test"
     },
     "prettier": {

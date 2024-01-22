@@ -1,4 +1,4 @@
-import { DatabaseError } from './protocol';
+import { DatabaseError } from './protocol.js';
 
 type Resolution = null | string;
 type Callback<T> = (item: T) => void;
