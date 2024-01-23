@@ -20,7 +20,10 @@ export type {
     Point,
     ValueTypeReader,
 } from './types.js';
-export type * from './query.js';
+export type {
+    Query,
+    QueryOptions,
+} from './query.js';
 export type {
     Result,
     ResultIterator,
