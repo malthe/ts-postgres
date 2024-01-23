@@ -1,4 +1,5 @@
-import { createHash, createHmac, BinaryLike } from 'crypto';
+import { createHash, createHmac, BinaryLike } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 
 export function xorBuffers(a: Buffer, b: Buffer): Buffer {
     if (a.length !== b.length) {

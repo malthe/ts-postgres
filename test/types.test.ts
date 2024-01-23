@@ -1,11 +1,13 @@
-import { describe, expect } from '@jest/globals';
+import { Buffer } from 'node:buffer';
+import { strict as assert } from 'node:assert';
+import { describe } from 'node:test';
 import { testWithClient } from './helper';
 
 import {
     DataType,
     Point,
     DataFormat
-} from '../src';
+} from '../src/index';
 
 const infinity = Number('Infinity');
 
@@ -32,7 +34,6 @@ function testType<T>(
     bigints?: boolean) {
     const testParam = (format: DataFormat) => {
         testWithClient('Param', async (client) => {
-            expect.assertions(3);
             const text = expected !== null
                 ? getComparisonQueryFor(dataType, expression) + ' where $1 is not null'
                 : 'select $1 is null';
@@ -45,24 +46,24 @@ function testType<T>(
                 .then(
                     (result) => {
                         const rows = result.rows;
-                        expect(rows.length).toEqual(1);
-                        expect(rows[0].length).toEqual(1);
-                        expect(rows[0][0]).toEqual(true)
+                        assert.equal(rows.length, 1);
+                        assert.equal(rows[0].length, 1);
+                        assert.equal(rows[0][0], true);
                     });
         })
     };
 
     const testValue = (format: DataFormat) => {
         testWithClient('Value', async (client) => {
-            expect.assertions(3);
             const text = 'select ' + expression;
-            await client.query({text, format, bigints}, []).then(
+            await client.query({ text, format, bigints }, []).then(
                 (result) => {
                     const rows = result.rows;
-                    expect(rows.length).toEqual(1);
-                    expect(rows[0].length).toEqual(1);
-                    expect(rows[0][0]).toEqual(expected);
-                });
+                    assert.equal(rows.length, 1);
+                    assert.equal(rows[0].length, 1);
+                    assert.deepEqual(rows[0][0], expected);
+                }
+            );
         })
     };
 

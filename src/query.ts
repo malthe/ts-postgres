@@ -1,8 +1,8 @@
-import { Writable } from 'stream';
+import { Writable } from 'node:stream';
 import {
     DataFormat,
     DataType,
-} from './types';
+} from './types.js';
 
 export interface QueryOptions {
     /** The query name. */

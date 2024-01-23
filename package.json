@@ -1,6 +1,7 @@
 {
     "name": "ts-postgres",
-    "version": "1.8.0",
+    "type": "module",
+    "version": "1.9.0-dev",
     "description": "PostgreSQL client in TypeScript",
     "declaration": true,
     "keywords": [
@@ -10,15 +11,18 @@
         "rdbms"
     ],
     "homepage": "https://github.com/malthe/ts-postgres",
-    "main": "dist/src/index.js",
-    "types": "dist/src/index.d.ts",
     "author": "Malthe Borch <mborch@gmail.com>",
     "dependencies": {
         "ts-typed-events": "^3.0.0"
     },
+    "main": "./dist/module/index.js",
+    "types": "./dist/module/index.d.ts",
+    "exports": {
+        "require": "./dist/commonjs/index.js",
+        "import": "./dist/module/index.js"
+    },
     "files": [
-        "/dist",
-        "/src"
+        "/dist"
     ],
     "repository": {
         "type": "git",
@@ -32,56 +36,30 @@
     "scripts": {
         "lint": "eslint -c .eslintrc.json --ext .ts src test",
         "prebuild": "rimraf dist",
-        "build": "tsc",
-        "test": "jest --verbose --unhandled-rejections=strict --detectOpenHandles --silent false",
-        "test:watch": "jest --watch",
-        "test:prod": "npm run lint && npm run test -- --coverage --no-cache --testTimeout=5000"
-    },
-    "jest": {
-        "preset": "ts-jest",
-        "testEnvironment": "node",
-        "coveragePathIgnorePatterns": [
-            "/node_modules/",
-            "/test/",
-            "/src/defaults.ts",
-            "/src/index.ts",
-            "/src/logging.ts",
-            "/src/queue.ts",
-            "/src/sasl.ts",
-            "/src/utils.ts"
-        ],
-        "coverageThreshold": {
-            "global": {
-                "branches": 70,
-                "functions": 80,
-                "lines": 85,
-                "statements": 85
-            }
-        },
-        "collectCoverage": true
+        "build:cjs": "tsc --module commonjs --moduleResolution node --outDir dist/commonjs",
+        "build:esm": "tsc --outDir dist/module",
+        "test": "node --experimental-default-type module --loader ts-node/esm --enable-source-maps --test test/*.test.ts",
+        "test:prod": "npm run lint && npm run test"
     },
     "prettier": {
         "semi": true,
         "singleQuote": true
     },
     "devDependencies": {
-        "@jest/globals": "^29.7.0",
-        "@types/node": "^18.15.3",
+        "@types/node": "^20.10.6",
         "@typescript-eslint/eslint-plugin": "^6.10.0",
         "@typescript-eslint/parser": "^6.10.0",
         "colors": "^1.4.0",
-        "eslint": "^8.53.0",
+        "eslint": "^8.56.0",
         "eslint-config-standard": "^17.1.0",
         "eslint-plugin-import": "^2.29.0",
         "eslint-plugin-node": "^11.1.0",
         "eslint-plugin-prettier": "^5.0.1",
         "eslint-plugin-promise": "^6.1.1",
-        "jest": "^29.7.0",
         "lint-staged": "^15.0.2",
         "rimraf": "^3.0.2",
-        "ts-jest": "^29.1.1",
-        "ts-node": "^10.9.1",
+        "ts-node": "^10.9.2",
         "typedoc": "^0.25.4",
-        "typescript": "^4.9.5"
+        "typescript": "^5.2.2"
     }
 }

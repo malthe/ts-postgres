@@ -9,20 +9,20 @@ Non-blocking PostgreSQL client for Node.js written in TypeScript.
 To install the latest version of this library:
 
 ```sh
-$ npm install ts-postgres@latest
+$ npm install ts-postgres
 ```
 
 ### Features
 
 * Fast!
-* Supports both binary and text value formats
-  * Result data is currently sent in binary format only
+* Supports binary and text value formats (result data always uses binary)
 * Multiple queries can be sent at once (pipeline)
 * Extensible value model
 * Hybrid query result object
   * Iterable (synchronous or asynchronous; one object at a time)
   * Rows and column names
   * Streaming data directly into a socket
+* Supports CommonJS and ESM modules
 
 See the [documentation](https://malthe.github.io/ts-postgres/) for a complete reference.
 
@@ -39,27 +39,23 @@ interface Greeting {
     message: string;
 }
 
-async function main() {
-    const client = new Client();
-    await client.connect();
+const client = new Client();
+await client.connect();
 
-    try {
-        // The query method is generic on the result row.
-        const result = client.query<Greeting>(
-            "SELECT 'Hello ' || $1 || '!' AS message",
-            ['world']
-        );
+try {
+    // The query method is generic on the result row.
+    const result = client.query<Greeting>(
+        "SELECT 'Hello ' || $1 || '!' AS message",
+        ['world']
+    );
 
-        for await (const obj of result) {
-            // 'Hello world!'
-            console.log(obj.message);
-        }
-    } finally {
-        await client.end();
+    for await (const obj of result) {
+        // 'Hello world!'
+        console.log(obj.message);
     }
+} finally {
+    await client.end();
 }
-
-await main();
 ```
 Waiting on the result (i.e., result iterator) returns the complete query result.
 

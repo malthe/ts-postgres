@@ -1,5 +1,9 @@
-import { createServer, AddressInfo, Socket } from 'net';
-import { describe, expect, test } from '@jest/globals';
+import { Buffer } from 'node:buffer';
+import { createServer, AddressInfo, Socket } from 'node:net';
+import { env, hrtime } from 'node:process';
+import { describe } from 'node:test';
+import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
+
 import { testWithClient } from './helper';
 import {
     Client,
@@ -11,7 +15,7 @@ import {
 } from '../src/index';
 
 // Adjust for benchmarking mode.
-const benchmarkEnabled = process.env.NODE_ENV === 'benchmark';
+const benchmarkEnabled = env.NODE_ENV === 'benchmark';
 const timedQueryTime = benchmarkEnabled ? 5000 : 500;
 
 const enum TestQuery {
@@ -33,7 +37,7 @@ function makeRandomizer(seed: number) {
 }
 
 function secondsFromHrTime(time: [number, number]) {
-    const d = process.hrtime(time);
+    const d = hrtime(time);
     return d[0] + d[1] / (10 ** 9);
 }
 
@@ -78,14 +82,12 @@ function testSelect(
 
     testWithClient(`SQL: Select (${testQuery}; ${doReplaceArgs}; batch size: ${batchSize})`,
         async (client) => {
-            expect.assertions(1);
-
             const go = async (time: number):
                 Promise<[number, number, number, number]> => {
                 let queries = 0;
                 let acknowledged = 0;
                 let results = 0;
-                const startTime = process.hrtime();
+                const startTime = hrtime();
                 const secs = time / 1000;
 
                 while (true) {
@@ -132,12 +134,12 @@ function testSelect(
                 );
             }
 
-            expect(diff).toEqual(0);
+            equal(diff, 0);
         });
 }
 
 describe('Timeout', () => {
-    test('Connection timeout', async () => {
+    testWithClient('Connection timeout', async (client) => {
         const server = createServer();
         await new Promise((resolve) => {
             server.listen(0, "localhost", 1, () => { resolve(undefined) });
@@ -148,15 +150,9 @@ describe('Timeout', () => {
                 sockets.delete(socket);
             });
         });
-        expect(server.listening).toBeTruthy();
+        strictEqual(server.listening, true);
         const address = server.address() as AddressInfo;
-        const client = new Client({
-            connectionTimeout: 250,
-            host: process.env["PGHOST"] || address.address,
-            port: address.port,
-        });
-
-        await expect(client.connect()).rejects.toThrow(/Timeout after 250 ms/);
+        await rejects(client.connect(address.address, address.port, 250), /Timeout after 250 ms/);
         await client.end();
         for (const socket of sockets.values()) {
             socket.destroy();
@@ -166,30 +162,26 @@ describe('Timeout', () => {
                 resolve(undefined);
             });
         });
-    });
+    }, 500, false);
 });
 
 describe('Query', () => {
     testWithClient('Without parameters', async (client) => {
-        expect.assertions(1);
         const result = await client.query('select 1');
-        expect(result.rows.length).toEqual(1);
+        equal(result.rows.length, 1);
     });
 
     testWithClient('With parameters', async (client) => {
-        expect.assertions(1);
         const result = await client.query('select $1::int', [1]);
-        expect(result.rows.length).toEqual(1);
+        equal(result.rows.length, 1);
     });
 
     testWithClient('Named portal', async (client) => {
-        expect.assertions(1);
         const result = await client.query('select $1::int', [1]);
-        expect(result.rows.length).toEqual(1);
+        equal(result.rows.length, 1);
     });
 
     testWithClient('Custom value type reader', async (client) => {
-        expect.assertions(5);
         client.config.types = new Map([
             [DataType.Int4, (
                 buffer: Buffer,
@@ -198,30 +190,28 @@ describe('Query', () => {
                 format: DataFormat,
                 encoding?: string) => {
                 const value = buffer.readInt32BE(start);
-                expect(end - start).toEqual(4);
-                expect(value).toEqual(1);
-                expect(format).toEqual(DataFormat.Binary);
-                expect(encoding).toEqual('utf-8');
+                equal(end - start, 4);
+                equal(value, 1);
+                equal(format, DataFormat.Binary);
+                equal(encoding, 'utf-8');
                 return 1;
             }]
         ]);
         const result = await client.query('select 1::int4');
-        expect(result.rows.length).toEqual(1);
+        equal(result.rows.length, 1);
     });
 
     testWithClient('Name transform', async (client) => {
-        expect.assertions(1);
         const query = {text: 'select 1 as foo', transform: (s: string) => s.toUpperCase()};
         const result = await client.query(query);
-        expect(result.names).toEqual(['FOO']);
+        deepEqual(result.names, ['FOO']);
     });
 
     testWithClient('Listen/notify', async (client) => {
         await client.query('listen foo');
-        expect.assertions(2);
         client.on('notification', (msg) => {
-            expect(msg.channel).toEqual('foo');
-            expect(msg.payload).toEqual('bar');
+            equal(msg.channel, 'foo');
+            equal(msg.payload, 'bar');
         });
         await client.query('notify foo, \'bar\'');
     });
@@ -230,12 +220,11 @@ describe('Query', () => {
         await client.query('begin');
         await client.query('declare foo cursor for select $1::int4', [1]);
         const result = await client.query('fetch next from foo');
-        expect(result.names).toEqual(['int4']);
-        expect(result.rows).toEqual([[1]]);
+        deepEqual(result.names, ['int4']);
+        deepEqual(result.rows, [[1]]);
     });
 
     testWithClient('Stream', async (client) => {
-        expect.assertions(2);
         const s = "abcdefghijklmnopqrstuvxyz".repeat(Math.pow(2, 17));
         const buffer = Buffer.from(s);
         const server = createServer(
@@ -248,10 +237,16 @@ describe('Query', () => {
                 });
             }
         );
+
         await new Promise((resolve) => {
-            server.listen(0, "localhost", 1, () => { resolve(undefined) });
+            server.listen({
+                port: 0,
+                host: "localhost",
+                backlog: 1
+            }, () => { resolve(undefined) });
         });
-        expect(server.listening).toBeTruthy();
+
+        strictEqual(server.listening, true);
         const address = server.address() as AddressInfo;
         const socket = new Socket();
         socket.connect(address.port);
@@ -272,7 +267,7 @@ describe('Query', () => {
                     server.close(
                         () => {
                             try {
-                                expect(buffer.toString()).toEqual(s.toUpperCase());
+                                equal(buffer.toString(), s.toUpperCase());
                             } finally {
                                 resolve(undefined);
                             }
@@ -287,7 +282,7 @@ describe('Query', () => {
     testWithClient(
         'Query errors become promise rejection',
         async (client) => {
-            await expect(client.query('select foo')).rejects.toThrow(/foo/);
+            await rejects(client.query('select foo'), /foo/);
         }
     );
 
@@ -347,8 +342,8 @@ describe('Query', () => {
             const alphabet = 'abcdefghijklmnopqrstuvwxyz';
             const columns = random(alphabet.length) || 1;
             const blocksize = random(71) || 1;
-            const names = [];
-            const row = [];
+            const names: string[] = [];
+            const row: string[] = [];
             let query = "select ";
             for (let i = 0; i < columns; i++) {
                 const column = String.fromCharCode('a'.charCodeAt(0) + i);
@@ -373,11 +368,12 @@ describe('Query', () => {
 
     function make(client: Client, n: number, seed: number): Promise<void> {
         const p = tests[n](client, seed);
-        const e = expect(p.query);
         if (p.expectation instanceof RegExp) {
-            return e.rejects.toThrow(p.expectation)
+            return rejects(p.query, p.expectation)
         } else {
-            return e.resolves.toEqual(p.expectation)
+            return p.query.then(
+                (actual: any) => deepEqual(actual, p.expectation),
+            );
         }
     }
 
@@ -385,7 +381,7 @@ describe('Query', () => {
         testWithClient(
             `Pipeline combination query ${ns.join(';')}`,
             async (client) => {
-                const promises = [];
+                const promises: Promise<void>[] = [];
                 for (let i = 0; i < ns.length; i++) {
                     const p = make(client, ns[i], 1);
                     promises.push(p);
@@ -428,59 +424,57 @@ describe('Query', () => {
     );
 
     testWithClient('Empty query', async (client) => {
-        await expect(client.query('')).resolves.toEqual(
-            { names: [], rows: [], status: null }
-        );
+        const result = await client.query('')
+        deepEqual(result, { names: [], rows: [], status: null });
     });
 
     testWithClient('Unsupported type', async (client) => {
         const text = 'select $1::internal';
-        await expect(client.query(text, [''])).rejects.toThrow(/2281/);
+        await rejects(client.query(text, ['']), /2281/);
     });
 
     testWithClient(
         'Prepare and execute (SELECT)',
         async (client) => {
             const stmt = await client.prepare('select $1::int as i');
-            await expect(stmt.execute([1])).resolves.toEqual(
-                { names: ['i'], rows: [[1]], status: 'SELECT 1' }
-            );
-            const result = await stmt.execute([2]);
-            expect(result.rows).toEqual([[2]]);
+            const result1 = await stmt.execute([1]);
+            deepEqual(result1, { names: ['i'], rows: [[1]], status: 'SELECT 1' });
+            const result2 = await stmt.execute([2]);
+            deepEqual(result2.rows, [[2]]);
             await stmt.close();
-        });
+        }
+    );
 
     testWithClient(
-        'Prepare and execute (SELECT)',
+        'Prepare and execute (SELECT, transform)',
         async (client) => {
             const query = {text: 'select $1::int as i', transform: (s: string) => s.toUpperCase()};
             const stmt = await client.prepare(query);
-            await expect(stmt.execute([1])).resolves.toEqual(
-                { names: ['I'], rows: [[1]], status: 'SELECT 1' }
-            );
-            const result = await stmt.execute([2]);
-            expect(result.rows).toEqual([[2]]);
+            const result1 = await stmt.execute([1]);
+            deepEqual(result1, { names: ['I'], rows: [[1]], status: 'SELECT 1' });
+            const result2 = await stmt.execute([2]);
+            deepEqual(result2.rows, [[2]]);
             await stmt.close();
-        });
+        }
+    );
 
     testWithClient(
         'Prepare and execute (INSERT)',
         async (client) => {
             await client.query('create temporary table foo (bar int)');
             const stmt = await client.prepare('insert into foo values ($1)');
-            await expect(stmt.execute([1])).resolves.toEqual(
-                { names: [], rows: [], status: 'INSERT 0 1' }
-            );
-            const result = await stmt.execute([2]);
-            expect(result.rows).toEqual([]);
-            await stmt.close();
-        });
+            const result1 = await stmt.execute([1]);
+            deepEqual(result1, { names: [], rows: [], status: 'INSERT 0 1' });
+            const result2 = await stmt.execute([2]);
+            deepEqual(result2.rows, []);
+        }
+    );
 
     testWithClient(
         'Prepare and execute error',
         async (client) => {
             const stmt = client.prepare('select $1::int as i from badtable');
-            await expect(stmt).rejects.toThrow(/badtable/);
+            await rejects(stmt, /badtable/);
         });
 
     testSelect(TestQuery.PgType, 1, false);

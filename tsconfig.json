@@ -1,31 +1,33 @@
 {
-  "compilerOptions": {
-      "moduleResolution": "node",
-      "target": "es6",
-      "module":"commonjs",
-      "lib": [
-          "es2019",
-          "esnext.asynciterable",
-          "esnext.bigint"
-      ],
-      "strict": true,
-      "sourceMap": true,
-      "inlineSourceMap": false,
-      "declaration": true,
-      "allowSyntheticDefaultImports": true,
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true,
-      "noImplicitAny": true,
-      "noUnusedParameters": true,
-      "noUnusedLocals": true,
-      "declarationDir": "dist",
-      "outDir": "dist",
-      "typeRoots": [
-          "node_modules/@types"
-      ]
-  },
+    "compilerOptions": {
+        "moduleResolution": "Node16",
+        "target": "ES2020",
+        "module": "Node16",
+        "lib": [
+            "ES2019",
+            "ESNext.AsyncIterable",
+            "ESNext.BigInt"
+        ],
+        "strict": true,
+        "sourceMap": true,
+        "inlineSourceMap": false,
+        "declaration": true,
+        "noImplicitAny": true,
+        "isolatedModules": true,
+        "noUnusedParameters": true,
+        "noUnusedLocals": true,
+        "inlineSources": true,
+        "types": [
+          "node"
+        ],
+        "outDir": "dist"
+    },
+    "ts-node": {
+        "experimentalSpecifierResolution": "node",
+        "transpileOnly": true,
+        "esm": true
+    },
     "include": [
-        "src",
-        "test"
+        "src/*.ts"
     ]
 }

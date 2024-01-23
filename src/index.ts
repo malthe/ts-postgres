@@ -1,5 +1,7 @@
 export {
     Client,
+} from './client.js';
+export type {
     ClientNotice,
     Configuration,
     ConnectionInfo,
@@ -7,26 +9,32 @@ export {
     Notification,
     PreparedStatement,
     SSL,
-    SSLMode
-} from './client';
+    SSLMode,
+} from './client.js';
 export {
     DataFormat,
     DataType,
+} from './types.js';
+export type {
+    BufferEncoding,
     Point,
     ValueTypeReader,
-} from './types';
-export * from './query';
-export {
+} from './types.js';
+export type {
+    Query,
+    QueryOptions,
+} from './query.js';
+export type {
     Result,
     ResultIterator,
     ResultRecord,
     ResultRow,
-} from './result';
-export { Environment } from './defaults';
-export {
+} from './result.js';
+export type { Environment } from './defaults.js';
+export type {
     ClientConnectionDefaults,
     ClientConnectionOptions,
     DatabaseError,
     ErrorLevel,
     TransactionStatus,
-} from './protocol';
+} from './protocol.js';

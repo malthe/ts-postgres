@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 const INITIAL_SIZE = 4096;
 
 export class ElasticBuffer {

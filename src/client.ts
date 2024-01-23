@@ -1,24 +1,26 @@
-import { randomBytes } from 'crypto';
-import { constants } from 'os';
-import { Socket } from 'net';
+import { Buffer } from 'node:buffer';
+import { randomBytes } from 'node:crypto';
+import { constants } from 'node:os';
+import { env, nextTick } from 'node:process';
+import { Socket } from 'node:net';
+import { Writable } from 'node:stream';
+import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'node:tls';
+
 import { Event as TypedEvent } from 'ts-typed-events';
-import { Writable } from 'stream';
 
-import * as defaults from './defaults';
-import * as logger from './logging';
+import { Defaults, Environment } from './defaults.js';
+import * as logger from './logging.js';
 
-import { postgresqlErrorCodes } from './errors';
-import { Queue } from './queue';
-import { Query } from './query';
-
-import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'tls';
+import { postgresqlErrorCodes } from './errors.js';
+import { Queue } from './queue.js';
+import { Query } from './query.js';
 
 import {
     DataHandler,
     ResultIterator,
     ResultRecord,
     makeResult
-} from './result';
+} from './result.js';
 
 import {
     ClientConnectionDefaults,
@@ -31,15 +33,16 @@ import {
     SSLResponseCode,
     TransactionStatus,
     Writer
-} from './protocol';
+} from './protocol.js';
 
 import {
+    BufferEncoding,
     DataFormat,
     DataType,
     ValueTypeReader
-} from './types';
+} from './types.js';
 
-import { md5 } from './utils';
+import { md5 } from './utils.js';
 
 export interface ConnectionInfo  {
     encrypted: boolean;
@@ -154,6 +157,8 @@ interface PreFlightQueue {
     bind: Bind | null;
 }
 
+const DEFAULTS = new Defaults(env as unknown as Environment);
+
 /** A database client, opening a single connection to the database.
  *
  * @remarks
@@ -207,7 +212,7 @@ export class Client {
     *     using environment variables, see {@link Environment}.
     */
     constructor(public readonly config: Configuration = {}) {
-        this.encoding = config.clientEncoding || defaults.clientEncoding as BufferEncoding || 'utf-8';
+        this.encoding = config.clientEncoding || DEFAULTS.clientEncoding as BufferEncoding || 'utf-8';
         this.writer = new Writer(this.encoding);
 
         this.stream.on('close', () => {
@@ -250,18 +255,18 @@ export class Client {
     private startup() {
         const writer = new Writer(this.encoding);
 
-        if (defaults.sslMode && Object.values(SSLMode).indexOf(defaults.sslMode as SSLMode) < 0) {
-            throw new Error("Invalid SSL mode: " + defaults.sslMode);
+        if (DEFAULTS.sslMode && Object.values(SSLMode).indexOf(DEFAULTS.sslMode as SSLMode) < 0) {
+            throw new Error("Invalid SSL mode: " + DEFAULTS.sslMode);
         }
 
         const ssl = this.config.ssl ??
-            (defaults.sslMode as SSLMode || SSLMode.Disable) === SSLMode.Disable
+            (DEFAULTS.sslMode as SSLMode || SSLMode.Disable) === SSLMode.Disable
                 ? SSLMode.Disable
                 : ({ mode: SSLMode.Prefer, options: undefined });
 
         const settings = {
-            user: this.config.user || defaults.user,
-            database: this.config.database || defaults.database,
+            user: this.config.user || DEFAULTS.user,
+            database: this.config.database || DEFAULTS.database,
             clientMinMessages: this.config.clientMinMessages,
             defaultTableAccessMethod: this.config.defaultTableAccessMethod,
             defaultTablespace: this.config.defaultTablespace,
@@ -406,7 +411,7 @@ export class Client {
      *
      * @returns The connection information.
      */
-    connect(): Promise<ConnectionInfo> {
+    connect(host?: string, port?: number, connectionTimeout?: number): Promise<ConnectionInfo> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -416,7 +421,7 @@ export class Client {
         }
         this.connecting = true;
 
-        const timeout = this.config.connectionTimeout || defaults.connectionTimeout;
+        const timeout = connectionTimeout ?? this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
 
         let p = this.events.connect.once().then((error: Connect) => {
             if (error) {
@@ -430,8 +435,8 @@ export class Client {
             }
         });
 
-        const port = this.config.port || defaults.port;
-        const host = this.config.host || defaults.host;
+        host = host ?? this.config.host ?? DEFAULTS.host;
+        port = port ?? this.config.port ?? DEFAULTS.port;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
@@ -519,7 +524,7 @@ export class Client {
         const query = typeof text === 'string' ? {text} : text;
         const providedNameOrGenerated = query.name || (
             (this.config.preparedStatementPrefix ||
-                defaults.preparedStatementPrefix) + (
+                DEFAULTS.preparedStatementPrefix) + (
                 this.nextPreparedStatementId++
             ));
 
@@ -624,7 +629,7 @@ export class Client {
         if (values && values.length) {
             const name = (query?.name) || (
                 (this.config.preparedStatementPrefix ||
-                    defaults.preparedStatementPrefix) + (
+                    DEFAULTS.preparedStatementPrefix) + (
                     this.nextPreparedStatementId++
                 ));
 
@@ -938,13 +943,13 @@ export class Client {
                     /* istanbul ignore next */
                     switch (code) {
                         case 0: {
-                            process.nextTick(() => {
+                            nextTick(() => {
                                 this.events.connect.emit(null);
                             });
                             break;
                         }
                         case 3: {
-                            const s = this.config.password || defaults.password || '';
+                            const s = this.config.password || DEFAULTS.password || '';
                             writer.password(s);
                             break;
                         }
@@ -952,15 +957,15 @@ export class Client {
                             const { user = '', password = '' } = this.config;
                             const salt = buffer.subarray(start + 4, start + 8);
                             const shadow = md5(
-                                `${password || defaults.password}` +
-                                `${user || defaults.user}`
+                                `${password || DEFAULTS.password}` +
+                                `${user || DEFAULTS.user}`
                             );
                             writer.password(`md5${md5(shadow, salt)}`);
                             break;
                         }
                         case 10: {
                             const reader = new Reader(buffer, start + 4);
-                            const mechanisms = [];
+                            const mechanisms: string[] = [];
                             while (true) {
                                 const mechanism = reader.readCString(this.encoding);
                                 if (mechanism.length === 0) break;
@@ -974,7 +979,7 @@ export class Client {
                         }
                         case 11: {
                             const data = buffer.subarray(start + 4, start + length).toString("utf8");
-                            const password = this.config.password || defaults.password || '';
+                            const password = this.config.password || DEFAULTS.password || '';
                             this.serverSignature = writer.saslResponse(data, password, this.clientNonce);
                             break;
                         }

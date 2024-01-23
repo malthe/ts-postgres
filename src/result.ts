@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
-import { DatabaseError } from './protocol';
+import { DatabaseError } from './protocol.js';
 
 type Resolution = null | string;
 type Callback<T> = (item: T) => void;
