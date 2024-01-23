@@ -1,7 +1,7 @@
 {
     "name": "ts-postgres",
     "type": "module",
-    "version": "1.9.0-dev",
+    "version": "1.9.0",
     "description": "PostgreSQL client in TypeScript",
     "declaration": true,
     "keywords": [

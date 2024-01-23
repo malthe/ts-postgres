@@ -1,4 +1,5 @@
-In the next release ...
+1.9.0 (2024-01-23)
+------------------
 
 - Add support for ESM modules.
 
