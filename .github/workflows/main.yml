@@ -101,47 +101,17 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: postgres
       - uses: actions/download-artifact@v4
-      - name: Test CJS
+      - name: "Example: Connect"
         run: |
           pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
-          mkdir /tmp/cjs && cd "$_"
-          cat <<- EOF > test.cjs
-            const { Client } = require('ts-postgres');
-            const client = new Client();
-            module.exports = client.connect().then(
-              (info) => {
-                console.log("Encrypted: " + info.encrypted);
-                return client.end();
-              }
-            );
-          EOF
-          set -e
-          npm i "$pkg_path"
+          cd examples/connect
+          npm i . "$pkg_path"
           set -o pipefail
-          PGSSLMODE=disable node test.cjs | tee /dev/stderr | grep -q false
-          PGSSLMODE=require node test.cjs | tee /dev/stderr | grep -q true
-        env:
-          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
-          PGPORT: ${{ job.services.postgres.ports[5432] }}
-          PGUSER: postgres
-          PGPASSWORD: postgres
-      - name: Test ESM
-        run: |
-          pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
-          mkdir /tmp/esm && cd "$_"
-          cat <<- EOF > test.mts
-            import { Client } from 'ts-postgres';
-            const client = new Client();
-            const info = await client.connect();
-            console.log("Encrypted: " + info.encrypted);
-            await client.end();
-          EOF
-          set -e
-          npm i "$pkg_path" typescript @types/node
-          npx tsc --strict --noImplicitAny --moduleResolution node16 -m node16 test.mts
-          set -o pipefail
-          PGSSLMODE=disable node test.mjs | tee /dev/stderr | grep -q false
-          PGSSLMODE=require node test.mjs | tee /dev/stderr | grep -q true
+          PGSSLMODE=disable node main.cjs | tee /dev/stderr | grep -q false
+          PGSSLMODE=require node main.cjs | tee /dev/stderr | grep -q true
+          npx tsc
+          PGSSLMODE=disable node main.mjs | tee /dev/stderr | grep -q false
+          PGSSLMODE=require node main.mjs | tee /dev/stderr | grep -q true
         env:
           NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
           PGPORT: ${{ job.services.postgres.ports[5432] }}

@@ -1,0 +1,9 @@
+{
+    "devDependencies": {
+        "@types/node": "^20.0",
+        "typescript": "^4.8"
+    },
+    "dependencies": {
+        "ts-postgres": "^1.8"
+    }
+}
