@@ -242,26 +242,9 @@ The copy commands are not supported.
 
 ## FAQ
 
-1. _How do I set up a pool of connections?_ You can for example use the [generic-pool](https://www.npmjs.com/package/generic-pool) library:
+1. _How do I set up a connection pool?_ You can for example use the [generic-pool](https://www.npmjs.com/package/generic-pool) library.
 
-   ```typescript
-   import { createPool } from 'generic-pool';
-
-   const pool = createPool({
-       create: async () => {
-           const client = new Client();
-           await client.connect();
-           client.on('error', console.log);
-           return client;
-       },
-       destroy: async (client: Client) => client.end(),
-       validate: (client: Client) => {
-           return Promise.resolve(!client.closed);
-       }
-   }, { testOnBorrow: true });
-
-   pool.use(...)
-   ```
+   See the [generic-pool](./examples/generic-pool/) code example.
 
 2. _How do I convert column names to camelcase?_ Use the `transform` option:
 
