@@ -131,6 +131,20 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
+      - name: "Example: Generic Pool"
+        run: |
+          pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
+          cd examples/generic-pool
+          npm i . "$pkg_path"
+          set -o pipefail
+          npx tsc
+          PGSSLMODE=disable node main.mjs | tee /dev/stderr | grep -q false
+          PGSSLMODE=require node main.mjs | tee /dev/stderr | grep -q true
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGPASSWORD: postgres
   deploy:
     if: github.ref_name == 'master'
     runs-on: ubuntu-latest
