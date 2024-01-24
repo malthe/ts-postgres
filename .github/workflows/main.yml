@@ -39,10 +39,11 @@ jobs:
         run: |
           ref=${GITHUB_BASE_REF:-master}
           url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$ref
+          set +H
           find examples -mindepth 1 -maxdepth 1 -exec sh -c "
           mkdir -p docs/{}
           cat << EOF > docs/{}/index.html
-          <\!DOCTYPE html>
+          <!DOCTYPE html>
           <meta charset='utf-8'>
           <title>Redirecting to $url/{}</title>
           <meta http-equiv='refresh' content='0; URL=$url/{}'>
