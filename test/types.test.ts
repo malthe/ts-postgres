@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { strict as assert } from 'node:assert';
 import { describe } from 'node:test';
-import { testWithClient } from './helper';
+import { test } from './helper';
 
 import {
     DataType,
@@ -33,7 +33,7 @@ function testType<T>(
     excludeTextMode = false,
     bigints?: boolean) {
     const testParam = (format: DataFormat) => {
-        testWithClient('Param', async (client) => {
+        test('Param', async ({ client }) => {
             const text = expected !== null
                 ? getComparisonQueryFor(dataType, expression) + ' where $1 is not null'
                 : 'select $1 is null';
@@ -54,7 +54,7 @@ function testType<T>(
     };
 
     const testValue = (format: DataFormat) => {
-        testWithClient('Value', async (client) => {
+        test('Value', async ({ client }) => {
             const text = 'select ' + expression;
             await client.query({ text, format, bigints }, []).then(
                 (result) => {

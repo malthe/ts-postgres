@@ -33,14 +33,13 @@ See the [documentation](https://malthe.github.io/ts-postgres/) for a complete re
 The client uses an async/await-based programming model.
 
 ```typescript
-import { Client } from 'ts-postgres';
+import { connect } from 'ts-postgres';
 
 interface Greeting {
     message: string;
 }
 
-const client = new Client();
-await client.connect();
+const client = await connect();
 
 try {
     // The query method is generic on the result row.
@@ -72,7 +71,7 @@ The client constructor takes an optional
 For example, to connect to a remote host use the *host* configuration key:
 
 ```typescript
-const client = new Client({"host": <hostname>});
+const client = await connect({"host": <hostname>});
 ```
 
 The following table lists the various configuration options and their
@@ -257,7 +256,7 @@ The copy commands are not supported.
    notifications, filtering out the relevant channels.
 
    ```typescript
-   import { Notification } from 'ts-postgres';
+   import type { Notification } from 'ts-postgres';
 
    const channel = 'test';
    client.on('notification', (message: Notification) => {

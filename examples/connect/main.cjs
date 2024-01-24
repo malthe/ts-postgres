@@ -1,8 +1,7 @@
-const { Client } = require('ts-postgres');
-const client = new Client();
-module.exports = client.connect().then(
-  (info) => {
-    console.log("Encrypted: " + info.encrypted);
+const { connect } = require('ts-postgres');
+module.exports = connect().then(
+  (client) => {
+    console.log("Encrypted: " + client.encrypted);
     return client.end();
   }
 );

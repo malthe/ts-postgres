@@ -1,6 +1,6 @@
 import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
 import { describe } from 'node:test';
-import { testWithClient } from './helper';
+import { test } from './helper';
 import { Client, ResultIterator, ResultRow } from '../src/index';
 
 type ResultFunction<T> = (result: ResultIterator<T>) => Promise<T[]>;
@@ -36,7 +36,7 @@ async function testIteratorResult<T>(client: Client, f: ResultFunction<T>) {
 }
 
 describe('Result', () => {
-    testWithClient('Default type', async (client) => {
+    test('Default type', async ({ client }) => {
         const result = await client.query(
             'select $1::text as message', ['Hello world!']
         );
@@ -52,7 +52,7 @@ describe('Result', () => {
         equal(mapped.message, 'Hello world!');
     });
 
-    testWithClient('Typed', async (client) => {
+    test('Typed', async ({ client }) => {
         type T = {
             message: string
         };
@@ -67,56 +67,56 @@ describe('Result', () => {
         equal(obj.message, 'Hello world!');
     });
 
-    testWithClient('Parse array containing null', async (client) => {
+    test('Parse array containing null', async ({ client }) => {
         const row = await client.query(
             'select ARRAY[null::text] as a'
         ).one();
         deepEqual(row.a, [null]);
     });
 
-    testWithClient('Format array containing null value', async (client) => {
+    test('Format array containing null value', async ({ client }) => {
         const row = await client.query(
             'select $1::text[] as a', [[null]]
         ).one();
         deepEqual(row.a, [null]);
     });
 
-    testWithClient('Format null-array', async (client) => {
+    test('Format null-array', async ({ client }) => {
         const row = await client.query(
             'select $1::text[] as a', [null]
         ).one();
         equal(row.a, null);
     });
 
-    testWithClient('One', async (client) => {
+    test('One', async ({ client }) => {
         const row = await client.query(
             'select $1::text as message', ['Hello world!']
         ).one();
         equal(row.message, 'Hello world!');
     });
 
-    testWithClient('One (empty query)', async (client) => {
+    test('One (empty query)', async ({ client }) => {
         await rejects(
             client.query('select true where false').one(),
             /empty/
         );
     });
 
-    testWithClient('First (error)', async (client) => {
+    test('First (error)', async ({ client }) => {
         const query = client.query('select does-not-exist');
         return rejects(query.first(), {
             message: 'column "does" does not exist'
         });
     });
 
-    testWithClient('One (error)', async (client) => {
+    test('One (error)', async ({ client }) => {
         const query = client.query('select does-not-exist');
         return rejects(query.one(), {
             message: 'column "does" does not exist'
         });
     });
 
-    testWithClient('Multiple null params', async (client) => {
+    test('Multiple null params', async ({ client }) => {
         const row = await client.query(
             'select $1::text as a, $2::text[] as b, $3::jsonb[] as c',
             [null, null, null]
@@ -126,7 +126,7 @@ describe('Result', () => {
         strictEqual(row.c, null);
     });
 
-    testWithClient('Synchronous iteration', async (client) => {
+    test('Synchronous iteration', async ({ client }) => {
         await testIteratorResult(
             client,
             async (p) => {
@@ -140,7 +140,7 @@ describe('Result', () => {
             });
     });
 
-    testWithClient('Asynchronous iteration', async (client) => {
+    test('Asynchronous iteration', async ({ client }) => {
         await testIteratorResult(
             client,
             async (result) => {
@@ -152,7 +152,7 @@ describe('Result', () => {
             });
     });
 
-    testWithClient('Null typed array', async (client) => {
+    test('Null typed array', async ({ client }) => {
         const row = await client.query('select null::text[] as value').one();
         equal(row.value, null);
     });

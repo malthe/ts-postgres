@@ -1,6 +1,8 @@
 In next release ...
 
-- 
+- The `connect` function is now used to create a client, already
+  connected when the promise returns. The `Client` symbol is now a
+  type instead of a value.
 
 1.9.0 (2024-01-23)
 ------------------

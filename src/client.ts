@@ -159,12 +159,7 @@ interface PreFlightQueue {
 
 const DEFAULTS = new Defaults(env as unknown as Environment);
 
-/** A database client, opening a single connection to the database.
- *
- * @remarks
- * You must open the connection using {@link connect}, otherwise no query will be processed.
- */
-export class Client {
+export class ClientImpl {
     private readonly events = {
         connect: new TypedEvent<Connect>(),
         end: new TypedEvent<End>(),
@@ -404,14 +399,7 @@ export class Client {
         });
     }
 
-    /** Connect to the database.
-     *
-     * @remarks
-     * Don't forget to close the connection using {@link end} before exiting.
-     *
-     * @returns The connection information.
-     */
-    connect(host?: string, port?: number, connectionTimeout?: number): Promise<ConnectionInfo> {
+    connect(): Promise<ConnectionInfo> {
         if (this.connecting) {
             throw new Error('Already connecting');
         }
@@ -421,7 +409,7 @@ export class Client {
         }
         this.connecting = true;
 
-        const timeout = connectionTimeout ?? this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
+        const timeout = this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
 
         let p = this.events.connect.once().then((error: Connect) => {
             if (error) {
@@ -435,8 +423,8 @@ export class Client {
             }
         });
 
-        host = host ?? this.config.host ?? DEFAULTS.host;
-        port = port ?? this.config.port ?? DEFAULTS.port;
+        const host = this.config.host ?? DEFAULTS.host;
+        const port = this.config.port ?? DEFAULTS.port;
 
         if (host.indexOf('/') === 0) {
             this.stream.connect(host + '/.s.PGSQL.' + port);
