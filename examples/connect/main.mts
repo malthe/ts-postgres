@@ -1,5 +1,4 @@
-import { Client } from 'ts-postgres';
-const client = new Client();
-const info = await client.connect();
-console.log("Encrypted: " + info.encrypted);
+import { connect } from 'ts-postgres';
+const client = await connect();
+console.log("Encrypted: " + client.encrypted);
 await client.end();

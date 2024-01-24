@@ -1,10 +1,10 @@
-import { Client } from 'ts-postgres';
+import { connect } from 'ts-postgres';
+import type { Client } from 'ts-postgres';
 import { createPool } from 'generic-pool';
 
 const pool = createPool({
     create: async () => {
-        const client = new Client();
-        await client.connect();
+        const client = await connect();
         client.on('error', console.log);
         return client;
     },

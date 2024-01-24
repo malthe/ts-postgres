@@ -1,20 +1,28 @@
 import { describe, test } from 'node:test';
-import { Client } from '../src/client';
+import { Client, Configuration, connect } from '../src/index';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-type Test = (client: Client) => Promise<void>;
+type Test = (context: {
+    client: Client,
+    connect: typeof connect
+}) => Promise<void>;
 
-export function testWithClient(name: string, fn: Test, timeout?: number, connect = true) {
-    const client = new Client({
-        extraFloatDigits: 2,
-        preparedStatementPrefix: name + " "
-    });
-    client.on('notice', console.log);
+function testWithClient(name: string, fn: Test, timeout?: number) {
     return test(name, {timeout: timeout}, async () => {
-        const p2 = connect ? client.connect() : undefined;
-        const p1 = fn(client);
+        const baseConfig = {
+            extraFloatDigits: 2,
+            preparedStatementPrefix: name + " "
+        };
+        const client = await connect(baseConfig);
+        client.on('notice', console.log);
+        const p = fn({
+            client,
+            connect: (config?: Configuration) => connect({
+                ...baseConfig,
+                ...config,
+            })});
         try {
-            await Promise.all([p1, p2]);
+            await p;
         } finally {
             if (!client.closed) {
                 await client.end();
@@ -26,5 +34,5 @@ export function testWithClient(name: string, fn: Test, timeout?: number, connect
 
 export {
     describe,
-    test
+    testWithClient as test
 };
