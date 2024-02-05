@@ -14,6 +14,7 @@ import {
     ResultIterator,
     SSLMode,
 } from '../src/index';
+import { postgresqlErrorCodes } from '../src/errors';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = env.NODE_ENV === 'benchmark';
@@ -223,6 +224,15 @@ describe('Query', () => {
         await client.query('notify foo, \'bar\'');
     });
 
+    test('Session timeout', async ({ connect }) => {
+        const client = await connect({idleSessionTimeout: 500, idleInTransactionSessionTimeout: 500});
+        const errors: (keyof typeof postgresqlErrorCodes)[] = [];
+        client.on('error', (error) => errors.push(error.code));
+        await new Promise((resolve) => setTimeout(resolve, 625));
+        equal(client.closed, true);
+        deepEqual(errors, ['57P05']);
+    });
+
     test('Cursor', async ({ client }) => {
         await client.query('begin');
         await client.query('declare foo cursor for select $1::int4', [1]);
@@ -284,6 +294,19 @@ describe('Query', () => {
             );
             socket.end();
         });
+    });
+
+    test('Return table', async({ client}) => {
+        await client.query(`
+            create function pg_temp.foo() returns table(bar int)
+            language sql begin atomic
+            select 123;
+            end
+        `);
+        const result = await client.query<{bar: number}>(
+            'select * from pg_temp.foo()'
+        ).first();
+        equal(result?.bar, 123);
     });
 
     test(
