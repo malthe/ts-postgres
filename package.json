@@ -42,7 +42,8 @@
     },
     "prettier": {
         "semi": true,
-        "singleQuote": true
+        "singleQuote": true,
+        "tabWidth": 2
     },
     "devDependencies": {
         "@types/node": "^20.10.6",
