@@ -231,4 +231,4 @@ export const postgresqlErrorCodes = {
     ['XX000']: 'internal_error',
     ['XX001']: 'data_corrupted',
     ['XX002']: 'index_corrupted',
-}
+};

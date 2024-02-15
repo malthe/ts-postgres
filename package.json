@@ -43,7 +43,18 @@
     "prettier": {
         "semi": true,
         "singleQuote": true,
-        "tabWidth": 2
+        "tabWidth": 4,
+        "overrides": [
+            {
+                "files": [
+                    "*.md",
+                    "*.yml"
+                ],
+                "options": {
+                    "tabWidth": 2
+                }
+            }
+        ]
     },
     "devDependencies": {
         "@types/node": "^20.10.6",

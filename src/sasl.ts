@@ -20,8 +20,9 @@ export function sha256(key: Buffer): Buffer {
 }
 
 export function hi(password: string, saltBytes: Buffer, iterations: number) {
-    let ui1 = hmacSha256(password, Buffer.concat(
-        [saltBytes, Buffer.from([0, 0, 0, 1])])
+    let ui1 = hmacSha256(
+        password,
+        Buffer.concat([saltBytes, Buffer.from([0, 0, 0, 1])]),
     );
     let ui = ui1;
     for (let i = 0; i < iterations - 1; i++) {
@@ -31,23 +32,26 @@ export function hi(password: string, saltBytes: Buffer, iterations: number) {
     return ui;
 }
 
-export function sign(data: string, password: string, clientNonce: string): [string, string] {
-    const m = Object.fromEntries(data.split(',').map(
-        (attr) => [attr[0], attr.substring(2)])
+export function sign(
+    data: string,
+    password: string,
+    clientNonce: string,
+): [string, string] {
+    const m = Object.fromEntries(
+        data.split(',').map((attr) => [attr[0], attr.substring(2)]),
     );
 
-    if (!(m.i && m.r && m.s)) throw new Error("SASL message parse error");
+    if (!(m.i && m.r && m.s)) throw new Error('SASL message parse error');
 
     const nonce = m.r;
 
-    if (!nonce.startsWith(clientNonce))
-        throw new Error("SASL nonce mismatch");
+    if (!nonce.startsWith(clientNonce)) throw new Error('SASL nonce mismatch');
     if (nonce.length === clientNonce.length)
-        throw new Error("SASL nonce too short");
+        throw new Error('SASL nonce too short');
 
     const iterations = parseInt(m.i, 10);
     const salt = Buffer.from(m.s, 'base64');
-    const saltedPassword = hi(password, salt, iterations)
+    const saltedPassword = hi(password, salt, iterations);
 
     const clientKey = hmacSha256(saltedPassword, 'Client Key');
     const storedKey = sha256(clientKey);
@@ -56,11 +60,12 @@ export function sign(data: string, password: string, clientNonce: string): [stri
     const clientFirstMessageBare = 'n=*,r=' + clientNonce;
     const serverFirstMessage = data;
 
-    const authMessage = (
-        clientFirstMessageBare + ',' +
-        serverFirstMessage + ',' +
-        clientFinalMessageWithoutProof
-    );
+    const authMessage =
+        clientFirstMessageBare +
+        ',' +
+        serverFirstMessage +
+        ',' +
+        clientFinalMessageWithoutProof;
 
     const clientSignature = hmacSha256(storedKey, authMessage);
     const clientProofBytes = xorBuffers(clientKey, clientSignature);

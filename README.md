@@ -14,15 +14,15 @@ $ npm install ts-postgres
 
 ### Features
 
-* Fast!
-* Supports binary and text value formats (result data always uses binary)
-* Multiple queries can be sent at once (pipeline)
-* Extensible value model
-* Hybrid query result object
-  * Iterable (synchronous or asynchronous; one object at a time)
-  * Rows and column names
-  * Streaming data directly into a socket
-* Supports CommonJS and ESM modules
+- Fast!
+- Supports binary and text value formats (result data always uses binary)
+- Multiple queries can be sent at once (pipeline)
+- Extensible value model
+- Hybrid query result object
+  - Iterable (synchronous or asynchronous; one object at a time)
+  - Rows and column names
+  - Streaming data directly into a socket
+- Supports CommonJS and ESM modules
 
 See the [documentation](https://malthe.github.io/ts-postgres/) for a complete reference.
 
@@ -36,31 +36,33 @@ The client uses an async/await-based programming model.
 import { connect } from 'ts-postgres';
 
 interface Greeting {
-    message: string;
+  message: string;
 }
 
 const client = await connect();
 
 try {
-    // The query method is generic on the result row.
-    const result = client.query<Greeting>(
-        "SELECT 'Hello ' || $1 || '!' AS message",
-        ['world']
-    );
+  // The query method is generic on the result row.
+  const result = client.query<Greeting>(
+    "SELECT 'Hello ' || $1 || '!' AS message",
+    ['world'],
+  );
 
-    for await (const obj of result) {
-        // 'Hello world!'
-        console.log(obj.message);
-    }
+  for await (const obj of result) {
+    // 'Hello world!'
+    console.log(obj.message);
+  }
 } finally {
-    await client.end();
+  await client.end();
 }
 ```
+
 Waiting on the result (i.e., result iterator) returns the complete query result.
 
 ```typescript
 const result = await client.query(...)
 ```
+
 If the query fails, an exception is thrown.
 
 ### Connection options
@@ -68,7 +70,7 @@ If the query fails, an exception is thrown.
 The client constructor takes an optional
 [Configuration](src/client.ts#L88) object.
 
-For example, to connect to a remote host use the *host* configuration key:
+For example, to connect to a remote host use the _host_ configuration key:
 
 ```typescript
 const client = await connect({"host": <hostname>});
@@ -78,16 +80,16 @@ The following table lists the various configuration options and their
 default value when applicable.
 
 | Key                     | Type                             | Default                                    |
-|-------------------------|:---------------------------------|--------------------------------------------|
+| ----------------------- | :------------------------------- | ------------------------------------------ |
 | host                    | `string`                         | "localhost"                                |
 | port                    | `number`                         | 5432                                       |
-| user                    | `string`                         | *The username of the process owner*        |
+| user                    | `string`                         | _The username of the process owner_        |
 | database                | `string`                         | "postgres"                                 |
 | password                | `string`                         |                                            |
-| types                   | `Map<DataType, ValueTypeReader>` | *Default value mapping for built-in types* |
+| types                   | `Map<DataType, ValueTypeReader>` | _Default value mapping for built-in types_ |
 | extraFloatDigits        | `number`                         | 0                                          |
 | keepAlive               | `boolean`                        | true                                       |
-| preparedStatementPrefix | `string`                         | "tsp_"                                     |
+| preparedStatementPrefix | `string`                         | "tsp\_"                                    |
 | connectionTimeout       | `number`                         | 10                                         |
 | ssl                     | `(SSLMode.Disable \| SSL)`       | `SSLMode.Prefer`                           |
 
@@ -97,7 +99,6 @@ variables](https://www.postgresql.org/docs/current/libpq-envars.html). In
 particular, to disable the use of SSL, you can define the environment
 variable "PGSSLMODE" as "disable".
 
-
 ### Querying
 
 The `query` method accepts a `Query` object or a number of arguments
@@ -105,11 +106,9 @@ that together define the query, the first argument (query text) being
 the only required one.
 
 The initial example above could be written as:
+
 ```typescript
-const query = new Query(
-    "SELECT 'Hello ' || $1 || '!' AS message",
-    ['world']
-);
+const query = new Query("SELECT 'Hello ' || $1 || '!' AS message", ['world']);
 const result = await client.execute<Greeting>(query);
 ```
 
@@ -133,9 +132,11 @@ different ways:
    ```typescript
    import { DataType } from 'ts-postgres';
    const result = await client.query(
-      "SELECT $1 || ' bottles of beer'", [99], [DataType.Int4]
+     "SELECT $1 || ' bottles of beer'",
+     [99],
+     [DataType.Int4],
    );
-    ```
+   ```
 
 Note that the `number` type in TypeScript has a maximum safe integer
 value which is 2⁵³ – 1 (also given in the `Number.MAX_SAFE_INTEGER` constant),
@@ -145,7 +146,7 @@ which can take on a value that's outside the safe range, use `DataType.Int8`
 
 There's an optional setting `bigints` which can be configured on the client and/or
 specified for each query. It defaults to _true_, but can be set to _false_ in which
-case `number` is always used instead of `bigint` for `DataType.Int8` (throwing an 
+case `number` is always used instead of `bigint` for `DataType.Int8` (throwing an
 error if a query returns a value outside of the safe integer range.)
 
 Using a [check constraint](https://www.postgresql.org/docs/current/ddl-constraints.html)
@@ -159,7 +160,7 @@ The query result can be iterated over, either asynchronously, or after being awa
 To extract all objects from the query result, you can use the _spread_ operator:
 
 ```typescript
-const result = await client.query("SELECT generate_series(0, 9) AS i");
+const result = await client.query('SELECT generate_series(0, 9) AS i');
 const objects = [...result];
 ```
 
@@ -186,7 +187,7 @@ for (const row of result.rows) {
 }
 ```
 
-Column names are available via the ``names`` property.
+Column names are available via the `names` property.
 
 ### Streaming
 
@@ -196,39 +197,45 @@ asynchronous stream such as a network socket, or a file.
 Assuming that `socket` is a writable stream:
 
 ```typescript
-const query = new Query(
-    "SELECT some_bytea_column",
-    {streams: {"some_bytea_column": socket}}
-);
+const query = new Query('SELECT some_bytea_column', {
+  streams: { some_bytea_column: socket },
+});
 const result = await client.execute(query);
 ```
+
 This can for example be used to reduce time to first byte and memory use.
 
 ### Multiple queries
 
 The query command accepts a single query only. If you need to send multiple queries, just call the method multiple times. For example, to send an update command in a transaction:
+
 ```typescript
 client.query('begin');
 client.query('update ...');
 await client.query('commit');
 ```
+
 The queries are sent back to back over the wire, but PostgreSQL still processes them one at a time, in the order they were sent (first in, first out).
 
 ### Prepared statements
 
 You can prepare a query and subsequently execute it multiple times. This is also known as a "prepared statement".
+
 ```typescript
 const statement = await client.prepare(
-    `SELECT 'Hello ' || $1 || '!' AS message`
+  `SELECT 'Hello ' || $1 || '!' AS message`,
 );
 for await (const object of statement.execute(['world'])) {
-    console.log(object.message); // 'Hello world!'
+  console.log(object.message); // 'Hello world!'
 }
 ```
+
 When the prepared statement is no longer needed, it should be closed to release the resource.
+
 ```typescript
 await statement.close();
 ```
+
 Prepared statements can be used (executed) multiple times, even concurrently.
 
 ## Notes
@@ -260,9 +267,9 @@ The copy commands are not supported.
 
    const channel = 'test';
    client.on('notification', (message: Notification) => {
-        if (message.channel === channel) {
-            // Do stuff
-        }
+     if (message.channel === channel) {
+       // Do stuff
+     }
    });
    await client.query(`LISTEN ${channel}`);
    ```
@@ -277,26 +284,26 @@ $ NODE_ENV=benchmark npm run test
 
 ## Support
 
-ts-postgres is free software.  If you encounter a bug with the library please open an issue on the [GitHub repo](https://github.com/malthe/ts-postgres).
+ts-postgres is free software. If you encounter a bug with the library please open an issue on the [GitHub repo](https://github.com/malthe/ts-postgres).
 
 ## License
 
-Copyright (c) 2018-2023 Malthe Borch (mborch@gmail.com)
+Copyright (c) 2018-2024 Malthe Borch (mborch@gmail.com)
 
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

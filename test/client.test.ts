@@ -22,12 +22,12 @@ const timedQueryTime = benchmarkEnabled ? 5000 : 500;
 
 const enum TestQuery {
     PgType,
-    Array
+    Array,
 }
 
 interface Query {
     text: string;
-    values?: any[]
+    values?: any[];
 }
 
 function makeRandomizer(seed: number) {
@@ -35,12 +35,12 @@ function makeRandomizer(seed: number) {
         const x = Math.sin(seed++) * 10000;
         const r = x - Math.floor(x);
         return Math.floor(r * Math.floor(n));
-    }
+    };
 }
 
 function secondsFromHrTime(time: [number, number]) {
     const d = hrtime(time);
-    return d[0] + d[1] / (10 ** 9);
+    return d[0] + d[1] / 10 ** 9;
 }
 
 function unsafeToSimpleQuery(query: Query) {
@@ -50,31 +50,34 @@ function unsafeToSimpleQuery(query: Query) {
         const param = params[i];
         text = text.replace('$' + (i + 1), param);
     }
-    return {text};
+    return { text };
 }
 
 function testSelect(
     testQuery: TestQuery,
     batchSize: number,
-    doReplaceArgs: boolean) {
+    doReplaceArgs: boolean,
+) {
     /* eslint-disable-next-line prefer-const */
     let { name, query } = (() => {
         switch (testQuery) {
-            case TestQuery.Array: return {
-                name: 'Array',
-                query: {
-                    // tslint:disable-next-line
-                    text: 'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)'
-                }
-            };
-            case TestQuery.PgType: return {
-                name: 'PgType',
-                query: {
-                    // tslint:disable-next-line
-                    text: 'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
-                    values: [-1, true]
-                }
-            };
+            case TestQuery.Array:
+                return {
+                    name: 'Array',
+                    query: {
+                        // tslint:disable-next-line
+                        text: 'select (select array_agg(i) from generate_series(1, 100) as s(i)) from generate_series(1, 100)',
+                    },
+                };
+            case TestQuery.PgType:
+                return {
+                    name: 'PgType',
+                    query: {
+                        // tslint:disable-next-line
+                        text: 'select typname, typnamespace, typowner, typlen, typbyval, typcategory, typispreferred, typisdefined, typdelim, typrelid, typelem, typarray from pg_type where typtypmod = $1 and typisdefined = $2',
+                        values: [-1, true],
+                    },
+                };
         }
     })();
 
@@ -82,86 +85,99 @@ function testSelect(
         query = unsafeToSimpleQuery(query);
     }
 
-    test(`SQL: Select (${testQuery}; ${doReplaceArgs}; batch size: ${batchSize})`,
-        async ({ client }) => {
-            const go = async (time: number):
-                Promise<[number, number, number, number]> => {
-                let queries = 0;
-                let acknowledged = 0;
-                let results = 0;
-                const startTime = hrtime();
-                const secs = time / 1000;
+    test(`SQL: Select (${testQuery}; ${doReplaceArgs}; batch size: ${batchSize})`, async ({
+        client,
+    }) => {
+        const go = async (
+            time: number,
+        ): Promise<[number, number, number, number]> => {
+            let queries = 0;
+            let acknowledged = 0;
+            let results = 0;
+            const startTime = hrtime();
+            const secs = time / 1000;
 
-                while (true) {
-                    const d = secs - secondsFromHrTime(startTime);
-                    if (d < 0) {
-                        break;
-                    }
-
-                    let i = batchSize;
-                    const promises: Promise<void>[] = [];
-
-                    while (i--) {
-                        const p = client.query(query.text, query.values).then(
-                            (result: Result) => {
-                                acknowledged += 1;
-                                results += result.rows.length;
-                            });
-
-                        queries++;
-                        promises.push(p)
-                    }
-
-                    await Promise.all(promises);
+            while (true) {
+                const d = secs - secondsFromHrTime(startTime);
+                if (d < 0) {
+                    break;
                 }
 
-                const d = secondsFromHrTime(startTime);
-                return [queries, results, queries - acknowledged, d];
+                let i = batchSize;
+                const promises: Promise<void>[] = [];
+
+                while (i--) {
+                    const p = client
+                        .query(query.text, query.values)
+                        .then((result: Result) => {
+                            acknowledged += 1;
+                            results += result.rows.length;
+                        });
+
+                    queries++;
+                    promises.push(p);
+                }
+
+                await Promise.all(promises);
             }
 
-            await go(timedQueryTime / 10);
+            const d = secondsFromHrTime(startTime);
+            return [queries, results, queries - acknowledged, d];
+        };
 
-            const [queries, rows, diff, time] = await go(timedQueryTime);
-            const round = (n: number) => { return Math.round(n / time) };
+        await go(timedQueryTime / 10);
 
-            if (benchmarkEnabled) {
-                const secs =
-                    (Math.round(time * 100) / 100).toFixed(2) + ' secs';
-                const q = round(queries);
-                const r = round(rows);
-                console.log(
-                    `[${name}] Q/sec: ${q}; ` +
+        const [queries, rows, diff, time] = await go(timedQueryTime);
+        const round = (n: number) => {
+            return Math.round(n / time);
+        };
+
+        if (benchmarkEnabled) {
+            const secs = (Math.round(time * 100) / 100).toFixed(2) + ' secs';
+            const q = round(queries);
+            const r = round(rows);
+            console.log(
+                `[${name}] Q/sec: ${q}; ` +
                     `R/sec: ${r} (${secs}); ` +
-                    `B: ${batchSize}`
-                );
-            }
+                    `B: ${batchSize}`,
+            );
+        }
 
-            equal(diff, 0);
-        });
+        equal(diff, 0);
+    });
 }
 
 describe('Connection', () => {
     test('Info', async ({ client }) => {
-        equal(client.encrypted, !!(client.config.ssl && client.config.ssl !== SSLMode.Disable));
+        equal(
+            client.encrypted,
+            !!(client.config.ssl && client.config.ssl !== SSLMode.Disable),
+        );
     });
     test('Timeout', async ({ connect }) => {
         const server = createServer();
         await new Promise((resolve) => {
-            server.listen(0, "localhost", 1, () => { resolve(undefined) });
+            server.listen(0, 'localhost', 1, () => {
+                resolve(undefined);
+            });
         });
         const sockets = new Set<Socket>();
         server.on('connection', (socket) => {
-            sockets.add(socket); server.once('close', () => {
+            sockets.add(socket);
+            server.once('close', () => {
                 sockets.delete(socket);
             });
         });
         strictEqual(server.listening, true);
         const address = server.address() as AddressInfo;
-        await rejects(connect({
-            host: address.address,
-            port: address.port,
-            connectionTimeout: 250
-        }), /Timeout after 250 ms/);
+        await rejects(
+            connect({
+                host: address.address,
+                port: address.port,
+                connectionTimeout: 250,
+            }),
+            /Timeout after 250 ms/,
+        );
         for (const socket of sockets.values()) {
             socket.destroy();
         }
@@ -191,26 +207,33 @@ describe('Query', () => {
 
     test('Custom value type reader', async ({ client }) => {
         client.config.types = new Map([
-            [DataType.Int4, (
-                buffer: Buffer,
-                start: number,
-                end: number,
-                format: DataFormat,
-                encoding?: string) => {
-                const value = buffer.readInt32BE(start);
-                equal(end - start, 4);
-                equal(value, 1);
-                equal(format, DataFormat.Binary);
-                equal(encoding, 'utf-8');
-                return 1;
-            }]
+            [
+                DataType.Int4,
+                (
+                    buffer: Buffer,
+                    start: number,
+                    end: number,
+                    format: DataFormat,
+                    encoding?: string,
+                ) => {
+                    const value = buffer.readInt32BE(start);
+                    equal(end - start, 4);
+                    equal(value, 1);
+                    equal(format, DataFormat.Binary);
+                    equal(encoding, 'utf-8');
+                    return 1;
+                },
+            ],
         ]);
         const result = await client.query('select 1::int4');
         equal(result.rows.length, 1);
     });
 
     test('Name transform', async ({ client }) => {
-        const query = {text: 'select 1 as foo', transform: (s: string) => s.toUpperCase()};
+        const query = {
+            text: 'select 1 as foo',
+            transform: (s: string) => s.toUpperCase(),
+        };
         const result = await client.query(query);
         deepEqual(result.names, ['FOO']);
     });
@@ -221,11 +244,14 @@ describe('Query', () => {
             equal(msg.channel, 'foo');
             equal(msg.payload, 'bar');
         });
-        await client.query('notify foo, \'bar\'');
+        await client.query("notify foo, 'bar'");
     });
 
     test('Session timeout', async ({ connect }) => {
-        const client = await connect({idleSessionTimeout: 500, idleInTransactionSessionTimeout: 500});
+        const client = await connect({
+            idleSessionTimeout: 500,
+            idleInTransactionSessionTimeout: 500,
+        });
         const errors: (keyof typeof postgresqlErrorCodes)[] = [];
         client.on('error', (error) => errors.push(error.code));
         await new Promise((resolve) => setTimeout(resolve, 625));
@@ -242,35 +268,41 @@ describe('Query', () => {
     });
 
     test('Stream', async ({ client }) => {
-        const s = "abcdefghijklmnopqrstuvxyz".repeat(Math.pow(2, 17));
+        const s = 'abcdefghijklmnopqrstuvxyz'.repeat(Math.pow(2, 17));
         const buffer = Buffer.from(s);
-        const server = createServer(
-            (conn) => {
-                let offset = 0;
-                conn.on('data', (data: Buffer) => {
-                    const s = data.toString();
-                    buffer.write(s, offset);
-                    offset += s.length;
-                });
-            }
-        );
+        const server = createServer((conn) => {
+            let offset = 0;
+            conn.on('data', (data: Buffer) => {
+                const s = data.toString();
+                buffer.write(s, offset);
+                offset += s.length;
+            });
+        });
 
         await new Promise((resolve) => {
-            server.listen({
-                port: 0,
-                host: "localhost",
-                backlog: 1
-            }, () => { resolve(undefined) });
+            server.listen(
+                {
+                    port: 0,
+                    host: 'localhost',
+                    backlog: 1,
+                },
+                () => {
+                    resolve(undefined);
+                },
+            );
         });
 
         strictEqual(server.listening, true);
         const address = server.address() as AddressInfo;
         const socket = new Socket();
         socket.connect(address.port);
-        await client.query({
-            text: 'select upper($1)::bytea as col',
-            streams: { col: socket }
-        }, [Buffer.from(s)]);
+        await client.query(
+            {
+                text: 'select upper($1)::bytea as col',
+                streams: { col: socket },
+            },
+            [Buffer.from(s)],
+        );
 
         // At this point we're done really done streaming, and how can
         // we know when that happens?
@@ -278,51 +310,45 @@ describe('Query', () => {
         // Probably, the query should return only when the callback
         // comes through.
         return new Promise((resolve) => {
-            socket.on(
-                'close',
-                () => {
-                    server.close(
-                        () => {
-                            try {
-                                equal(buffer.toString(), s.toUpperCase());
-                            } finally {
-                                resolve(undefined);
-                            }
-                        }
-                    );
-                }
-            );
+            socket.on('close', () => {
+                server.close(() => {
+                    try {
+                        equal(buffer.toString(), s.toUpperCase());
+                    } finally {
+                        resolve(undefined);
+                    }
+                });
+            });
             socket.end();
         });
     });
 
-    test('Return table', async({ client}) => {
+    test('Return table', async ({ client }) => {
         await client.query(`
             create function pg_temp.foo() returns table(bar int)
             language sql begin atomic
             select 123;
             end
         `);
-        const result = await client.query<{bar: number}>(
-            'select * from pg_temp.foo()'
-        ).first();
+        const result = await client
+            .query<{ bar: number }>('select * from pg_temp.foo()')
+            .first();
         equal(result?.bar, 123);
     });
 
-    test(
-        'Query errors become promise rejection',
-        async ({ client }) => {
-            await rejects(client.query('select foo'), /foo/);
-        }
-    );
+    test('Query errors become promise rejection', async ({ client }) => {
+        await rejects(client.query('select foo'), /foo/);
+    });
 
     interface QueryTest {
         query: ResultIterator;
-        expectation: {
-            names: string[];
-            rows: any[];
-            status: string;
-        } | RegExp;
+        expectation:
+            | {
+                  names: string[];
+                  rows: any[];
+                  status: string;
+              }
+            | RegExp;
     }
 
     interface PrepareTest {
@@ -330,42 +356,44 @@ describe('Query', () => {
         expectation: RegExp;
     }
 
-    const tests: Array<(client: Client, seed: number) => QueryTest | PrepareTest> = [
+    const tests: Array<
+        (client: Client, seed: number) => QueryTest | PrepareTest
+    > = [
         (client: Client) => {
             return {
                 query: client.query('select foo'),
-                expectation: /foo/
-            }
+                expectation: /foo/,
+            };
         },
         (client: Client) => {
             return {
                 query: client.query('select boo, $1 as bar', [0]),
-                expectation: /boo/
-            }
+                expectation: /boo/,
+            };
         },
         (client: Client) => {
             return {
                 query: client.query('select 1 as i'),
-                expectation: { names: ['i'], rows: [[1]], status: 'SELECT 1' }
-            }
+                expectation: { names: ['i'], rows: [[1]], status: 'SELECT 1' },
+            };
         },
         (client: Client) => {
             return {
                 query: client.query('select 1 / $1 as j', [0]),
-                expectation: /division by zero/
-            }
+                expectation: /division by zero/,
+            };
         },
         (client: Client) => {
             return {
                 query: client.query('select $1::int as k', [2]),
-                expectation: { names: ['k'], rows: [[2]], status: 'SELECT 1' }
-            }
+                expectation: { names: ['k'], rows: [[2]], status: 'SELECT 1' },
+            };
         },
         (client: Client) => {
             return {
-                query: client.query('select $1::internal as l', [""]),
-                expectation: /2281/
-            }
+                query: client.query('select $1::internal as l', ['']),
+                expectation: /2281/,
+            };
         },
         (client: Client, seed: number) => {
             const random = makeRandomizer(seed);
@@ -374,51 +402,50 @@ describe('Query', () => {
             const blocksize = random(71) || 1;
             const names: string[] = [];
             const row: string[] = [];
-            let query = "select ";
+            let query = 'select ';
             for (let i = 0; i < columns; i++) {
                 const column = String.fromCharCode('a'.charCodeAt(0) + i);
                 const string = alphabet.substring(0, i + 1).repeat(blocksize);
                 names.push(column);
                 row.push(string);
-                if (i > 0) query += ", ";
+                if (i > 0) query += ', ';
                 query += `'${string}' as ${column}`;
             }
             return {
                 query: client.query(query),
-                expectation: { names: names, rows: [row], status: 'SELECT 1' }
-            }
+                expectation: { names: names, rows: [row], status: 'SELECT 1' },
+            };
         },
         (client: Client) => {
             return {
                 query: client.prepare('select $1::int as i from badtable'),
-                expectation: /badtable/
-            }
-        }
+                expectation: /badtable/,
+            };
+        },
     ];
 
     function make(client: Client, n: number, seed: number): Promise<void> {
         const p = tests[n](client, seed);
         if (p.expectation instanceof RegExp) {
-            return rejects(p.query, p.expectation)
+            return rejects(p.query, p.expectation);
         } else {
-            return p.query.then(
-                (actual: any) => deepEqual(actual, p.expectation),
+            return p.query.then((actual: any) =>
+                deepEqual(actual, p.expectation),
             );
         }
     }
 
     function makeTest(ns: number[]) {
-        test(
-            `Pipeline combination query ${ns.join(';')}`,
-            async ({ client }) => {
-                const promises: Promise<void>[] = [];
-                for (let i = 0; i < ns.length; i++) {
-                    const p = make(client, ns[i], 1);
-                    promises.push(p);
-                }
-                await Promise.all(promises);
+        test(`Pipeline combination query ${ns.join(';')}`, async ({
+            client,
+        }) => {
+            const promises: Promise<void>[] = [];
+            for (let i = 0; i < ns.length; i++) {
+                const p = make(client, ns[i], 1);
+                promises.push(p);
             }
-        );
+            await Promise.all(promises);
+        });
     }
 
     for (let i = 0; i < tests.length; i++) {
@@ -428,33 +455,31 @@ describe('Query', () => {
         }
     }
 
-    test(
-        'Pipeline combination query (fuzzy)',
-        async ({ client }) => {
-            const random = makeRandomizer(1);
+    test('Pipeline combination query (fuzzy)', async ({ client }) => {
+        const random = makeRandomizer(1);
 
-            for (let i = 0; i < 5; i++) {
-                let remaining = 500;
-                while (remaining) {
-                    const count = Math.min(
+        for (let i = 0; i < 5; i++) {
+            let remaining = 500;
+            while (remaining) {
+                const count =
+                    Math.min(
                         Math.max(random(remaining), 1),
-                        remaining / 2 >> 0
+                        (remaining / 2) >> 0,
                     ) || 1;
-                    remaining -= count;
-                    const promises: Promise<void>[] = [];
-                    for (let j = 0; j < count; j++) {
-                        const n = random(tests.length);
-                        const p = make(client, n, remaining);
-                        promises.push(p);
-                    }
-                    await Promise.all(promises);
+                remaining -= count;
+                const promises: Promise<void>[] = [];
+                for (let j = 0; j < count; j++) {
+                    const n = random(tests.length);
+                    const p = make(client, n, remaining);
+                    promises.push(p);
                 }
+                await Promise.all(promises);
             }
         }
-    );
+    });
 
     test('Empty query', async ({ client }) => {
-        const result = await client.query('')
+        const result = await client.query('');
         deepEqual(result, { names: [], rows: [], status: null });
     });
 
@@ -463,49 +488,41 @@ describe('Query', () => {
         await rejects(client.query(text, ['']), /2281/);
     });
 
-    test(
-        'Prepare and execute (SELECT)',
-        async ({ client }) => {
-            const stmt = await client.prepare('select $1::int as i');
-            const result1 = await stmt.execute([1]);
-            deepEqual(result1, { names: ['i'], rows: [[1]], status: 'SELECT 1' });
-            const result2 = await stmt.execute([2]);
-            deepEqual(result2.rows, [[2]]);
-            await stmt.close();
-        }
-    );
+    test('Prepare and execute (SELECT)', async ({ client }) => {
+        const stmt = await client.prepare('select $1::int as i');
+        const result1 = await stmt.execute([1]);
+        deepEqual(result1, { names: ['i'], rows: [[1]], status: 'SELECT 1' });
+        const result2 = await stmt.execute([2]);
+        deepEqual(result2.rows, [[2]]);
+        await stmt.close();
+    });
 
-    test(
-        'Prepare and execute (SELECT, transform)',
-        async ({ client }) => {
-            const query = {text: 'select $1::int as i', transform: (s: string) => s.toUpperCase()};
-            const stmt = await client.prepare(query);
-            const result1 = await stmt.execute([1]);
-            deepEqual(result1, { names: ['I'], rows: [[1]], status: 'SELECT 1' });
-            const result2 = await stmt.execute([2]);
-            deepEqual(result2.rows, [[2]]);
-            await stmt.close();
-        }
-    );
+    test('Prepare and execute (SELECT, transform)', async ({ client }) => {
+        const query = {
+            text: 'select $1::int as i',
+            transform: (s: string) => s.toUpperCase(),
+        };
+        const stmt = await client.prepare(query);
+        const result1 = await stmt.execute([1]);
+        deepEqual(result1, { names: ['I'], rows: [[1]], status: 'SELECT 1' });
+        const result2 = await stmt.execute([2]);
+        deepEqual(result2.rows, [[2]]);
+        await stmt.close();
+    });
 
-    test(
-        'Prepare and execute (INSERT)',
-        async ({ client }) => {
-            await client.query('create temporary table foo (bar int)');
-            const stmt = await client.prepare('insert into foo values ($1)');
-            const result1 = await stmt.execute([1]);
-            deepEqual(result1, { names: [], rows: [], status: 'INSERT 0 1' });
-            const result2 = await stmt.execute([2]);
-            deepEqual(result2.rows, []);
-        }
-    );
+    test('Prepare and execute (INSERT)', async ({ client }) => {
+        await client.query('create temporary table foo (bar int)');
+        const stmt = await client.prepare('insert into foo values ($1)');
+        const result1 = await stmt.execute([1]);
+        deepEqual(result1, { names: [], rows: [], status: 'INSERT 0 1' });
+        const result2 = await stmt.execute([2]);
+        deepEqual(result2.rows, []);
+    });
 
-    test(
-        'Prepare and execute error',
-        async ({ client }) => {
-            const stmt = client.prepare('select $1::int as i from badtable');
-            await rejects(stmt, /badtable/);
-        });
+    test('Prepare and execute error', async ({ client }) => {
+        const stmt = client.prepare('select $1::int as i from badtable');
+        await rejects(stmt, /badtable/);
+    });
 
     testSelect(TestQuery.PgType, 1, false);
     testSelect(TestQuery.PgType, 5, false);

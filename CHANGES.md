@@ -4,8 +4,7 @@ In next release ...
   connected when the promise returns. The `Client` symbol is now a
   type instead of a value.
 
-1.9.0 (2024-01-23)
-------------------
+## v1.9.0 (2024-01-23)
 
 - Add support for ESM modules.
 
@@ -15,8 +14,7 @@ In next release ...
 
 - Fix issue handling connection error during secure startup.
 
-1.8.0 (2023-12-14)
-------------------
+## v1.8.0 (2023-12-14)
 
 - Reduce buffer allocation and intelligently scale initial allocation when creating
   a new buffer.
@@ -34,8 +32,7 @@ In next release ...
 
 - Fixed a regression where some symbols were not correctly exposed for importing.
 
-1.7.0 (2023-12-13)
-------------------
+## v1.7.0 (2023-12-13)
 
 - The `execute` method has been removed.
 
@@ -50,8 +47,7 @@ In next release ...
 
   The same change has been made to `prepare`.
 
-1.6.0 (2023-12-13)
-------------------
+## v1.6.0 (2023-12-13)
 
 - The iterator methods now return reified representations of the query result
   (i.e. objects), carrying the generic type parameter specified for the query
@@ -61,8 +57,7 @@ In next release ...
   This separates the query results interface into an iterator interface (providing
   objects) and a result interface (providing rows and column names).
 
-1.5.0 (2023-12-06)
-------------------
+## v1.5.0 (2023-12-06)
 
 - The `Value` type has been replaced with `any`, motivated by the new
   generic result type as well as the possibility to implement custom
@@ -93,8 +88,7 @@ In next release ...
 
 - Use `bigint` everywhere as a type instead of `BigInt`.
 
-1.4.0 (2023-11-10)
-------------------
+## v1.4.0 (2023-11-10)
 
 - A statement error during the processing of a prepared statement is
   now handled correctly (#73).
@@ -104,21 +98,15 @@ In next release ...
 - The [ts-typed-events](https://www.npmjs.com/package/ts-typed-events)
   dependency was updated to version 3.0.0.
 
-
-1.3.1 (2023-06-19)
-------------------
+## v1.3.1 (2023-06-19)
 
 - Added details of database error to thrown error message (#64).
 
-
-1.3.0 (2022-08-22)
-------------------
+## v1.3.0 (2022-08-22)
 
 - Fix prepare statement with no return data (#56).
 
-
-1.2.1 (2021-12-23)
-------------------
+## v1.2.1 (2021-12-23)
 
 - Fix range error that could occur when parsing an incomplete data row
   after one or more previous messages had already been processed.
@@ -136,8 +124,7 @@ In next release ...
 - Fix issue where a query with multiple columns would yield incomplete
   rows when protocol data spans multiple receive buffers.
 
-1.2.0 (2021-11-19)
-------------------
+## v1.2.0 (2021-11-19)
 
 - The "execute" method is now public and must be used now when passing
   a query object rather than individual arguments when querying.
@@ -162,19 +149,15 @@ In next release ...
 
 - Updated dependency on "ts-typed-events".
 
-1.1.3 (2020-02-23)
-------------------
+## v1.1.3 (2020-02-23)
 
 - Added support for `BigInt`.
 
-1.1.2 (2019-12-28)
-------------------
+## v1.1.2 (2019-12-28)
 
 - Fixed handling of null values in arrays. [matthieusieben]
 
-
-1.1.1 (2019-12-06)
-------------------
+## v1.1.1 (2019-12-06)
 
 - Fixed `ECONNRESET` deprecation.
 
@@ -184,9 +167,7 @@ In next release ...
 
 - Encoding argument now uses `BufferEncoding` type.
 
-
-1.1.0 (2019-06-24)
-------------------
+## v1.1.0 (2019-06-24)
 
 - The rejection value is now a `DatabaseError` object which inherits
   from `Error`. Previously, this value was a plain string.
@@ -199,9 +180,7 @@ In next release ...
 
 - Handle `JSONB` and null values.
 
-
-1.0.2 (2019-02-08)
-------------------
+## v1.0.2 (2019-02-08)
 
 - Connection state variable 'closed' is now public. This should be
   checked before using the connection to make sure that an unexpected
@@ -210,9 +189,7 @@ In next release ...
 - Handle protocol errors gracefully, passing error to open data
   handlers and marking the connection as 'closed'.
 
-
-1.0.1 (2019-01-13)
-------------------
+## v1.0.1 (2019-01-13)
 
 - Parse JSON data only on non-null value.
 
@@ -221,8 +198,6 @@ In next release ...
 - Fixed an issue with `Result.one()` and `Result.first()` methods
   where a rejection would be uncaught.
 
-
-1.0.0 (2019-01-08)
-------------------
+## v1.0.0 (2019-01-08)
 
 - Initial release.

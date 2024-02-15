@@ -1,6 +1,8 @@
-.DS_Store
-.rpt2_cache
-node_modules
+.*
+!.eslintrc.json
 coverage
 dist
+docs
+node_modules
+npm
 yarn.lock

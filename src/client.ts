@@ -4,7 +4,12 @@ import { constants } from 'node:os';
 import { env, nextTick } from 'node:process';
 import { Socket } from 'node:net';
 import { Writable } from 'node:stream';
-import { ConnectionOptions, TLSSocket, connect as tls, createSecureContext } from 'node:tls';
+import {
+    ConnectionOptions,
+    TLSSocket,
+    connect as tls,
+    createSecureContext,
+} from 'node:tls';
 
 import { Event as TypedEvent } from 'ts-typed-events';
 
@@ -19,7 +24,7 @@ import {
     DataHandler,
     ResultIterator,
     ResultRecord,
-    makeResult
+    makeResult,
 } from './result.js';
 
 import {
@@ -32,32 +37,32 @@ import {
     RowDescription,
     SSLResponseCode,
     TransactionStatus,
-    Writer
+    Writer,
 } from './protocol.js';
 
 import {
     BufferEncoding,
     DataFormat,
     DataType,
-    ValueTypeReader
+    ValueTypeReader,
 } from './types.js';
 
 import { md5 } from './utils.js';
 
-export interface ConnectionInfo  {
+export interface ConnectionInfo {
     encrypted: boolean;
     parameters: ReadonlyMap<string, string>;
 }
 
 export interface ClientNotice extends DatabaseError {
-    level: ErrorLevel,
-    code: keyof typeof postgresqlErrorCodes,
-    message: string
+    level: ErrorLevel;
+    code: keyof typeof postgresqlErrorCodes;
+    message: string;
 }
 
 export interface DataTypeError {
-    dataType: DataType,
-    value: any
+    dataType: DataType;
+    value: any;
 }
 
 export enum SSLMode {
@@ -67,28 +72,29 @@ export enum SSLMode {
 }
 
 export interface SSL {
-    mode: (SSLMode.Prefer | SSLMode.Require),
-    options?: ConnectionOptions,
+    mode: SSLMode.Prefer | SSLMode.Require;
+    options?: ConnectionOptions;
 }
 
-export interface Configuration extends Partial<ClientConnectionDefaults & ClientConnectionOptions> {
-    user?: string,
-    database?: string,
-    host?: string,
-    port?: number,
-    password?: string,
-    types?: Map<DataType, ValueTypeReader>,
-    bigints?: boolean,
-    keepAlive?: boolean,
-    preparedStatementPrefix?: string,
-    connectionTimeout?: number,
-    ssl?: (SSLMode.Disable | SSL)
+export interface Configuration
+    extends Partial<ClientConnectionDefaults & ClientConnectionOptions> {
+    user?: string;
+    database?: string;
+    host?: string;
+    port?: number;
+    password?: string;
+    types?: Map<DataType, ValueTypeReader>;
+    bigints?: boolean;
+    keepAlive?: boolean;
+    preparedStatementPrefix?: string;
+    connectionTimeout?: number;
+    ssl?: SSLMode.Disable | SSL;
 }
 
 export interface Notification {
-    processId: number,
-    channel: string,
-    payload?: string
+    processId: number;
+    channel: string;
+    payload?: string;
 }
 
 export interface PreparedStatement<T = ResultRecord> {
@@ -98,7 +104,7 @@ export interface PreparedStatement<T = ResultRecord> {
         portal?: string,
         format?: DataFormat | DataFormat[],
         streams?: Record<string, Writable>,
-    ) => ResultIterator<T>
+    ) => ResultIterator<T>;
 }
 
 export type Callback<T> = (data: T) => void;
@@ -106,11 +112,7 @@ export type Callback<T> = (data: T) => void;
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 type CallbackOf<U> = U extends any ? Callback<U> : never;
 
-type Event = (
-    ClientNotice |
-    DatabaseError |
-    Notification
-);
+type Event = ClientNotice | DatabaseError | Notification;
 
 type Connect = Error | null;
 
@@ -119,9 +121,9 @@ type End = NodeJS.ErrnoException | null;
 type CloseHandler = () => void;
 
 interface RowDataHandler {
-    callback: DataHandler,
-    streams: Record<string, Writable>,
-    bigints: boolean,
+    callback: DataHandler;
+    streams: Record<string, Writable>;
+    bigints: boolean;
 }
 
 type DescriptionHandler = (description: RowDescription) => void;
@@ -145,10 +147,10 @@ const enum Cleanup {
 
 interface Bind {
     name: string;
-    format: DataFormat | DataFormat[]
+    format: DataFormat | DataFormat[];
     portal: string;
-    values: any[],
-    close: boolean
+    values: any[];
+    close: boolean;
 }
 
 interface PreFlightQueue {
@@ -165,7 +167,7 @@ export class ClientImpl {
         end: new TypedEvent<End>(),
         error: new TypedEvent<DatabaseError>(),
         notice: new TypedEvent<ClientNotice>(),
-        notification: new TypedEvent<Notification>()
+        notification: new TypedEvent<Notification>(),
     };
 
     private ending = false;
@@ -202,12 +204,15 @@ export class ClientImpl {
     public transactionStatus: TransactionStatus | null = null;
 
     /**
-    * @param config - An optional configuration object, comprised of connection details
-    *     and client configuration. Most of the connection details can also be specified
-    *     using environment variables, see {@link Environment}.
-    */
+     * @param config - An optional configuration object, comprised of connection details
+     *     and client configuration. Most of the connection details can also be specified
+     *     using environment variables, see {@link Environment}.
+     */
     constructor(public readonly config: Configuration = {}) {
-        this.encoding = config.clientEncoding || DEFAULTS.clientEncoding as BufferEncoding || 'utf-8';
+        this.encoding =
+            config.clientEncoding ||
+            (DEFAULTS.clientEncoding as BufferEncoding) ||
+            'utf-8';
         this.writer = new Writer(this.encoding);
 
         this.stream.on('close', () => {
@@ -217,11 +222,12 @@ export class ClientImpl {
 
         this.stream.on('connect', () => {
             const keepAlive =
-                (typeof this.config.keepAlive === 'undefined') ?
-                    this.config.keepAlive : true;
+                typeof this.config.keepAlive === 'undefined' ?
+                    this.config.keepAlive
+                :   true;
 
             if (keepAlive) {
-                this.stream.setKeepAlive(true)
+                this.stream.setKeepAlive(true);
             }
 
             this.closed = false;
@@ -235,8 +241,8 @@ export class ClientImpl {
             } else {
                 // Don't raise ECONNRESET errors - they can & should be
                 // ignored during disconnect.
-                if (this.ending && error.errno ===
-                    constants.errno.ECONNRESET) return;
+                if (this.ending && error.errno === constants.errno.ECONNRESET)
+                    return;
 
                 this.events.end.emit(error);
             }
@@ -250,14 +256,21 @@ export class ClientImpl {
     private startup() {
         const writer = new Writer(this.encoding);
 
-        if (DEFAULTS.sslMode && Object.values(SSLMode).indexOf(DEFAULTS.sslMode as SSLMode) < 0) {
-            throw new Error("Invalid SSL mode: " + DEFAULTS.sslMode);
+        if (
+            DEFAULTS.sslMode &&
+            Object.values(SSLMode).indexOf(DEFAULTS.sslMode as SSLMode) < 0
+        ) {
+            throw new Error('Invalid SSL mode: ' + DEFAULTS.sslMode);
         }
 
-        const ssl = this.config.ssl ??
-            (DEFAULTS.sslMode as SSLMode || SSLMode.Disable) === SSLMode.Disable
-                ? SSLMode.Disable
-                : ({ mode: SSLMode.Prefer, options: undefined });
+        const ssl =
+            (
+                this.config.ssl ??
+                ((DEFAULTS.sslMode as SSLMode) || SSLMode.Disable) ===
+                    SSLMode.Disable
+            ) ?
+                SSLMode.Disable
+            :   { mode: SSLMode.Prefer, options: undefined };
 
         const settings = {
             user: this.config.user || DEFAULTS.user,
@@ -265,9 +278,11 @@ export class ClientImpl {
             clientMinMessages: this.config.clientMinMessages,
             defaultTableAccessMethod: this.config.defaultTableAccessMethod,
             defaultTablespace: this.config.defaultTablespace,
-            defaultTransactionIsolation: this.config.defaultTransactionIsolation,
+            defaultTransactionIsolation:
+                this.config.defaultTransactionIsolation,
             extraFloatDigits: this.config.extraFloatDigits,
-            idleInTransactionSessionTimeout: this.config.idleInTransactionSessionTimeout,
+            idleInTransactionSessionTimeout:
+                this.config.idleInTransactionSessionTimeout,
             idleSessionTimeout: this.config.idleSessionTimeout,
             lockTimeout: this.config.lockTimeout,
             searchPath: this.config.searchPath,
@@ -280,29 +295,29 @@ export class ClientImpl {
             const abort = (error: Error) => {
                 this.handleError(error);
                 this.events.connect.emit(error);
-            }
+            };
 
             const startup = (stream?: Socket) => {
                 if (stream) this.stream = stream;
                 writer.startup(settings);
                 this.receive();
                 this.sendUsing(writer);
-            }
+            };
 
             this.stream.once('data', (buffer: Buffer) => {
                 const code = buffer.readInt8(0);
                 switch (code) {
                     // Server supports SSL connections, continue.
                     case SSLResponseCode.Supported:
-                        break
+                        break;
 
                     // Server does not support SSL connections.
                     case SSLResponseCode.NotSupported:
                         if (ssl.mode === SSLMode.Require) {
                             abort(
                                 new Error(
-                                    'Server does not support SSL connections'
-                                )
+                                    'Server does not support SSL connections',
+                                ),
                             );
                         } else {
                             startup();
@@ -312,27 +327,21 @@ export class ClientImpl {
                     // (ErrorResponse) indicating a server error.
                     default:
                         abort(
-                            new Error(
-                                'Error establishing an SSL connection'
-                            )
+                            new Error('Error establishing an SSL connection'),
                         );
                         return;
                 }
 
-                const context = ssl.options ?
-                    createSecureContext(ssl.options) :
-                    undefined;
+                const context =
+                    ssl.options ? createSecureContext(ssl.options) : undefined;
 
                 const options = {
                     socket: this.stream,
                     secureContext: context,
-                    ...(ssl.options ?? {})
+                    ...(ssl.options ?? {}),
                 };
 
-                const stream: TLSSocket = tls(
-                    options,
-                    () => startup(stream)
-                );
+                const stream: TLSSocket = tls(options, () => startup(stream));
 
                 stream.on('error', (error: Error) => {
                     abort(error);
@@ -382,10 +391,14 @@ export class ClientImpl {
                 } else {
                     try {
                         while (this.handleError(error as Error)) {
-                            logger.info("Cancelled query due to an internal error");
+                            logger.info(
+                                'Cancelled query due to an internal error',
+                            );
                         }
                     } catch (error) {
-                        logger.error("Internal error occurred while cleaning up query stack");
+                        logger.error(
+                            'Internal error occurred while cleaning up query stack',
+                        );
                     }
                 }
                 this.stream.destroy();
@@ -405,11 +418,12 @@ export class ClientImpl {
         }
 
         if (this.error) {
-            throw new Error('Can\'t connect in error state');
+            throw new Error("Can't connect in error state");
         }
         this.connecting = true;
 
-        const timeout = this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
+        const timeout =
+            this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
 
         let p = this.events.connect.once().then((error: Connect) => {
             if (error) {
@@ -420,7 +434,7 @@ export class ClientImpl {
             return {
                 encrypted: this.stream instanceof TLSSocket,
                 parameters: this.parameters as ReadonlyMap<string, string>,
-            }
+            };
         });
 
         const host = this.config.host ?? DEFAULTS.host;
@@ -432,15 +446,16 @@ export class ClientImpl {
             this.stream.connect(port, host);
         }
 
-        if (typeof timeout !== "undefined") {
+        if (typeof timeout !== 'undefined') {
             p = Promise.race([
                 p,
-                new Promise((_, reject) => setTimeout(
-                    () => reject(
-                        new Error(`Timeout after ${timeout} ms`)
-                    ), timeout
-                )),
-            ]) as Promise<ConnectionInfo>
+                new Promise((_, reject) =>
+                    setTimeout(
+                        () => reject(new Error(`Timeout after ${timeout} ms`)),
+                        timeout,
+                    ),
+                ),
+            ]) as Promise<ConnectionInfo>;
         }
         return p;
     }
@@ -472,12 +487,10 @@ export class ClientImpl {
             this.stream.destroy();
         }
         return new Promise<void>((resolve, reject) =>
-            this.events.end.once().then(
-                value => {
-                    if (value === null) resolve();
-                    reject(value);
-                }
-            )
+            this.events.end.once().then((value) => {
+                if (value === null) resolve();
+                reject(value);
+            }),
         );
     }
 
@@ -487,19 +500,16 @@ export class ClientImpl {
     on(event: string, callback: CallbackOf<Event>): void {
         switch (event) {
             case 'error': {
-                this.events.error.on(
-                    callback as Callback<DatabaseError>);
+                this.events.error.on(callback as Callback<DatabaseError>);
                 break;
             }
             case 'notice': {
-                this.events.notice.on(
-                    callback as Callback<ClientNotice>);
-                break
+                this.events.notice.on(callback as Callback<ClientNotice>);
+                break;
             }
             case 'notification': {
-                this.events.notification.on(
-                    callback as Callback<Notification>);
-                break
+                this.events.notification.on(callback as Callback<Notification>);
+                break;
             }
         }
     }
@@ -508,76 +518,86 @@ export class ClientImpl {
      *
      * @returns A prepared statement object.
      */
-    prepare<T = ResultRecord>(text: Query | string): Promise<PreparedStatement<T>> {
-        const query = typeof text === 'string' ? {text} : text;
-        const providedNameOrGenerated = query.name || (
+    prepare<T = ResultRecord>(
+        text: Query | string,
+    ): Promise<PreparedStatement<T>> {
+        const query = typeof text === 'string' ? { text } : text;
+        const providedNameOrGenerated =
+            query.name ||
             (this.config.preparedStatementPrefix ||
-                DEFAULTS.preparedStatementPrefix) + (
-                this.nextPreparedStatementId++
-            ));
+                DEFAULTS.preparedStatementPrefix) +
+                this.nextPreparedStatementId++;
 
-        return new Promise<PreparedStatement<T>>(
-            (resolve, reject) => {
-                const errorHandler: ErrorHandler = (error) => reject(error);
-                this.errorHandlerQueue.push(errorHandler);
-                this.writer.parse(providedNameOrGenerated, query.text, query.types || []);
-                this.writer.describe(providedNameOrGenerated, 'S');
-                this.preFlightQueue.push({
-                    descriptionHandler: (description: RowDescription) => {
-                        const types = this.parameterDescriptionQueue.shift();
-                        this.cleanupQueue.expect(Cleanup.ParameterDescription);
+        return new Promise<PreparedStatement<T>>((resolve, reject) => {
+            const errorHandler: ErrorHandler = (error) => reject(error);
+            this.errorHandlerQueue.push(errorHandler);
+            this.writer.parse(
+                providedNameOrGenerated,
+                query.text,
+                query.types || [],
+            );
+            this.writer.describe(providedNameOrGenerated, 'S');
+            this.preFlightQueue.push({
+                descriptionHandler: (description: RowDescription) => {
+                    const types = this.parameterDescriptionQueue.shift();
+                    this.cleanupQueue.expect(Cleanup.ParameterDescription);
 
-                        resolve({
-                            close: () => {
-                                return new Promise<void>(
-                                    (resolve) => {
-                                        this.writer.close(
-                                            providedNameOrGenerated, 'S');
-                                        this.closeHandlerQueue.push(resolve);
-                                        this.cleanupQueue.push(
-                                            Cleanup.Close
-                                        );
-                                        this.writer.flush();
-                                        this.send();
-                                    }
-                                );
-                            },
-                            execute: (
-                                values?: any[],
-                                portal?: string,
-                                format?: DataFormat | DataFormat[],
-                                streams?: Record<string, Writable>,
-                            ) => {
-                                const result = makeResult<T>(query?.transform);
-                                result.nameHandler(description.names);
-                                const info = {
-                                    handler: {
-                                        callback: result.dataHandler,
-                                        streams: streams || {},
-                                        bigints: query.bigints ?? this.config.bigints ?? true,
-                                    },
-                                    description: description,
-                                };
-                                this.bindAndExecute(info, {
+                    resolve({
+                        close: () => {
+                            return new Promise<void>((resolve) => {
+                                this.writer.close(providedNameOrGenerated, 'S');
+                                this.closeHandlerQueue.push(resolve);
+                                this.cleanupQueue.push(Cleanup.Close);
+                                this.writer.flush();
+                                this.send();
+                            });
+                        },
+                        execute: (
+                            values?: any[],
+                            portal?: string,
+                            format?: DataFormat | DataFormat[],
+                            streams?: Record<string, Writable>,
+                        ) => {
+                            const result = makeResult<T>(query?.transform);
+                            result.nameHandler(description.names);
+                            const info = {
+                                handler: {
+                                    callback: result.dataHandler,
+                                    streams: streams || {},
+                                    bigints:
+                                        query.bigints ??
+                                        this.config.bigints ??
+                                        true,
+                                },
+                                description: description,
+                            };
+                            this.bindAndExecute(
+                                info,
+                                {
                                     name: providedNameOrGenerated,
                                     portal: portal || query.portal || '',
-                                    format: format || query.format || DataFormat.Binary,
+                                    format:
+                                        format ||
+                                        query.format ||
+                                        DataFormat.Binary,
                                     values: values || [],
-                                    close: false
-                                }, types || query.types);
+                                    close: false,
+                                },
+                                types || query.types,
+                            );
 
-                                return result.iterator
-                            }
-                        })
-                    },
-                    dataHandler: null,
-                    bind: null
-                });
-                this.writer.sync();
-                this.cleanupQueue.push(Cleanup.PreFlight);
-                this.cleanupQueue.push(Cleanup.ErrorHandler);
-                this.send();
+                            return result.iterator;
+                        },
+                    });
+                },
+                dataHandler: null,
+                bind: null,
             });
+            this.writer.sync();
+            this.cleanupQueue.push(Cleanup.PreFlight);
+            this.cleanupQueue.push(Cleanup.ErrorHandler);
+            this.send();
+        });
     }
 
     /**
@@ -591,8 +611,11 @@ export class ClientImpl {
      * @param values - The query parameters, corresponding to $1, $2, etc.
      * @returns A promise for the query results.
      */
-    query<T = ResultRecord>(text: Query | string, values?: any[]): ResultIterator<T> {
-        const query = typeof text === 'string' ? {text} : text;
+    query<T = ResultRecord>(
+        text: Query | string,
+        values?: any[],
+    ): ResultIterator<T> {
+        const query = typeof text === 'string' ? { text } : text;
 
         if (this.closed && !this.connecting) {
             throw new Error('Connection is closed.');
@@ -615,11 +638,11 @@ export class ClientImpl {
         };
 
         if (values && values.length) {
-            const name = (query?.name) || (
+            const name =
+                query?.name ||
                 (this.config.preparedStatementPrefix ||
-                    DEFAULTS.preparedStatementPrefix) + (
-                    this.nextPreparedStatementId++
-                ));
+                    DEFAULTS.preparedStatementPrefix) +
+                    this.nextPreparedStatementId++;
 
             this.writer.parse(name, query.text, types || []);
             this.writer.describe(name, 'S');
@@ -631,8 +654,8 @@ export class ClientImpl {
                     portal: portal,
                     format: format || DataFormat.Binary,
                     values: values,
-                    close: true
-                }
+                    close: true,
+                },
             });
             this.cleanupQueue.push(Cleanup.PreFlight);
         } else {
@@ -644,7 +667,7 @@ export class ClientImpl {
             this.preFlightQueue.push({
                 descriptionHandler: descriptionHandler,
                 dataHandler: dataHandler,
-                bind: null
+                bind: null,
             });
             this.writer.execute(portal);
             this.writer.close(name, 'S');
@@ -655,16 +678,14 @@ export class ClientImpl {
         }
 
         const stack = new Error().stack;
-        this.errorHandlerQueue.push(
-            (error) => {
-                if (stack !== undefined)
-                    error.stack = stack.replace(
-                        /(?<=^Error: )\n/,
-                        error.toString() + "\n"
-                    );
-                result.dataHandler(error)
-            }
-        );
+        this.errorHandlerQueue.push((error) => {
+            if (stack !== undefined)
+                error.stack = stack.replace(
+                    /(?<=^Error: )\n/,
+                    error.toString() + '\n',
+                );
+            result.dataHandler(error);
+        });
 
         this.cleanupQueue.push(Cleanup.ErrorHandler);
 
@@ -676,14 +697,15 @@ export class ClientImpl {
     private bindAndExecute(
         info: RowDataHandlerInfo,
         bind: Bind,
-        types: DataType[]) {
+        types: DataType[],
+    ) {
         try {
             this.writer.bind(
                 bind.name,
                 bind.portal,
                 bind.format,
                 bind.values,
-                types
+                types,
             );
         } catch (error) {
             info.handler.callback(error as Error);
@@ -701,9 +723,9 @@ export class ClientImpl {
         }
 
         this.writer.sync();
-        this.errorHandlerQueue.push(
-            (error) => { info.handler.callback(error); }
-        );
+        this.errorHandlerQueue.push((error) => {
+            info.handler.callback(error);
+        });
         this.cleanupQueue.push(Cleanup.ErrorHandler);
         this.send();
     }
@@ -711,7 +733,8 @@ export class ClientImpl {
     private handleError(error: Error): boolean {
         while (true) {
             switch (this.cleanupQueue.shiftMaybe()) {
-                case undefined: return false;
+                case undefined:
+                    return false;
                 case Cleanup.Bind: {
                     this.bindQueue.shift();
                     break;
@@ -802,7 +825,11 @@ export class ClientImpl {
         }
 
         if (level && code && message) {
-            return new DatabaseError(level, code, details ? `${message}: ${details}` : message);
+            return new DatabaseError(
+                level,
+                code,
+                details ? `${message}: ${details}` : message,
+            );
         }
 
         throw new Error('Unable to parse error message.');
@@ -828,15 +855,8 @@ export class ClientImpl {
                 }
 
                 const {
-                    handler: {
-                        callback,
-                        streams,
-                        bigints,
-                    },
-                    description: {
-                        columns,
-                        names,
-                    }
+                    handler: { callback, streams, bigints },
+                    description: { columns, names },
                 } = info;
 
                 let row = this.activeRow;
@@ -845,9 +865,8 @@ export class ClientImpl {
                 const encoding = this.encoding;
 
                 const hasStreams = Object.keys(streams).length > 0;
-                const mappedStreams = hasStreams ? names.map(
-                    name => streams[name]
-                ) : undefined;
+                const mappedStreams =
+                    hasStreams ? names.map((name) => streams[name]) : undefined;
 
                 while (true) {
                     mtype = buffer.readInt8(frame);
@@ -868,14 +887,18 @@ export class ClientImpl {
                     }
 
                     const startRowData = start + 2;
-                    const reader = new Reader(buffer, startRowData, bytes + read);
+                    const reader = new Reader(
+                        buffer,
+                        startRowData,
+                        bytes + read,
+                    );
                     const end = reader.readRowData(
                         row,
                         columns,
                         encoding,
                         bigints,
                         types,
-                        mappedStreams
+                        mappedStreams,
                     );
 
                     const remaining = bytes + read - size;
@@ -927,9 +950,8 @@ export class ClientImpl {
                 case Message.Authentication: {
                     const writer = new Writer(this.encoding);
                     const code = buffer.readInt32BE(start);
-                    outer:
                     /* istanbul ignore next */
-                    switch (code) {
+                    outer: switch (code) {
                         case 0: {
                             nextTick(() => {
                                 this.events.connect.emit(null);
@@ -937,7 +959,8 @@ export class ClientImpl {
                             break;
                         }
                         case 3: {
-                            const s = this.config.password || DEFAULTS.password || '';
+                            const s =
+                                this.config.password || DEFAULTS.password || '';
                             writer.password(s);
                             break;
                         }
@@ -946,7 +969,7 @@ export class ClientImpl {
                             const salt = buffer.subarray(start + 4, start + 8);
                             const shadow = md5(
                                 `${password || DEFAULTS.password}` +
-                                `${user || DEFAULTS.user}`
+                                    `${user || DEFAULTS.user}`,
                             );
                             writer.password(`md5${md5(shadow, salt)}`);
                             break;
@@ -955,31 +978,48 @@ export class ClientImpl {
                             const reader = new Reader(buffer, start + 4);
                             const mechanisms: string[] = [];
                             while (true) {
-                                const mechanism = reader.readCString(this.encoding);
+                                const mechanism = reader.readCString(
+                                    this.encoding,
+                                );
                                 if (mechanism.length === 0) break;
-                                if (writer.saslInitialResponse(mechanism, this.clientNonce))
+                                if (
+                                    writer.saslInitialResponse(
+                                        mechanism,
+                                        this.clientNonce,
+                                    )
+                                )
                                     break outer;
                                 mechanisms.push(mechanism);
                             }
                             throw new Error(
-                                `SASL authentication unsupported (mechanisms: ${mechanisms.join(', ')})`
+                                `SASL authentication unsupported (mechanisms: ${mechanisms.join(', ')})`,
                             );
                         }
                         case 11: {
-                            const data = buffer.subarray(start + 4, start + length).toString("utf8");
-                            const password = this.config.password || DEFAULTS.password || '';
-                            this.serverSignature = writer.saslResponse(data, password, this.clientNonce);
+                            const data = buffer
+                                .subarray(start + 4, start + length)
+                                .toString('utf8');
+                            const password =
+                                this.config.password || DEFAULTS.password || '';
+                            this.serverSignature = writer.saslResponse(
+                                data,
+                                password,
+                                this.clientNonce,
+                            );
                             break;
                         }
                         case 12: {
-                            const data = buffer.subarray(start + 4, start + length).toString("utf8");
-                            if (!this.serverSignature) throw new Error('Server signature missing');
+                            const data = buffer
+                                .subarray(start + 4, start + length)
+                                .toString('utf8');
+                            if (!this.serverSignature)
+                                throw new Error('Server signature missing');
                             writer.saslFinal(data, this.serverSignature);
                             break;
                         }
                         default:
                             throw new Error(
-                                `Unsupported authentication scheme: ${code}`
+                                `Unsupported authentication scheme: ${code}`,
                             );
                     }
                     this.sendUsing(writer);
@@ -1006,11 +1046,13 @@ export class ClientImpl {
                             description: null,
                         };
                         if (preflight.bind) {
-                            this.cleanupQueue.expect(Cleanup.ParameterDescription);
+                            this.cleanupQueue.expect(
+                                Cleanup.ParameterDescription,
+                            );
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
-                                this.parameterDescriptionQueue.shift()
+                                this.parameterDescriptionQueue.shift(),
                             );
                         } else {
                             this.activeDataHandlerInfo = info;
@@ -1028,9 +1070,9 @@ export class ClientImpl {
                 case Message.CommandComplete: {
                     const info = this.activeDataHandlerInfo;
                     if (info) {
-                        const status = buffer.subarray(
-                            start, start + length - 1
-                        ).toString();
+                        const status = buffer
+                            .subarray(start, start + length - 1)
+                            .toString();
 
                         info.handler.callback(status || null);
                         this.activeDataHandlerInfo = null;
@@ -1047,20 +1089,23 @@ export class ClientImpl {
                 }
                 case Message.ErrorResponse: {
                     const error = this.parseError(
-                        buffer.subarray(start, start + length));
+                        buffer.subarray(start, start + length),
+                    );
 
                     if (this.connecting) throw error;
 
                     this.events.error.emit(error);
-                    loop:
-                    if (!this.handleError(error)) {
-                        throw new Error("Internal error occurred while processing database error");
+                    loop: if (!this.handleError(error)) {
+                        throw new Error(
+                            'Internal error occurred while processing database error',
+                        );
                     }
                     break;
                 }
                 case Message.Notice: {
                     const notice = this.parseError(
-                        buffer.subarray(start, start + length));
+                        buffer.subarray(start, start + length),
+                    );
                     this.events.notice.emit(notice);
                     break;
                 }
@@ -1072,7 +1117,7 @@ export class ClientImpl {
                     this.events.notification.emit({
                         processId: processId,
                         channel: channel,
-                        payload: payload
+                        payload: payload,
                     });
                     break;
                 }
@@ -1100,7 +1145,7 @@ export class ClientImpl {
                 }
                 case Message.ReadyForQuery: {
                     if (this.error) {
-                        this.error = false
+                        this.error = false;
                     } else if (this.connected) {
                         this.errorHandlerQueue.shift();
                         this.cleanupQueue.expect(Cleanup.ErrorHandler);
@@ -1116,7 +1161,9 @@ export class ClientImpl {
                 case Message.RowDescription: {
                     const preflight = this.preFlightQueue.shift();
                     const reader = new Reader(buffer, start);
-                    const description = reader.readRowDescription(this.config.types);
+                    const description = reader.readRowDescription(
+                        this.config.types,
+                    );
 
                     preflight.descriptionHandler(description);
 
@@ -1127,11 +1174,13 @@ export class ClientImpl {
                         };
 
                         if (preflight.bind) {
-                            this.cleanupQueue.expect(Cleanup.ParameterDescription);
+                            this.cleanupQueue.expect(
+                                Cleanup.ParameterDescription,
+                            );
                             this.bindAndExecute(
                                 info,
                                 preflight.bind,
-                                this.parameterDescriptionQueue.shift()
+                                this.parameterDescriptionQueue.shift(),
                             );
                         } else {
                             this.activeDataHandlerInfo = info;

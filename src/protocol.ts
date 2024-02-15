@@ -11,7 +11,7 @@ import {
     BufferEncoding,
     DataFormat,
     DataType,
-    ValueTypeReader
+    ValueTypeReader,
 } from './types.js';
 
 const arrayMask = 1 << 31;
@@ -30,11 +30,11 @@ export const enum Command {
     Parse = 0x50,
     Password = 0x70,
     Query = 0x51,
-    Sync = 0x53
+    Sync = 0x53,
 }
 
 export const enum SASL {
-   SASLResponse = 0x70
+    SASLResponse = 0x70,
 }
 
 export enum ErrorLevel {
@@ -66,7 +66,7 @@ export const enum Message {
     ParameterStatus = 0x53,
     ReadyForQuery = 0x5a,
     RowData = 0x44,
-    RowDescription = 0x54
+    RowDescription = 0x54,
 }
 
 export const enum SSLResponseCode {
@@ -77,7 +77,7 @@ export const enum SSLResponseCode {
 export const enum TransactionStatus {
     Idle = 0x49,
     InTransaction = 0x54,
-    InError = 0x45
+    InError = 0x45,
 }
 
 export type SegmentValue = Buffer | bigint | number | null | string;
@@ -91,12 +91,12 @@ export const enum SegmentType {
     Int16BE,
     Int32BE,
     Int64BE,
-    UInt32BE
+    UInt32BE,
 }
 
 export interface RowDescription {
-    columns: Uint32Array,
-    names: string[]
+    columns: Uint32Array;
+    names: string[];
 }
 
 // See https://www.postgresql.org/docs/current/runtime-config-client.html for
@@ -108,25 +108,29 @@ export interface ClientConnectionOptions {
 
 export interface ClientConnectionDefaults {
     database: string;
-    clientMinMessages: Uppercase<keyof typeof ErrorLevel>,
-    defaultTableAccessMethod: string,
-    defaultTablespace: string,
-    defaultTransactionIsolation: string,
-    extraFloatDigits: number,
-    idleInTransactionSessionTimeout: number,
-    idleSessionTimeout: number,
-    lockTimeout: number,
-    searchPath: string,
-    statementTimeout: number,
+    clientMinMessages: Uppercase<keyof typeof ErrorLevel>;
+    defaultTableAccessMethod: string;
+    defaultTablespace: string;
+    defaultTransactionIsolation: string;
+    extraFloatDigits: number;
+    idleInTransactionSessionTimeout: number;
+    idleSessionTimeout: number;
+    lockTimeout: number;
+    searchPath: string;
+    statementTimeout: number;
 }
 
-export type StartupConfiguration = Omit<ClientConnectionOptions, 'clientEncoding'> & Partial<ClientConnectionDefaults>;
+export type StartupConfiguration = Omit<
+    ClientConnectionOptions,
+    'clientEncoding'
+> &
+    Partial<ClientConnectionDefaults>;
 
 export class DatabaseError extends Error {
     constructor(
         public level: ErrorLevel,
         public code: keyof typeof postgresqlErrorCodes,
-        public message: string
+        public message: string,
     ) {
         super(message);
         const actualProto = new.target.prototype;
@@ -152,16 +156,21 @@ function dateToStringUTC(date: Date, includeTime: boolean) {
     const isBC = year < 0;
 
     let result =
-        pad(isBC ? (1 - year) : year, 4) + '-' +
-        pad(date.getUTCMonth() + 1, 2) + '-' +
+        pad(isBC ? 1 - year : year, 4) +
+        '-' +
+        pad(date.getUTCMonth() + 1, 2) +
+        '-' +
         pad(date.getUTCDate(), 2);
 
     if (includeTime) {
         result +=
             'T' +
-            pad(date.getUTCHours(), 2) + ':' +
-            pad(date.getUTCMinutes(), 2) + ':' +
-            pad(date.getUTCSeconds(), 2) + '.' +
+            pad(date.getUTCHours(), 2) +
+            ':' +
+            pad(date.getUTCMinutes(), 2) +
+            ':' +
+            pad(date.getUTCSeconds(), 2) +
+            '.' +
             pad(date.getUTCMilliseconds(), 3) +
             '+00:00';
     }
@@ -176,14 +185,14 @@ function dateToStringUTC(date: Date, includeTime: boolean) {
 function formatUuid(bytes: Buffer) {
     const slice = (start: number, end: number) => {
         return bytes.subarray(start, end).toString('hex');
-    }
+    };
 
     return [
         slice(0, 4),
         slice(4, 6),
         slice(6, 8),
         slice(8, 10),
-        slice(10, 16)
+        slice(10, 16),
     ].join('-');
 }
 
@@ -192,13 +201,18 @@ function parseUuid(uuid: string) {
 }
 
 function makeBuffer(
-    s: string, encoding?: BufferEncoding, nullTerminate = false):
-    SegmentValue {
+    s: string,
+    encoding?: BufferEncoding,
+    nullTerminate = false,
+): SegmentValue {
     return Buffer.from(nullTerminate ? s + '\0' : s, encoding);
 }
 
 function makeBufferSegment(
-    s: string, encoding?: BufferEncoding, nullTerminate = false): Segment {
+    s: string,
+    encoding?: BufferEncoding,
+    nullTerminate = false,
+): Segment {
     return [SegmentType.Buffer, makeBuffer(s, encoding, nullTerminate)];
 }
 
@@ -248,7 +262,8 @@ function getMessageSize(code: number | null, segments: Segment[]) {
 export function readRowDescription(
     buffer: Buffer,
     start: number,
-    types?: ReadonlyMap<DataType, ValueTypeReader>) {
+    types?: ReadonlyMap<DataType, ValueTypeReader>,
+) {
     let offset = start;
     const length = buffer.readInt16BE(offset);
     const columns = new Uint32Array(length);
@@ -261,13 +276,13 @@ export function readRowDescription(
         const name = buffer.subarray(offset, j).toString();
         const dataType = buffer.readInt32BE(j + 7);
         const innerDataType = arrayDataTypeMapping.get(dataType);
-        const isArray = (typeof innerDataType !== 'undefined');
-        const typeReader = (types) ? types.get(dataType) : undefined;
+        const isArray = typeof innerDataType !== 'undefined';
+        const typeReader = types ? types.get(dataType) : undefined;
 
         columns[i] =
-            ((innerDataType || dataType))
-            | ((isArray) ? arrayMask : 0)
-            | (typeReader ? readerMask : 0);
+            (innerDataType || dataType) |
+            (isArray ? arrayMask : 0) |
+            (typeReader ? readerMask : 0);
 
         names[i] = name;
 
@@ -277,8 +292,8 @@ export function readRowDescription(
 
     return {
         columns: columns,
-        names: names
-    }
+        names: names,
+    };
 }
 
 export function readRowData(
@@ -309,7 +324,7 @@ export function readRowData(
         const length = buffer.readInt32BE(offset);
 
         // If the length is reported as -1, this means a NULL value.
-        const dataLength = (length >= 0 ? length : 0);
+        const dataLength = length >= 0 ? length : 0;
 
         const end = start + dataLength;
         const remaining = end - bufferLength;
@@ -328,7 +343,10 @@ export function readRowData(
                     const alloc = Buffer.allocUnsafe(slice.length);
                     slice.copy(alloc, 0, 0, slice.length);
                     stream.write(alloc);
-                    buffer.writeInt32BE(length - alloc.length, bufferLength - 4);
+                    buffer.writeInt32BE(
+                        length - alloc.length,
+                        bufferLength - 4,
+                    );
 
                     if (partial) {
                         return bufferLength - 4;
@@ -343,10 +361,7 @@ export function readRowData(
             }
 
             if (!skip) {
-                const dataType: DataType =
-                    spec &
-                    ~arrayMask &
-                    ~readerMask;
+                const dataType: DataType = spec & ~arrayMask & ~readerMask;
 
                 const isArray = (spec & arrayMask) !== 0;
                 const isReader = (spec & readerMask) !== 0;
@@ -359,7 +374,7 @@ export function readRowData(
                             start,
                             end,
                             DataFormat.Binary,
-                            encoding
+                            encoding,
                         );
                     }
                 } else {
@@ -375,30 +390,27 @@ export function readRowData(
 
                         switch (t) {
                             case DataType.Bool:
-                                return (buffer[start] !== 0);
+                                return buffer[start] !== 0;
                             case DataType.Date: {
                                 const n = buffer.readInt32BE(start);
                                 if (n === 0x7fffffff) return infinity;
                                 if (n === -0x80000000) return -infinity;
 
                                 // Shift from 2000 to 1970 and fix units.
-                                return new Date(
-                                    (n * 1000 * 86400) + timeshift
-                                );
+                                return new Date(n * 1000 * 86400 + timeshift);
                             }
                             case DataType.Timestamp:
                             case DataType.Timestamptz: {
                                 const lo = buffer.readUInt32BE(start + 4);
                                 const hi = buffer.readInt32BE(start);
 
-                                if (lo === 0xffffffff &&
-                                    hi === 0x7fffffff) return infinity;
-                                if (lo === 0x00000000 &&
-                                    hi === -0x80000000) return -infinity;
+                                if (lo === 0xffffffff && hi === 0x7fffffff)
+                                    return infinity;
+                                if (lo === 0x00000000 && hi === -0x80000000)
+                                    return -infinity;
 
                                 return new Date(
-                                    (lo + hi * 4294967296) / 1000 +
-                                    timeshift
+                                    (lo + hi * 4294967296) / 1000 + timeshift,
                                 );
                             }
                             case DataType.Int2:
@@ -410,7 +422,9 @@ export function readRowData(
                                 const value = buffer.readBigInt64BE(start);
                                 if (bigints) return value;
                                 if (value > Number.MAX_SAFE_INTEGER) {
-                                    throw new Error("INT8 value too big for 'number' type");
+                                    throw new Error(
+                                        "INT8 value too big for 'number' type",
+                                    );
                                 }
                                 return Number(value);
                             }
@@ -425,13 +439,17 @@ export function readRowData(
                             case DataType.Varchar:
                                 return buffer.toString(encoding, start, end);
                             case DataType.Bytea:
-                                const new_buffer = Buffer.allocUnsafe(end - start);
+                                const new_buffer = Buffer.allocUnsafe(
+                                    end - start,
+                                );
                                 buffer.copy(new_buffer, 0, start, end);
                                 return new_buffer;
                             case DataType.Jsonb:
                                 if (buffer[start] === 1) {
                                     const jsonb = buffer.toString(
-                                        encoding, start + 1, end
+                                        encoding,
+                                        start + 1,
+                                        end,
                                     );
 
                                     if (jsonb) {
@@ -441,7 +459,11 @@ export function readRowData(
 
                                 break;
                             case DataType.Json:
-                                const json = buffer.toString(encoding, start, end);
+                                const json = buffer.toString(
+                                    encoding,
+                                    start,
+                                    end,
+                                );
                                 if (json) {
                                     return JSON.parse(json);
                                 }
@@ -449,8 +471,8 @@ export function readRowData(
                             case DataType.Point:
                                 return {
                                     x: buffer.readDoubleBE(start),
-                                    y: buffer.readDoubleBE(start + 8)
-                                }
+                                    y: buffer.readDoubleBE(start + 8),
+                                };
                             case DataType.Uuid:
                                 return formatUuid(buffer.subarray(start, end));
                         }
@@ -461,8 +483,7 @@ export function readRowData(
                         let offset = start;
 
                         const readArray = (size: number) => {
-                            const array: any[] =
-                                new Array(size);
+                            const array: any[] = new Array(size);
 
                             for (let j = 0; j < size; j++) {
                                 const length = buffer.readInt32BE(offset);
@@ -471,15 +492,19 @@ export function readRowData(
                                 if (length >= 0) {
                                     const elementStart = offset;
                                     offset = elementStart + length;
-                                    value = read(elementType, elementStart, offset);
+                                    value = read(
+                                        elementType,
+                                        elementStart,
+                                        offset,
+                                    );
                                 }
                                 array[j] = value;
                             }
                             return array;
-                        }
+                        };
 
                         const dimCount = buffer.readInt32BE(offset) - 1;
-                        const elementType = buffer.readInt32BE(offset += 8);
+                        const elementType = buffer.readInt32BE((offset += 8));
 
                         offset += 4;
 
@@ -488,8 +513,7 @@ export function readRowData(
                             offset += 8;
                             value = readArray(size);
                         } else {
-                            const arrays: any[][] =
-                                new Array(dimCount);
+                            const arrays: any[][] = new Array(dimCount);
                             const dims = new Uint32Array(dimCount);
 
                             for (let j = 0; j < dimCount; j++) {
@@ -542,9 +566,7 @@ export function readRowData(
     return offset;
 }
 
-export function writeMessage(
-    code: number | null,
-    segments: Segment[]) {
+export function writeMessage(code: number | null, segments: Segment[]) {
     const size = getMessageSize(code, segments);
     const buffer = Buffer.allocUnsafe(size);
     writeMessageInto(code, segments, buffer);
@@ -554,7 +576,8 @@ export function writeMessage(
 function writeMessageInto(
     code: number | null,
     segments: Segment[],
-    buffer: Buffer) {
+    buffer: Buffer,
+) {
     let offset = 0;
     if (code) buffer[offset++] = code;
     buffer.writeInt32BE(buffer.length - (code ? 1 : 0), offset);
@@ -601,9 +624,10 @@ function writeMessageInto(
                 break;
             }
             case SegmentType.Int64BE: {
-                const n = value instanceof Buffer ? value.readBigInt64BE(0) : (
-                    typeof value === "bigint" ? value : BigInt(Number(value))
-                );
+                const n =
+                    value instanceof Buffer ? value.readBigInt64BE(0)
+                    : typeof value === 'bigint' ? value
+                    : BigInt(Number(value));
                 buffer.writeBigInt64BE(n, offset);
                 offset += 8;
                 break;
@@ -619,7 +643,11 @@ function writeMessageInto(
 }
 
 export class Reader {
-    constructor(private readonly buffer: Buffer, private start: number, private end?: number) { }
+    constructor(
+        private readonly buffer: Buffer,
+        private start: number,
+        private end?: number,
+    ) {}
 
     readInt32BE() {
         const n = this.buffer.readInt32BE(this.start);
@@ -650,7 +678,7 @@ export class Reader {
             encoding,
             bigints,
             types,
-            streams
+            streams,
         );
     }
 
@@ -662,14 +690,15 @@ export class Reader {
 export class Writer {
     private outgoing: ElasticBuffer = new ElasticBuffer();
 
-    constructor(private readonly encoding: BufferEncoding) { }
+    constructor(private readonly encoding: BufferEncoding) {}
 
     bind(
         name: string,
         portal: string,
         format: DataFormat | DataFormat[] = DataFormat.Binary,
         values: any[] = [],
-        types: DataType[] = []) {
+        types: DataType[] = [],
+    ) {
         // We silently ignore any mismatch here, assuming that the
         // query will fail and make the error evident.
         const length = Math.min(types.length, values.length);
@@ -677,13 +706,13 @@ export class Writer {
         const segments: Segment[] = [
             makeBufferSegment(portal, this.encoding, true),
             makeBufferSegment(name, this.encoding, true),
-            [SegmentType.Int16BE, length]
+            [SegmentType.Int16BE, length],
         ];
 
         const getFormat =
-            (typeof format === 'number') ?
-                () => format :
-                (i: number) => format[i];
+            typeof format === 'number' ?
+                () => format
+            :   (i: number) => format[i];
 
         for (let i = 0; i < length; i++) {
             segments.push([SegmentType.Int16BE, getFormat(i)]);
@@ -694,14 +723,14 @@ export class Writer {
         const add = (message: SegmentType, value: SegmentValue) => {
             segments.push([message, value]);
             return getSegmentSize(message, value);
-        }
+        };
 
         const reserve = (message: SegmentType) => {
             const segment: Segment = [message, null];
             segments.push(segment);
             return (value: SegmentValue) => {
                 segment[1] = value;
-            }
+            };
         };
 
         const addBinaryValue = (value: any, dataType: DataType): number => {
@@ -715,7 +744,7 @@ export class Writer {
 
             switch (dataType) {
                 case DataType.Bool: {
-                    size = add(SegmentType.Int8, (value) ? 1 : 0);
+                    size = add(SegmentType.Int8, value ? 1 : 0);
                     break;
                 }
                 case DataType.Date: {
@@ -726,8 +755,8 @@ export class Writer {
                     } else if (value instanceof Date) {
                         size = add(
                             SegmentType.Int32BE,
-                            (value.getTime() - timeshift) /
-                            (1000 * 86400));
+                            (value.getTime() - timeshift) / (1000 * 86400),
+                        );
                     }
                     break;
                 }
@@ -736,12 +765,12 @@ export class Writer {
                     if (value === infinity) {
                         size = sum(
                             add(SegmentType.UInt32BE, 0x7fffffff),
-                            add(SegmentType.UInt32BE, 0xffffffff)
+                            add(SegmentType.UInt32BE, 0xffffffff),
                         );
                     } else if (value === -infinity) {
                         size = sum(
                             add(SegmentType.UInt32BE, 0x80000000),
-                            add(SegmentType.UInt32BE, 0x00000000)
+                            add(SegmentType.UInt32BE, 0x00000000),
                         );
                     } else if (value instanceof Date) {
                         const n = (value.getTime() - timeshift) * 1000;
@@ -749,7 +778,7 @@ export class Writer {
                         const r = n - f * 4294967296;
                         size = sum(
                             add(SegmentType.Int32BE, f),
-                            add(SegmentType.UInt32BE, r)
+                            add(SegmentType.UInt32BE, r),
                         );
                     }
                     break;
@@ -766,7 +795,7 @@ export class Writer {
                         const s = String(value);
                         size = add(
                             SegmentType.Buffer,
-                            makeBuffer(s, this.encoding)
+                            makeBuffer(s, this.encoding),
                         );
                     }
                     break;
@@ -791,9 +820,9 @@ export class Writer {
                 case DataType.Int8: {
                     size = add(
                         SegmentType.Int64BE,
-                        value instanceof Buffer ? value.readBigInt64BE(0) : (
-                            typeof value === "bigint" ? value : Number(value)
-                        )
+                        value instanceof Buffer ? value.readBigInt64BE(0)
+                        : typeof value === 'bigint' ? value
+                        : Number(value),
                     );
                     break;
                 }
@@ -801,7 +830,7 @@ export class Writer {
                     if (isPoint(value)) {
                         size = sum(
                             add(SegmentType.Float8, value.x),
-                            add(SegmentType.Float8, value.y)
+                            add(SegmentType.Float8, value.y),
                         );
                     }
                     break;
@@ -809,16 +838,18 @@ export class Writer {
                 case DataType.Jsonb:
                     const body = JSON.stringify(value);
                     add(SegmentType.Int8, 0x01);
-                    size = 1 + add(
-                        SegmentType.Buffer,
-                        makeBuffer(body, this.encoding)
-                    );
+                    size =
+                        1 +
+                        add(
+                            SegmentType.Buffer,
+                            makeBuffer(body, this.encoding),
+                        );
                     break;
                 case DataType.Json: {
                     const body = JSON.stringify(value);
                     size = add(
                         SegmentType.Buffer,
-                        makeBuffer(body, this.encoding)
+                        makeBuffer(body, this.encoding),
                     );
                     break;
                 }
@@ -829,9 +860,7 @@ export class Writer {
                             size = add(SegmentType.Buffer, buffer);
                         }
                     } catch (error) {
-                        throw new Error(
-                            `Invalid UUID: ${value} (${error})`
-                        );
+                        throw new Error(`Invalid UUID: ${value} (${error})`);
                     }
                     break;
                 }
@@ -849,9 +878,7 @@ export class Writer {
             return size;
         };
 
-        const addBinaryArray = (
-            value: any[],
-            dataType: DataType): number => {
+        const addBinaryArray = (value: any[], dataType: DataType): number => {
             const setDimCount = reserve(SegmentType.Int32BE);
             add(SegmentType.Int32BE, 1);
             add(SegmentType.Int32BE, dataType);
@@ -866,7 +893,7 @@ export class Writer {
                 if (level === dimCount) {
                     bytes += sum(
                         add(SegmentType.Int32BE, length),
-                        add(SegmentType.Int32BE, 1)
+                        add(SegmentType.Int32BE, 1),
                     );
                     dimCount++;
                 }
@@ -879,17 +906,17 @@ export class Writer {
                         bytes += addBinaryValue(v, dataType) + 4;
                     }
                 }
-
             };
 
             go(0, value);
             setDimCount(dimCount);
             return bytes;
-        }
+        };
 
         const getTextFromValue = (
             value: any,
-            dataType: DataType): null | string | string[] => {
+            dataType: DataType,
+        ): null | string | string[] => {
             if (value === null) return null;
 
             switch (dataType) {
@@ -911,20 +938,21 @@ export class Writer {
                 case DataType.Name:
                 case DataType.Text:
                 case DataType.Varchar:
-                    return (typeof value === 'string') ?
-                        value :
-                        (value instanceof Buffer) ?
-                            value.toString(this.encoding) :
-                            value.toString();
+                    return (
+                        typeof value === 'string' ? value
+                        : value instanceof Buffer ?
+                            value.toString(this.encoding)
+                        :   value.toString()
+                    );
                 case DataType.Date:
-                    return (value instanceof Date) ?
-                        dateToStringUTC(value, false) :
-                        value.toString();
+                    return value instanceof Date ?
+                            dateToStringUTC(value, false)
+                        :   value.toString();
                 case DataType.Timestamp:
                 case DataType.Timestamptz:
-                    return (value instanceof Date) ?
-                        dateToStringUTC(value, true) :
-                        value.toString();
+                    return value instanceof Date ?
+                            dateToStringUTC(value, true)
+                        :   value.toString();
                 case DataType.Jsonb:
                 case DataType.Json:
                     return JSON.stringify(value);
@@ -940,11 +968,12 @@ export class Writer {
             }
 
             return null;
-        }
+        };
 
         const getTextFromArray = (
             value: any[],
-            dataType: DataType): string[] => {
+            dataType: DataType,
+        ): string[] => {
             const strings: string[] = [];
             strings.push('{');
             const escape = (s: string) => {
@@ -957,18 +986,18 @@ export class Writer {
                 if (i > 0) strings.push(',');
                 const child = value[i];
                 const result =
-                    (child instanceof Array) ?
-                        getTextFromArray(child, dataType) :
-                        getTextFromValue(child, dataType);
+                    child instanceof Array ?
+                        getTextFromArray(child, dataType)
+                    :   getTextFromValue(child, dataType);
                 if (result instanceof Array) {
                     strings.push(...result);
                 } else {
-                    strings.push((result === null) ? 'null' : escape(result));
+                    strings.push(result === null ? 'null' : escape(result));
                 }
             }
             strings.push('}');
             return strings;
-        }
+        };
 
         for (let i = 0; i < length; i++) {
             const value = values[i];
@@ -980,15 +1009,20 @@ export class Writer {
                 const result = getTextFromValue(value, dataType);
                 const setSize = reserve(SegmentType.Int32BE);
                 const size =
-                    (result instanceof Array) ?
-                        sum(...result.map(
-                            (s: string) =>
-                                add(SegmentType.Buffer,
-                                    makeBuffer(s, this.encoding)))) :
-                        add(SegmentType.Buffer,
-                            (result === null) ?
-                                nullBuffer :
+                    result instanceof Array ?
+                        sum(
+                            ...result.map((s: string) =>
+                                add(
+                                    SegmentType.Buffer,
+                                    makeBuffer(s, this.encoding),
+                                ),
+                            ),
+                        )
+                    :   add(
+                            SegmentType.Buffer,
+                            result === null ? nullBuffer : (
                                 makeBuffer(result, this.encoding)
+                            ),
                         );
                 setSize(size);
             }
@@ -1001,22 +1035,19 @@ export class Writer {
     }
 
     close(name: string, kind: 'S' | 'P') {
-        this.enqueue(
-            Command.Close, [
-            makeBufferSegment(kind + name, this.encoding, true)
+        this.enqueue(Command.Close, [
+            makeBufferSegment(kind + name, this.encoding, true),
         ]);
     }
 
     describe(name: string, kind: 'S' | 'P') {
-        this.enqueue(
-            Command.Describe, [
-            makeBufferSegment(kind + name, this.encoding, true)
+        this.enqueue(Command.Describe, [
+            makeBufferSegment(kind + name, this.encoding, true),
         ]);
     }
 
     execute(portal: string, limit = 0) {
-        this.enqueue(
-            Command.Execute, [
+        this.enqueue(Command.Execute, [
             makeBufferSegment(portal, this.encoding, true),
             [SegmentType.Int32BE, limit],
         ]);
@@ -1030,15 +1061,12 @@ export class Writer {
         this.enqueue(Command.Flush, []);
     }
 
-    parse(
-        name: string,
-        text: string,
-        types: DataType[] = []) {
+    parse(name: string, text: string, types: DataType[] = []) {
         const length = types.length;
         const segments: Segment[] = [
             makeBufferSegment(name, this.encoding, true),
             makeBufferSegment(text, this.encoding, true),
-            [SegmentType.Int16BE, length]
+            [SegmentType.Int16BE, length],
         ];
         for (let i = 0; i < length; i++) {
             segments.push([SegmentType.Int32BE, types[i]]);
@@ -1047,40 +1075,40 @@ export class Writer {
     }
 
     password(text: string) {
-        this.enqueue(
-            Command.Password,
-            [makeBufferSegment(text, this.encoding, true)],
-        );
+        this.enqueue(Command.Password, [
+            makeBufferSegment(text, this.encoding, true),
+        ]);
     }
 
     saslInitialResponse(mechanism: string, clientNonce: string) {
         if (mechanism !== 'SCRAM-SHA-256') return false;
         const response = Buffer.from('n,,n=*,r=' + clientNonce);
-        this.enqueue(
-            SASL.SASLResponse, [
+        this.enqueue(SASL.SASLResponse, [
             makeBufferSegment(mechanism, this.encoding, true),
             [SegmentType.Int32BE, response.length],
-            [SegmentType.Buffer, response]
+            [SegmentType.Buffer, response],
         ]);
         return true;
     }
 
     saslResponse(data: string, password: string, clientNonce: string) {
         const [response, signature] = sign(data, password, clientNonce);
-        this.enqueue(
-            SASL.SASLResponse, [
-            makeBufferSegment(response, this.encoding, false)
+        this.enqueue(SASL.SASLResponse, [
+            makeBufferSegment(response, this.encoding, false),
         ]);
         return signature;
     }
 
     saslFinal(data: string, serverSignature: string) {
-        if (!data.split(',').find((attr) => {
-            if (attr[0] === 'v') {
-                return (attr.substr(2) === serverSignature);
-            }
-            return false;
-        })) throw new Error('SASL server signature does not match');
+        if (
+            !data.split(',').find((attr) => {
+                if (attr[0] === 'v') {
+                    return attr.substr(2) === serverSignature;
+                }
+                return false;
+            })
+        )
+            throw new Error('SASL server signature does not match');
     }
 
     send(socket: Socket) {
@@ -1095,19 +1123,20 @@ export class Writer {
     startup(settings: StartupConfiguration) {
         const data: string[] = [];
         const options = {
-            "user": settings.user,
-            "database": settings.database,
-            "client_encoding": this.encoding,
-            "client_min_messages": settings.clientMinMessages,
-            "default_table_access_method": settings.defaultTableAccessMethod,
-            "default_tablespace": settings.defaultTablespace,
-            "default_transaction_isolation": settings.defaultTransactionIsolation,
-            "extra_float_digits": settings.extraFloatDigits,
-            "idle_in_transaction_session_timeout": settings.idleInTransactionSessionTimeout,
-            "idle_session_timeout": settings.idleSessionTimeout,
-            "lock_timeout": settings.lockTimeout,
-            "search_path": settings.searchPath,
-            "statement_timeout": settings.statementTimeout,
+            user: settings.user,
+            database: settings.database,
+            client_encoding: this.encoding,
+            client_min_messages: settings.clientMinMessages,
+            default_table_access_method: settings.defaultTableAccessMethod,
+            default_tablespace: settings.defaultTablespace,
+            default_transaction_isolation: settings.defaultTransactionIsolation,
+            extra_float_digits: settings.extraFloatDigits,
+            idle_in_transaction_session_timeout:
+                settings.idleInTransactionSessionTimeout,
+            idle_session_timeout: settings.idleSessionTimeout,
+            lock_timeout: settings.lockTimeout,
+            search_path: settings.searchPath,
+            statement_timeout: settings.statementTimeout,
         };
 
         for (const [k, v] of Object.entries(options)) {
@@ -1120,7 +1149,7 @@ export class Writer {
 
         const segments: Segment[] = [
             [SegmentType.Int16BE, 3],
-            [SegmentType.Int16BE, 0]
+            [SegmentType.Int16BE, 0],
         ];
 
         for (const s of data) {
@@ -1132,8 +1161,8 @@ export class Writer {
 
     startupSSL() {
         const segments: Segment[] = [
-            [SegmentType.Int16BE, 0x04D2],
-            [SegmentType.Int16BE, 0x162F]
+            [SegmentType.Int16BE, 0x04d2],
+            [SegmentType.Int16BE, 0x162f],
         ];
         this.enqueue(null, segments);
     }
@@ -1142,9 +1171,7 @@ export class Writer {
         this.enqueue(Command.Sync, []);
     }
 
-    private enqueue(
-        code: number | null,
-        segments: Segment[]) {
+    private enqueue(code: number | null, segments: Segment[]) {
         const size = getMessageSize(code, segments);
 
         // Allocate space and write segments.

@@ -7,9 +7,9 @@ export class Queue<T> {
 
     /** Returns the current number of elements in the queue. */
     get length() {
-        return this.#head <= this.#tail
-            ? this.#tail - this.#head
-            : this.#capacityMask + 1 - (this.#head - this.#tail);
+        return this.#head <= this.#tail ?
+                this.#tail - this.#head
+            :   this.#capacityMask + 1 - (this.#head - this.#tail);
     }
 
     /** Returns whether the deque is empty. */
@@ -31,7 +31,7 @@ export class Queue<T> {
     shift(): T {
         const item = this.shiftMaybe();
         if (item !== undefined) return item;
-        throw new Error("Queue is empty");
+        throw new Error('Queue is empty');
     }
 
     /** Removes and returns the first element or undefined.  */
@@ -43,7 +43,11 @@ export class Queue<T> {
         this.#list[head] = undefined;
         this.#head = (head + 1) & this.#capacityMask;
 
-        if (head < 2 && this.#tail > 10000 && this.#tail <= this.#list.length >>> 2)
+        if (
+            head < 2 &&
+            this.#tail > 10000 &&
+            this.#tail <= this.#list.length >>> 2
+        )
             this.shrinkArray();
 
         return item;
@@ -51,8 +55,10 @@ export class Queue<T> {
 
     expect(expected?: T): T {
         const item = this.shift();
-        if (item === undefined || (
-            expected !== undefined && expected !== item)) {
+        if (
+            item === undefined ||
+            (expected !== undefined && expected !== item)
+        ) {
             throw new Error(`Unexpected item: ${item} !== ${expected}`);
         }
         return item;

@@ -6,7 +6,6 @@ export function sum(...nums: number[]): number {
 
 export function md5(...data: BinaryLike[]): string {
     return data
-        .reduce((hash, d) => hash.update(d),
-            createHash('md5'))
+        .reduce((hash, d) => hash.update(d), createHash('md5'))
         .digest('hex');
 }

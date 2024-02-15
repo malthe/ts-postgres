@@ -1,9 +1,9 @@
 name: CI
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -17,6 +17,20 @@ permissions:
   id-token: write
 
 jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Prettier
+        run: |
+          npm i -D
+          set +e
+          npx prettier --experimental-ternaries --check
+          code=$?
+          npx prettier --experimental-ternaries --log-level warn --write
+          git diff
+          exit "$code"
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 1
@@ -75,8 +89,8 @@ jobs:
     strategy:
       matrix:
         version:
-        - 18.x
-        - 20.x
+          - 18.x
+          - 20.x
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 3
@@ -116,7 +130,7 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: postgres
       - uses: actions/download-artifact@v4
-      - name: "Example: Connect"
+      - name: 'Example: Connect'
         run: |
           pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
           cd examples/connect
@@ -132,7 +146,7 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
-      - name: "Example: Generic Pool"
+      - name: 'Example: Generic Pool'
         run: |
           pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
           cd examples/generic-pool
@@ -152,7 +166,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: [build, test]
+    needs: [style, build, test]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

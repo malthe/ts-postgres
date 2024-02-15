@@ -1,7 +1,9 @@
 import { Buffer } from 'node:buffer';
 
 // This type isn't really exposed, but we can tease it out using some type gymnastics.
-export type BufferEncoding = NonNullable<Required<Parameters<Buffer["toString"]>[0]>>;
+export type BufferEncoding = NonNullable<
+    Required<Parameters<Buffer['toString']>[0]>
+>;
 
 export enum DataType {
     Bool = 16,
@@ -124,7 +126,7 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayTimestamp, DataType.Timestamp],
     [DataType.ArrayTimestamptz, DataType.Timestamptz],
     [DataType.ArrayUuid, DataType.Uuid],
-    [DataType.ArrayVarchar, DataType.Varchar]
+    [DataType.ArrayVarchar, DataType.Varchar],
 ]);
 
 export enum DataFormat {
@@ -141,8 +143,8 @@ export type ValueTypeReader = (
 ) => any;
 
 export interface Point {
-    x: number,
-    y: number
+    x: number;
+    y: number;
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
