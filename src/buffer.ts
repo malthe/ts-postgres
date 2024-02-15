@@ -21,7 +21,8 @@ export class ElasticBuffer {
         const available = length - offset;
 
         if (available < size || !this.buffer) {
-            while (available + length < size) length = Math.max(this.size, length << 1);
+            while (available + length < size)
+                length = Math.max(this.size, length << 1);
             const buffer = Buffer.allocUnsafe(length << 1);
             if (this.buffer) {
                 this.buffer.copy(buffer, 0, 0, offset);

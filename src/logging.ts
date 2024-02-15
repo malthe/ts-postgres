@@ -18,7 +18,7 @@ function make(f: (data: any) => void) {
             last = data;
             log(data);
         }
-    }
+    };
 }
 
 export const debug = make(console.debug);

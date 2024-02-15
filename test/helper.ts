@@ -3,24 +3,26 @@ import { Client, Configuration, connect } from '../src/index';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 type Test = (context: {
-    client: Client,
-    connect: typeof connect
+    client: Client;
+    connect: typeof connect;
 }) => Promise<void>;
 
 function testWithClient(name: string, fn: Test, timeout?: number) {
-    return test(name, {timeout: timeout}, async () => {
+    return test(name, { timeout: timeout }, async () => {
         const baseConfig = {
             extraFloatDigits: 2,
-            preparedStatementPrefix: name + " "
+            preparedStatementPrefix: name + ' ',
         };
         const client = await connect(baseConfig);
         client.on('notice', console.log);
         const p = fn({
             client,
-            connect: (config?: Configuration) => connect({
-                ...baseConfig,
-                ...config,
-            })});
+            connect: (config?: Configuration) =>
+                connect({
+                    ...baseConfig,
+                    ...config,
+                }),
+        });
         try {
             await p;
         } finally {
@@ -28,11 +30,8 @@ function testWithClient(name: string, fn: Test, timeout?: number) {
                 await client.end();
             }
         }
-        if (!client.closed) throw new Error("Expected client to be closed");
+        if (!client.closed) throw new Error('Expected client to be closed');
     });
 }
 
-export {
-    describe,
-    testWithClient as test
-};
+export { describe, testWithClient as test };

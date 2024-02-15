@@ -1,8 +1,5 @@
 import { Writable } from 'node:stream';
-import {
-    DataFormat,
-    DataType,
-} from './types.js';
+import { DataFormat, DataType } from './types.js';
 
 export interface QueryOptions {
     /** The query name. */
@@ -18,7 +15,7 @@ export interface QueryOptions {
     /** Allows the transformation of column names as returned by the database. */
     readonly transform: (name: string) => string;
     /** Use bigint for the INT8 (64-bit integer) data type. */
-    readonly bigints: boolean; 
+    readonly bigints: boolean;
 }
 
 /**

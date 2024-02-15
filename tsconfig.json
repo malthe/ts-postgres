@@ -3,11 +3,7 @@
         "moduleResolution": "Node16",
         "target": "ES2020",
         "module": "Node16",
-        "lib": [
-            "ES2019",
-            "ESNext.AsyncIterable",
-            "ESNext.BigInt"
-        ],
+        "lib": ["ES2019", "ESNext.AsyncIterable", "ESNext.BigInt"],
         "strict": true,
         "sourceMap": true,
         "inlineSourceMap": false,
@@ -17,17 +13,13 @@
         "noUnusedParameters": true,
         "noUnusedLocals": true,
         "inlineSources": true,
-        "types": [
-          "node"
-        ],
-        "outDir": "dist"
+        "types": ["node"],
+        "outDir": "dist",
     },
     "ts-node": {
         "experimentalSpecifierResolution": "node",
         "transpileOnly": true,
-        "esm": true
+        "esm": true,
     },
-    "include": [
-        "src/*.ts"
-    ]
+    "include": ["src/*.ts"],
 }

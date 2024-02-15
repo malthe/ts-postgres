@@ -1,7 +1,4 @@
-import {
-    ClientImpl,
-    SSLMode,
-} from './client.js';
+import { ClientImpl, SSLMode } from './client.js';
 import type { Configuration, ConnectionInfo } from './client.js';
 export type {
     Callback,
@@ -11,15 +8,8 @@ export type {
     PreparedStatement,
     SSL,
 } from './client.js';
-export type {
-    BufferEncoding,
-    Point,
-    ValueTypeReader,
-} from './types.js';
-export type {
-    Query,
-    QueryOptions,
-} from './query.js';
+export type { BufferEncoding, Point, ValueTypeReader } from './types.js';
+export type { Query, QueryOptions } from './query.js';
 export type {
     Result,
     ResultIterator,
@@ -35,18 +25,13 @@ export type {
     TransactionStatus,
 } from './protocol.js';
 
-export type {
-    Configuration,
-};
+export type { Configuration };
 
-export {
-    DataFormat,
-    DataType,
-} from './types.js';
+export { DataFormat, DataType } from './types.js';
 
 export { SSLMode };
 
-interface _Client extends ClientImpl { }
+interface _Client extends ClientImpl {}
 
 /** A database client, encapsulating a single connection to the database.
  *
