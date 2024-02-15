@@ -17,6 +17,20 @@ permissions:
   id-token: write
 
 jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Prettier
+        run: |
+          npm i -D
+          set +e
+          npx prettier --check src test *.md
+          code=$?
+          npx prettier --log-level warn --write src test *.md
+          git diff
+          exit "$code"
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 1
@@ -152,7 +166,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: [build, test]
+    needs: [style, build, test]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
