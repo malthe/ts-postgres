@@ -4,7 +4,7 @@ import { userInfo } from 'node:os';
  *
  *  See {@link https://www.postgresql.org/docs/current/libpq-envars.html} for a detailed description.
  */
-export interface Environment {
+export type Environment = keyof {
     PGCLIENTENCODING: string;
     PGCONNECT_TIMEOUT: string;
     PGDATABASE: string;
@@ -23,7 +23,7 @@ function secToMsec(value?: number) {
 
 export class Defaults {
     constructor(
-        env: Environment,
+        env: Partial<Record<Environment, string>>,
         readonly host = env.PGHOST || 'localhost',
         readonly port = parseInt(env.PGPORT as string, 10) || 5432,
         readonly user = env.PGUSER || userInfo().username,
