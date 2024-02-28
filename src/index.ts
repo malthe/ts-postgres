@@ -1,14 +1,23 @@
-import { ClientImpl, SSLMode } from './client.js';
-import type { Configuration, ConnectionInfo } from './client.js';
-export type {
-    Callback,
-    ClientNotice,
-    DataTypeError,
-    Notification,
-    PreparedStatement,
-    SSL,
+import { ClientImpl, type ConnectionInfo } from './client.js';
+export {
+    SSLMode,
+    type ClientNotice,
+    type Configuration,
+    type DataTypeError,
+    type EventListener,
+    type EventMap,
+    type Notification,
+    type PreparedStatement,
+    type SSL,
 } from './client.js';
-export type { BufferEncoding, Point, ValueTypeReader } from './types.js';
+import type { Configuration } from './client.js';
+export {
+    DataFormat,
+    DataType,
+    type BufferEncoding,
+    type Point,
+    type ValueTypeReader,
+} from './types.js';
 export type { Query, QueryOptions } from './query.js';
 export type {
     Result,
@@ -24,12 +33,6 @@ export type {
     ErrorLevel,
     TransactionStatus,
 } from './protocol.js';
-
-export type { Configuration };
-
-export { DataFormat, DataType } from './types.js';
-
-export { SSLMode };
 
 interface _Client extends ClientImpl {}
 

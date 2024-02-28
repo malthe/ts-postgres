@@ -10,8 +10,7 @@ import {
     connect as tls,
     createSecureContext,
 } from 'node:tls';
-
-import { Event as TypedEvent } from 'ts-typed-events';
+import { EventEmitter } from 'node:events';
 
 import { Defaults, Environment } from './defaults.js';
 import * as logger from './logging.js';
@@ -94,7 +93,7 @@ export interface Configuration
 export interface Notification {
     processId: number;
     channel: string;
-    payload?: string;
+    payload: string;
 }
 
 export interface PreparedStatement<T = ResultRecord> {
@@ -106,17 +105,6 @@ export interface PreparedStatement<T = ResultRecord> {
         streams?: Record<string, Writable>,
     ) => ResultIterator<T>;
 }
-
-export type Callback<T> = (data: T) => void;
-
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-type CallbackOf<U> = U extends any ? Callback<U> : never;
-
-type Event = ClientNotice | DatabaseError | Notification;
-
-type Connect = Error | null;
-
-type End = NodeJS.ErrnoException | null;
 
 type CloseHandler = () => void;
 
@@ -161,19 +149,30 @@ interface PreFlightQueue {
 
 const DEFAULTS = new Defaults(env as unknown as Environment);
 
-export class ClientImpl {
-    private readonly events = {
-        connect: new TypedEvent<Connect>(),
-        end: new TypedEvent<End>(),
-        error: new TypedEvent<DatabaseError>(),
-        notice: new TypedEvent<ClientNotice>(),
-        notification: new TypedEvent<Notification>(),
-    };
+export type EventMap<
+    T = {
+        error: DatabaseError;
+        notice: ClientNotice;
+        notification: Notification;
+    },
+> = {
+    [K in keyof T]: [T[K]];
+};
 
-    private ending = false;
+type Resolve<T> = (value?: T) => void;
+
+export type EventListener<K> = K extends keyof EventMap ? (
+    (...args: EventMap[K]) => void
+) : never;
+
+export class ClientImpl {
+    private readonly events = new EventEmitter<EventMap>();
+
     private connected = false;
-    private connecting = false;
     private error = false;
+
+    private ending?: Resolve<NodeJS.ErrnoException>;
+    private connecting?: Resolve<Error>;
 
     private readonly encoding: BufferEncoding;
     private readonly writer: Writer;
@@ -217,7 +216,7 @@ export class ClientImpl {
 
         this.stream.on('close', () => {
             this.closed = true;
-            this.events.end.emit(null);
+            this.ending?.();
         });
 
         this.stream.on('connect', () => {
@@ -237,14 +236,14 @@ export class ClientImpl {
         /* istanbul ignore next */
         this.stream.on('error', (error: NodeJS.ErrnoException) => {
             if (this.connecting) {
-                this.events.connect.emit(error);
+                this.connecting(error);
             } else {
                 // Don't raise ECONNRESET errors - they can & should be
                 // ignored during disconnect.
-                if (this.ending && error.errno === constants.errno.ECONNRESET)
-                    return;
-
-                this.events.end.emit(error);
+                if (this.ending) {
+                    if (error.errno === constants.errno.ECONNRESET) return;
+                    this.ending();
+                }
             }
         });
 
@@ -294,7 +293,7 @@ export class ClientImpl {
 
             const abort = (error: Error) => {
                 this.handleError(error);
-                this.events.connect.emit(error);
+                this.connecting?.(error);
             };
 
             const startup = (stream?: Socket) => {
@@ -384,12 +383,14 @@ export class ClientImpl {
                 const read = this.handle(buffer, offset, size);
                 offset += read;
                 remaining = size - read;
-            } catch (error) {
+            } catch (error: unknown) {
                 logger.warn(error);
                 if (this.connecting) {
-                    this.events.connect.emit(error as Error);
+                    this.connecting(error as Error);
                 } else {
                     try {
+                        // In normal operation (including regular handling of errors),
+                        // there's nothing further to clean up at this point.
                         while (this.handleError(error as Error)) {
                             logger.info(
                                 'Cancelled query due to an internal error',
@@ -420,20 +421,25 @@ export class ClientImpl {
         if (this.error) {
             throw new Error("Can't connect in error state");
         }
-        this.connecting = true;
 
         const timeout =
             this.config.connectionTimeout ?? DEFAULTS.connectionTimeout;
 
-        let p = this.events.connect.once().then((error: Connect) => {
-            if (error) {
-                this.connecting = false;
-                this.stream.destroy();
-                throw error;
-            }
-            return {
-                encrypted: this.stream instanceof TLSSocket,
-                parameters: this.parameters as ReadonlyMap<string, string>,
+        let p = new Promise<ConnectionInfo>((resolve, reject) => {
+            this.connecting = (error?: Error) => {
+                this.connecting = undefined;
+                if (error) {
+                    this.stream.destroy();
+                    reject(error);
+                } else {
+                    resolve({
+                        encrypted: this.stream instanceof TLSSocket,
+                        parameters: this.parameters as ReadonlyMap<
+                            string,
+                            string
+                        >,
+                    });
+                }
             };
         });
 
@@ -476,8 +482,6 @@ export class ClientImpl {
             throw new Error('Connection unexpectedly destroyed');
         }
 
-        this.ending = true;
-
         if (this.connected) {
             this.writer.end();
             this.send();
@@ -486,32 +490,21 @@ export class ClientImpl {
         } else {
             this.stream.destroy();
         }
-        return new Promise<void>((resolve, reject) =>
-            this.events.end.once().then((value) => {
-                if (value === null) resolve();
-                reject(value);
-            }),
-        );
+        return new Promise<void>((resolve, reject) => {
+            this.ending = (error?: NodeJS.ErrnoException) => {
+                this.ending = undefined;
+                if (!error) resolve();
+                reject(error);
+            };
+        });
     }
 
-    on(event: 'notification', callback: Callback<Notification>): void;
-    on(event: 'error', callback: Callback<DatabaseError>): void;
-    on(event: 'notice', callback: Callback<ClientNotice>): void;
-    on(event: string, callback: CallbackOf<Event>): void {
-        switch (event) {
-            case 'error': {
-                this.events.error.on(callback as Callback<DatabaseError>);
-                break;
-            }
-            case 'notice': {
-                this.events.notice.on(callback as Callback<ClientNotice>);
-                break;
-            }
-            case 'notification': {
-                this.events.notification.on(callback as Callback<Notification>);
-                break;
-            }
-        }
+    on<K extends keyof EventMap>(event: K, listener: EventListener<K>): void {
+        this.events.on(event, listener);
+    }
+
+    off<K extends keyof EventMap>(event: K, listener: EventListener<K>): void {
+        this.events.off(event, listener);
     }
 
     /** Prepare a statement for later execution.
@@ -954,7 +947,7 @@ export class ClientImpl {
                     outer: switch (code) {
                         case 0: {
                             nextTick(() => {
-                                this.events.connect.emit(null);
+                                this.connecting?.();
                             });
                             break;
                         }
@@ -1094,10 +1087,16 @@ export class ClientImpl {
 
                     if (this.connecting) throw error;
 
-                    this.events.error.emit(error);
-                    loop: if (!this.handleError(error)) {
+                    try {
+                        this.events.emit('error', error);
+                    } catch {
+                        // If there are no subscribers for the event, an error
+                        // is raised. We're not interesting in this behavior.
+                    }
+
+                    if (!this.handleError(error)) {
                         throw new Error(
-                            'Internal error occurred while processing database error',
+                            'An error occurred without an active query',
                         );
                     }
                     break;
@@ -1106,7 +1105,7 @@ export class ClientImpl {
                     const notice = this.parseError(
                         buffer.subarray(start, start + length),
                     );
-                    this.events.notice.emit(notice);
+                    this.events.emit('notice', notice);
                     break;
                 }
                 case Message.NotificationResponse: {
@@ -1114,7 +1113,7 @@ export class ClientImpl {
                     const processId = reader.readInt32BE();
                     const channel = reader.readCString(this.encoding);
                     const payload = reader.readCString(this.encoding);
-                    this.events.notification.emit({
+                    this.events.emit('notification', {
                         processId: processId,
                         channel: channel,
                         payload: payload,
@@ -1150,7 +1149,6 @@ export class ClientImpl {
                         this.errorHandlerQueue.shift();
                         this.cleanupQueue.expect(Cleanup.ErrorHandler);
                     } else {
-                        this.connecting = false;
                         this.connected = true;
                     }
                     const status = buffer.readInt8(start);
