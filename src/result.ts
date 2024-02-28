@@ -97,7 +97,7 @@ export class Result<T = ResultRecord> {
  *
  * Iterating asynchronously yields objects of the generic type parameter.
  */
-export class ResultIterator<T = ResultRecord> extends Promise<Result<T>> {
+class ResultIteratorImpl<T> extends Promise<Result<T>> {
     private subscribers: ((
         done: boolean,
         error?: string | DatabaseError | Error,
@@ -221,7 +221,11 @@ export type DataHandler = Callback<any[] | Resolution | Error>;
 
 export type NameHandler = Callback<string[]>;
 
-ResultIterator.prototype.constructor = Promise;
+ResultIteratorImpl.prototype.constructor = Promise;
+
+export interface ResultIterator<T> extends ResultIteratorImpl<T> {
+
+}
 
 export function makeResult<T>(transform?: (name: string) => string) {
     let dataHandler: DataHandler | null = null;
@@ -229,7 +233,7 @@ export function makeResult<T>(transform?: (name: string) => string) {
     const names: string[] = [];
     const rows: any[][] = [];
 
-    const p = new ResultIterator<T>(names, rows, (resolve, reject) => {
+    const p = new ResultIteratorImpl<T>(names, rows, (resolve, reject) => {
         dataHandler = (row: any[] | Resolution | Error) => {
             if (row === null || typeof row === 'string') {
                 resolve(row);

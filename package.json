@@ -12,9 +12,6 @@
     ],
     "homepage": "https://github.com/malthe/ts-postgres",
     "author": "Malthe Borch <mborch@gmail.com>",
-    "dependencies": {
-        "ts-typed-events": "^3.0.0"
-    },
     "main": "./dist/module/index.js",
     "types": "./dist/module/index.d.ts",
     "exports": {
@@ -57,20 +54,23 @@
         ]
     },
     "devDependencies": {
-        "@types/node": "^20.10.6",
-        "@typescript-eslint/eslint-plugin": "^6.10.0",
-        "@typescript-eslint/parser": "^6.10.0",
-        "colors": "^1.4.0",
-        "eslint": "^8.56.0",
-        "eslint-config-standard": "^17.1.0",
-        "eslint-plugin-import": "^2.29.0",
-        "eslint-plugin-node": "^11.1.0",
-        "eslint-plugin-prettier": "^5.0.1",
-        "eslint-plugin-promise": "^6.1.1",
+        "@types/node": "^20.11.21",
+        "@typescript-eslint/eslint-plugin": "^6",
+        "@typescript-eslint/parser": "^6",
+        "colors": "^1",
+        "eslint": "^8",
+        "eslint-config-standard": "^17",
+        "eslint-plugin-import": "^2",
+        "eslint-plugin-node": "^11",
+        "eslint-plugin-prettier": "^5",
+        "eslint-plugin-promise": "^6",
         "lint-staged": "^15.0.2",
-        "rimraf": "^3.0.2",
-        "ts-node": "^10.9.2",
-        "typedoc": "^0.25.4",
-        "typescript": "^5.2.2"
+        "rimraf": "~3.0",
+        "ts-node": "~10.9",
+        "typedoc": "~0.25",
+        "typescript": "~5.2"
+    },
+    "peerDependencies": {
+        "@types/node": "^20"
     }
 }

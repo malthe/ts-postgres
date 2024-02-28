@@ -9,6 +9,7 @@ import {
     Client,
     DataFormat,
     DataType,
+    Notification,
     PreparedStatement,
     Result,
     ResultIterator,
@@ -238,13 +239,22 @@ describe('Query', () => {
         deepEqual(result.names, ['FOO']);
     });
 
-    test('Listen/notify', async ({ client }) => {
-        await client.query('listen foo');
-        client.on('notification', (msg) => {
-            equal(msg.channel, 'foo');
-            equal(msg.payload, 'bar');
-        });
-        await client.query("notify foo, 'bar'");
+    test('Listen/notify', async ({ client, connect }) => {
+        const notifies: Omit<Notification, 'processId'>[] = [];
+        const listener = ({ channel, payload }: Notification) => {
+            notifies.push({ channel, payload });
+        };
+        client.on('notification', listener);
+        const p = client.query('listen foo');
+        const other = await connect();
+        await other.query("notify foo, 'bar'");
+        await other.end();
+        deepEqual(notifies, [{ channel: 'foo', payload: 'bar' }]);
+        await p;
+        await client.query("notify foo, 'baz'");
+        client.off('notification', listener);
+        await client.query("notify foo, 'boo'");
+        deepEqual(notifies, [{ channel: 'foo', payload: 'bar' }, { channel: 'foo', payload: 'baz' }]);
     });
 
     test('Session timeout', async ({ connect }) => {

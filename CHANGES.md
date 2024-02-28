@@ -4,6 +4,13 @@ In next release ...
   connected when the promise returns. The `Client` symbol is now a
   type instead of a value.
 
+- Add `off` method to disable event listening.
+
+- Remove dependency on
+  [ts-typed-events](https://www.npmjs.com/package/ts-typed-events),
+  which has been supplanted by updated typings for the built-in
+  `EventEmitter` class that's now generic.
+
 ## v1.9.0 (2024-01-23)
 
 - Add support for ESM modules.

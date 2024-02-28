@@ -23,6 +23,7 @@ $ npm install ts-postgres
   - Rows and column names
   - Streaming data directly into a socket
 - Supports CommonJS and ESM modules
+- No dependencies
 
 See the [documentation](https://malthe.github.io/ts-postgres/) for a complete reference.
 
