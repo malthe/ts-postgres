@@ -12,7 +12,7 @@ import {
 } from 'node:tls';
 import { EventEmitter } from 'node:events';
 
-import { Defaults, Environment } from './defaults.js';
+import { Defaults } from './defaults.js';
 import * as logger from './logging.js';
 
 import { postgresqlErrorCodes } from './errors.js';
@@ -147,7 +147,7 @@ interface PreFlightQueue {
     bind: Bind | null;
 }
 
-const DEFAULTS = new Defaults(env as unknown as Environment);
+const DEFAULTS = new Defaults(env as Record<string, string>);
 
 export type EventMap<
     T = {
