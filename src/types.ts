@@ -5,7 +5,7 @@ export type BufferEncoding = NonNullable<
     Required<Parameters<Buffer['toString']>[0]>
 >;
 
-export enum DataType {
+export const enum DataType {
     Bool = 16,
     Bytea = 17,
     Char = 18,
@@ -129,7 +129,7 @@ export const arrayDataTypeMapping: ReadonlyMap<DataType, DataType> = new Map([
     [DataType.ArrayVarchar, DataType.Varchar],
 ]);
 
-export enum DataFormat {
+export const enum DataFormat {
     Text,
     Binary,
 }

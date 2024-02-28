@@ -37,7 +37,7 @@ export const enum SASL {
     SASLResponse = 0x70,
 }
 
-export enum ErrorLevel {
+export const enum ErrorLevel {
     Debug1 = 'DEBUG1',
     Debug2 = 'DEBUG2',
     Debug3 = 'DEBUG3',
