@@ -4,6 +4,9 @@ In next release ...
   connected when the promise returns. The `Client` symbol is now a
   type instead of a value.
 
+- Add `[Symbol.asyncDispose]` method to support [Explicit Resource
+  Management](https://github.com/tc39/proposal-explicit-resource-management).
+
 - Add `off` method to disable event listening.
 
 - Remove dependency on
