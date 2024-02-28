@@ -58,6 +58,12 @@ try {
 }
 ```
 
+With TypeScript 5.2+ there is also support for `await using`:
+```typescript
+await using client = await connect();
+// Will be disposed of automatically at the end of the block.
+```
+
 Waiting on the result (i.e., result iterator) returns the complete query result.
 
 ```typescript

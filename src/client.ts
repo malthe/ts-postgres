@@ -759,6 +759,10 @@ export class ClientImpl {
         }
     }
 
+    [Symbol.asyncDispose]() {
+        return this.end();
+    }
+
     private send() {
         if (this.mustDrain || !this.connected) return;
         this.sendUsing(this.writer);

@@ -89,8 +89,8 @@ jobs:
     strategy:
       matrix:
         version:
-          - 18.x
-          - 20.x
+          - 18
+          - 20
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 3
@@ -138,10 +138,12 @@ jobs:
           set -o pipefail
           PGSSLMODE=disable node main.cjs | tee /dev/stderr | grep -q false
           PGSSLMODE=require node main.cjs | tee /dev/stderr | grep -q true
+          [[ -d v$NODE_VERSION ]] && cd v$NODE_VERSION
           npx tsc
           PGSSLMODE=disable node main.mjs | tee /dev/stderr | grep -q false
           PGSSLMODE=require node main.mjs | tee /dev/stderr | grep -q true
         env:
+          NODE_VERSION: ${{ matrix.version }}
           NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/ssl-cert-snakeoil.pem
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
