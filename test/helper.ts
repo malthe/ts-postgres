@@ -1,5 +1,5 @@
 import { describe, test } from 'node:test';
-import { Client, Configuration, connect } from '../src/index';
+import { Client, Configuration, connect } from '../src/index.js';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 type Test = (context: {

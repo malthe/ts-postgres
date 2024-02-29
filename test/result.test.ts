@@ -1,7 +1,7 @@
 import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
 import { describe } from 'node:test';
-import { test } from './helper';
-import { Client, ResultIterator, ResultRow } from '../src/index';
+import { test } from './helper.js';
+import { Client, ResultIterator, ResultRow } from '../src/index.js';
 
 type ResultFunction<T> = (result: ResultIterator<T>) => Promise<T[]>;
 

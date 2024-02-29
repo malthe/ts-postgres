@@ -4,7 +4,7 @@ import { env, hrtime } from 'node:process';
 import { describe } from 'node:test';
 import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
 
-import { test } from './helper';
+import { test } from './helper.js';
 import {
     Client,
     DataFormat,
@@ -13,9 +13,10 @@ import {
     PreparedStatement,
     Result,
     ResultIterator,
+    ResultRecord,
     SSLMode,
-} from '../src/index';
-import { postgresqlErrorCodes } from '../src/errors';
+} from '../src/index.js';
+import { postgresqlErrorCodes } from '../src/errors.js';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = env.NODE_ENV === 'benchmark';
@@ -351,7 +352,7 @@ describe('Query', () => {
     });
 
     interface QueryTest {
-        query: ResultIterator;
+        query: ResultIterator<ResultRecord>;
         expectation:
             | {
                   names: string[];
