@@ -1,3 +1,7 @@
+In next release ...
+
+-
+
 ## v2.0.0 (2024-02-29)
 
 - The `connect` function is now used to create a client, already
