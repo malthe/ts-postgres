@@ -96,7 +96,7 @@ export interface Notification {
     payload: string;
 }
 
-export interface PreparedStatement<T = ResultRecord> {
+export interface PreparedStatement<T = ResultRecord> extends AsyncDisposable {
     close: (portal?: string) => Promise<void>;
     execute: (
         values?: any[],
@@ -535,16 +535,19 @@ export class ClientImpl {
                     const types = this.parameterDescriptionQueue.shift();
                     this.cleanupQueue.expect(Cleanup.ParameterDescription);
 
+                    const close = () => {
+                        return new Promise<void>((resolve) => {
+                            this.writer.close(providedNameOrGenerated, 'S');
+                            this.closeHandlerQueue.push(resolve);
+                            this.cleanupQueue.push(Cleanup.Close);
+                            this.writer.flush();
+                            this.send();
+                        });
+                    };
+
                     resolve({
-                        close: () => {
-                            return new Promise<void>((resolve) => {
-                                this.writer.close(providedNameOrGenerated, 'S');
-                                this.closeHandlerQueue.push(resolve);
-                                this.cleanupQueue.push(Cleanup.Close);
-                                this.writer.flush();
-                                this.send();
-                            });
-                        },
+                        [Symbol.asyncDispose]: close,
+                        close,
                         execute: (
                             values?: any[],
                             portal?: string,

@@ -505,6 +505,7 @@ describe('Query', () => {
         deepEqual(result1, { names: ['i'], rows: [[1]], status: 'SELECT 1' });
         const result2 = await stmt.execute([2]);
         deepEqual(result2.rows, [[2]]);
+        deepEqual(stmt.close, stmt[Symbol.asyncDispose]);
         await stmt.close();
     });
 
