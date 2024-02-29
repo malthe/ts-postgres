@@ -5,7 +5,8 @@ In next release ...
   type instead of a value.
 
 - Add `[Symbol.asyncDispose]` method to support [Explicit Resource
-  Management](https://github.com/tc39/proposal-explicit-resource-management).
+  Management](https://github.com/tc39/proposal-explicit-resource-management). This
+  works on the client object as well as prepared statements.
 
 - Add `off` method to disable event listening.
 

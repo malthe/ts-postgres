@@ -242,6 +242,8 @@ When the prepared statement is no longer needed, it should be closed to release 
 ```typescript
 await statement.close();
 ```
+With TypeScript 5.2+ it's also possible to use the `await using` construct which automatically closes the statement at the end of the block.
+
 
 Prepared statements can be used (executed) multiple times, even concurrently.
 
