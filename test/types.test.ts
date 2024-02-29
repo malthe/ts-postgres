@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer';
 import { strict as assert } from 'node:assert';
 import { describe } from 'node:test';
-import { test } from './helper';
+import { test } from './helper.js';
 
-import { DataType, Point, DataFormat } from '../src/index';
+import { DataType, Point, DataFormat } from '../src/index.js';
 
 const infinity = Number('Infinity');
 

@@ -21,5 +21,8 @@
         "transpileOnly": true,
         "esm": true,
     },
-    "include": ["src/*.ts"],
+    "include": [
+        "src/*.ts",
+        "test/*.ts"
+    ],
 }

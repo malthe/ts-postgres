@@ -32,8 +32,8 @@
     "scripts": {
         "lint": "eslint -c .eslintrc.json --ext .ts src test",
         "prebuild": "rimraf dist",
-        "build:cjs": "tsc --module commonjs --moduleResolution node --outDir dist/commonjs",
-        "build:esm": "tsc --outDir dist/module",
+        "build:cjs": "tsc -p tsconfig.dist.json --module commonjs --moduleResolution node --outDir dist/commonjs",
+        "build:esm": "tsc -p tsconfig.dist.json --outDir dist/module",
         "test": "node --experimental-default-type module --loader ts-node/esm --enable-source-maps --test test/*.test.ts",
         "test:prod": "npm run lint && npm run test"
     },
