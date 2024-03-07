@@ -75,7 +75,7 @@ If the query fails, an exception is thrown.
 ### Connection options
 
 The client constructor takes an optional
-[Configuration](src/client.ts#L88) object.
+[Configuration](https://malthe.github.io/ts-postgres/interfaces/Configuration.html) object.
 
 For example, to connect to a remote host use the _host_ configuration key:
 
@@ -108,16 +108,19 @@ variable "PGSSLMODE" as "disable".
 
 ### Querying
 
-The `query` method accepts a `Query` object or a number of arguments
-that together define the query, the first argument (query text) being
-the only required one.
+The `query` method accepts a text string or a
+[Query](https://malthe.github.io/ts-postgres/interfaces/Query.html) object 
+as the first parameter, and a tuple of values as the second parameter. 
 
 The initial example above could be written as:
 
 ```typescript
-const query = new Query("SELECT 'Hello ' || $1 || '!' AS message", ['world']);
-const result = await client.execute<Greeting>(query);
+const query = {text: "SELECT 'Hello ' || $1 || '!' AS message"};
+const result = await client.query<Greeting>(query, ['world']);
 ```
+
+The `Query` object has a number of optional properties that can change
+how the query is carried out, including column name transformation.
 
 If the object type is omitted, it defaults to `Record<string, any>`, but
 providing a type ensures that the object values are typed, both when
@@ -204,10 +207,10 @@ asynchronous stream such as a network socket, or a file.
 Assuming that `socket` is a writable stream:
 
 ```typescript
-const query = new Query('SELECT some_bytea_column', {
+const result = await client.query({
+  text: 'SELECT some_bytea_column',
   streams: { some_bytea_column: socket },
 });
-const result = await client.execute(query);
 ```
 
 This can for example be used to reduce time to first byte and memory use.
