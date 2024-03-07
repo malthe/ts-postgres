@@ -45,6 +45,8 @@ jobs:
           npm run build:esm
           echo '{"type": "commonjs"}' > dist/commonjs/package.json
           echo '{"type": "module"}' > dist/module/package.json
+          npm i --no-save dts-bundle-generator
+          npx dts-bundle-generator -o dist/index.d.ts src/index.ts
           mkdir dest
           npm pack --pack-destination=dest
       - name: Typedoc
