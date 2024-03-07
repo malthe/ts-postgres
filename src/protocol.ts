@@ -2,7 +2,6 @@ import { Buffer } from 'node:buffer';
 import { Socket } from 'node:net';
 import { Writable } from 'node:stream';
 import { ElasticBuffer } from './buffer.js';
-import { postgresqlErrorCodes } from './errors.js';
 import { sign } from './sasl.js';
 import { sum } from './utils.js';
 import {
@@ -127,9 +126,15 @@ export type StartupConfiguration = Omit<
 
 export class DatabaseError extends Error {
     constructor(
-        public level: ErrorLevel,
-        public code: keyof typeof postgresqlErrorCodes,
-        public message: string,
+        public readonly level: ErrorLevel,
+        public readonly code: string,
+        public readonly message: string,
+        public readonly detail?: string,
+        public readonly hint?: string,
+        public readonly file?: string,
+        public readonly line?: number,
+        public readonly routine?: string,
+        public readonly position?: number,
     ) {
         super(message);
         const actualProto = new.target.prototype;

@@ -1,6 +1,11 @@
 In next release ...
 
--
+- The PostgreSQL error code table has been removed. Consult the documentation to
+  map error codes to the string identifiers used in the PostgreSQL codebase. 
+
+- Parse additional fields into `DatabaseError` and `ClientNotice`. Note that a
+  `detail` field has been added (previously it was added to the message) as
+  part of this change.
 
 ## v2.0.0 (2024-02-29)
 
