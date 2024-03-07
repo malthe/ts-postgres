@@ -13,10 +13,18 @@
     "homepage": "https://github.com/malthe/ts-postgres",
     "author": "Malthe Borch <mborch@gmail.com>",
     "main": "./dist/module/index.js",
-    "types": "./dist/module/index.d.ts",
+    "types": "./dist/index.d.ts",
     "exports": {
-        "require": "./dist/commonjs/index.js",
-        "import": "./dist/module/index.js"
+        ".": {
+            "require": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/commonjs/index.js"
+            },
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/module/index.js"
+            }
+        }
     },
     "files": [
         "/dist"
@@ -58,6 +66,7 @@
         "@typescript-eslint/eslint-plugin": "^6",
         "@typescript-eslint/parser": "^6",
         "colors": "^1",
+        "dts-bundle-generator": "^9.3.1",
         "eslint": "^8",
         "eslint-config-standard": "^17",
         "eslint-plugin-import": "^2",

@@ -7,7 +7,7 @@
         "strict": true,
         "sourceMap": true,
         "inlineSourceMap": false,
-        "declaration": true,
+        "declaration": false,
         "noImplicitAny": true,
         "isolatedModules": true,
         "noUnusedParameters": true,

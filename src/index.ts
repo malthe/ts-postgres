@@ -14,7 +14,6 @@ import type { Configuration } from './client.js';
 export {
     DataFormat,
     DataType,
-    type BufferEncoding,
     type Point,
     type ValueTypeReader,
 } from './types.js';
