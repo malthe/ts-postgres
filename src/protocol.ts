@@ -8,7 +8,6 @@ import { sum } from './utils.js';
 import {
     arrayDataTypeMapping,
     isPoint,
-    BufferEncoding,
     DataFormat,
     DataType,
     ValueTypeReader,

@@ -40,7 +40,6 @@ import {
 } from './protocol.js';
 
 import {
-    BufferEncoding,
     DataFormat,
     DataType,
     ValueTypeReader,
