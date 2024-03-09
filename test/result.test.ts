@@ -1,4 +1,4 @@
-import { equal, deepEqual, rejects, strictEqual } from 'node:assert';
+import { equal, deepEqual, rejects, strictEqual, ok } from 'node:assert';
 import { describe } from 'node:test';
 import { test } from './helper.js';
 import { Client, ResultIterator, ResultRow } from '../src/index.js';
@@ -102,9 +102,31 @@ describe('Result', () => {
 
     test('First (error)', async ({ client }) => {
         const query = client.query('select does-not-exist');
-        return rejects(query.first(), {
-            message: 'column "does" does not exist',
-        });
+        return rejects(
+            query.first().catch(
+                // See https://github.com/nodejs/node/issues/52012.
+                (error) => {
+                    ok(
+                        Number.isInteger(error.line),
+                        `Not a number: ${error.line}`,
+                    );
+                    ok(
+                        Number.isInteger(error.position),
+                        `Not a number: ${error.position}`,
+                    );
+                    throw error;
+                },
+            ),
+            {
+                code: '42703',
+                level: 'ERROR',
+                message: 'column "does" does not exist',
+                detail: undefined,
+                hint: /\.c$/,
+                file: undefined,
+                routine: 'errorMissingColumn',
+            },
+        );
     });
 
     test('One (error)', async ({ client }) => {

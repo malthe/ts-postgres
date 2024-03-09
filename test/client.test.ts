@@ -16,7 +16,6 @@ import {
     ResultRecord,
     SSLMode,
 } from '../src/index.js';
-import { postgresqlErrorCodes } from '../src/errors.js';
 
 // Adjust for benchmarking mode.
 const benchmarkEnabled = env.NODE_ENV === 'benchmark';
@@ -263,7 +262,7 @@ describe('Query', () => {
             idleSessionTimeout: 500,
             idleInTransactionSessionTimeout: 500,
         });
-        const errors: (keyof typeof postgresqlErrorCodes)[] = [];
+        const errors: string[] = [];
         client.on('error', (error) => errors.push(error.code));
         await new Promise((resolve) => setTimeout(resolve, 625));
         equal(client.closed, true);
