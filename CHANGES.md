@@ -1,5 +1,7 @@
 In next release ...
 
+- Type declarations are now optimized and rolled up into a single file.
+
 - The PostgreSQL error code table has been removed. Consult the documentation to
   map error codes to the string identifiers used in the PostgreSQL codebase. 
 
