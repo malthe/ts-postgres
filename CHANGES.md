@@ -3,7 +3,7 @@ In next release ...
 - Type declarations are now optimized and rolled up into a single file.
 
 - The PostgreSQL error code table has been removed. Consult the documentation to
-  map error codes to the string identifiers used in the PostgreSQL codebase. 
+  map error codes to the string identifiers used in the PostgreSQL codebase.
 
 - Parse additional fields into `DatabaseError` and `ClientNotice`. Note that a
   `detail` field has been added (previously it was added to the message) as
