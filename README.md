@@ -102,9 +102,25 @@ default value when applicable.
 
 When applicable, "PG" environment variables used by _libpq_ apply, see
 the PostgreSQL documentation on [environment
-variables](https://www.postgresql.org/docs/current/libpq-envars.html). In
-particular, to disable the use of SSL, you can define the environment
-variable "PGSSLMODE" as "disable".
+variables](https://www.postgresql.org/docs/current/libpq-envars.html).
+
+#### SSL/TLS configuration
+
+As shown in the configuration options table in the previous section,
+the default behavior is to _prefer_ making a secure connection. That
+is, if the database has SSL/TLS configured, then the client will
+either make a secure connection or not connect at all.
+
+For a self-signed certificate or a certificate that's not verifiable
+by the system certificates, either provide the signing certificate
+using the `NODE_EXTRA_CA_CERTS` environment variable, or disable
+SSL/TLS altogether using `SSLMode.Disable` or the environment variable
+`PGSSLMODE=disable`.
+
+Note that _libpq_ supports a number of additional [SSL/TLS connection
+modes](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE)
+but most of them do not sit well with Node's [tls
+module](https://nodejs.org/api/tls.html) and are not offered here.
 
 ### Querying
 
