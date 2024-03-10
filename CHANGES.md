@@ -1,4 +1,4 @@
-In next release ...
+## v2.0.1 (2024-03-10)
 
 - Type declarations are now optimized and rolled up into a single file.
 
