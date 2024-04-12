@@ -1,6 +1,7 @@
 In next release ...
 
--
+- Fix SSL configuration issue where the `ssl` configuration option was not
+  correctly processed for the _prefer_ and _require_ settings.
 
 ## v2.0.1 (2024-03-10)
 

@@ -7,8 +7,12 @@ type Test = (context: {
     connect: typeof connect;
 }) => Promise<void>;
 
-function testWithClient(name: string, fn: Test, timeout?: number) {
-    return test(name, { timeout: timeout }, async () => {
+function testWithClient(
+    name: string,
+    fn: Test,
+    options?: { timeout?: number; skip?: boolean },
+) {
+    return test(name, options, async () => {
         const baseConfig = {
             extraFloatDigits: 2,
             preparedStatementPrefix: name + ' ',
