@@ -131,7 +131,7 @@ as the first parameter, and a tuple of values as the second parameter.
 The initial example above could be written as:
 
 ```typescript
-const query = {text: "SELECT 'Hello ' || $1 || '!' AS message"};
+const query = { text: "SELECT 'Hello ' || $1 || '!' AS message" };
 const result = await client.query<Greeting>(query, ['world']);
 ```
 
