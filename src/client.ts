@@ -256,13 +256,13 @@ export class ClientImpl {
         }
 
         const ssl =
-            (
-                this.config.ssl ??
+            this.config.ssl ??
+            ((
                 ((DEFAULTS.sslMode as SSLMode) || SSLMode.Disable) ===
-                    SSLMode.Disable
+                SSLMode.Disable
             ) ?
                 SSLMode.Disable
-            :   { mode: SSLMode.Prefer, options: undefined };
+            :   { mode: SSLMode.Prefer, options: undefined });
 
         const settings = {
             user: this.config.user || DEFAULTS.user,

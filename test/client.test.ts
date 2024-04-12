@@ -14,6 +14,7 @@ import {
     Result,
     ResultIterator,
     ResultRecord,
+    SSL,
     SSLMode,
 } from '../src/index.js';
 
@@ -149,45 +150,68 @@ function testSelect(
 }
 
 describe('Connection', () => {
-    test('Info', async ({ client }) => {
-        equal(
-            client.encrypted,
-            !!(client.config.ssl && client.config.ssl !== SSLMode.Disable),
-        );
-    });
-    test('Timeout', async ({ connect }) => {
-        const server = createServer();
-        await new Promise((resolve) => {
-            server.listen(0, 'localhost', 1, () => {
-                resolve(undefined);
+    test(
+        'Timeout',
+        async ({ connect }) => {
+            const server = createServer();
+            await new Promise((resolve) => {
+                server.listen(0, 'localhost', 1, () => {
+                    resolve(undefined);
+                });
             });
-        });
-        const sockets = new Set<Socket>();
-        server.on('connection', (socket) => {
-            sockets.add(socket);
-            server.once('close', () => {
-                sockets.delete(socket);
+            const sockets = new Set<Socket>();
+            server.on('connection', (socket) => {
+                sockets.add(socket);
+                server.once('close', () => {
+                    sockets.delete(socket);
+                });
             });
-        });
-        strictEqual(server.listening, true);
-        const address = server.address() as AddressInfo;
-        await rejects(
-            connect({
-                host: address.address,
-                port: address.port,
-                connectionTimeout: 250,
-            }),
-            /Timeout after 250 ms/,
-        );
-        for (const socket of sockets.values()) {
-            socket.destroy();
-        }
-        return new Promise((resolve) => {
-            server.close(() => {
-                resolve(undefined);
+            strictEqual(server.listening, true);
+            const address = server.address() as AddressInfo;
+            await rejects(
+                connect({
+                    host: address.address,
+                    port: address.port,
+                    connectionTimeout: 250,
+                }),
+                /Timeout after 250 ms/,
+            );
+            for (const socket of sockets.values()) {
+                socket.destroy();
+            }
+            return new Promise((resolve) => {
+                server.close(() => {
+                    resolve(undefined);
+                });
             });
-        });
-    }, 500);
+        },
+        { timeout: 500 },
+    );
+    test(
+        'SSL',
+        async ({ connect }) => {
+            const test = async (ssl: SSL, encrypted: boolean) => {
+                const client = await connect({ ssl });
+                equal(client.encrypted, encrypted);
+                await client.end();
+            };
+            try {
+                await test({ mode: SSLMode.Require }, true);
+            } catch (err) {
+                if (
+                    err instanceof Error &&
+                    err.toString() ==
+                        'Error: Server does not support SSL connections'
+                ) {
+                    await test({ mode: SSLMode.Prefer }, false);
+                    return;
+                }
+                throw err;
+            }
+            await test({ mode: SSLMode.Prefer }, true);
+        },
+        { skip: env['PGSSLMODE'] == 'disable' },
+    );
 });
 
 describe('Query', () => {
