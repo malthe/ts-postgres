@@ -25,9 +25,9 @@ export type {
     ResultRow,
 } from './result.js';
 export type { Environment } from './defaults.js';
-export type {
-    ClientConnectionDefaults,
-    ClientConnectionOptions,
+export {
+    type ClientConnectionDefaults,
+    type ClientConnectionOptions,
     DatabaseError,
     ErrorLevel,
     TransactionStatus,
