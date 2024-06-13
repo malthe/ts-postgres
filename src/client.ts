@@ -920,10 +920,7 @@ export class ClientImpl {
                     );
 
                     const remaining = bytes + read - size;
-                    if (remaining <= 0) {
-                        callback(row);
-                        row = null;
-                    } else {
+                    if (remaining > 0) {
                         const offset = startRowData + end;
                         buffer.writeInt8(mtype, offset - 7);
                         buffer.writeInt32BE(bytes - end - 1, offset - 6);
@@ -932,6 +929,9 @@ export class ClientImpl {
                         this.activeRow = row;
                         return read + end;
                     }
+
+                    callback(row);
+                    row = null;
 
                     // Keep track of how much data we've consumed.
                     frame += bytes;
