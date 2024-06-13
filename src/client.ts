@@ -935,6 +935,7 @@ export class ClientImpl {
 
                     // Keep track of how much data we've consumed.
                     frame += bytes;
+                    read += bytes;
 
                     // If the next message header doesn't fit, we
                     // break out and wait for more data to arrive.
@@ -943,8 +944,6 @@ export class ClientImpl {
                         this.expect = 5;
                         return read;
                     }
-
-                    read += bytes;
                 }
 
                 this.activeRow = null;
