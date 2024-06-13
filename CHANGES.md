@@ -1,6 +1,7 @@
 In next release ...
 
--
+- Fixed an issue where the result row array type would use the record generic
+  as the value type instead of `any` which was incorrect.
 
 ## v2.0.2 (2024-04-12)
 

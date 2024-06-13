@@ -56,7 +56,7 @@ class ResultRowImpl<T> extends Array<any> {
  * the row into an object.
  *
  */
-export type ResultRow<T> = ReadonlyArray<T> &
+export type ResultRow<T> = ReadonlyArray<any> &
     Pick<ResultRowImpl<T>, 'get' | 'reify'>;
 
 /**
