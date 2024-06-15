@@ -1,4 +1,4 @@
-In next release ...
+## v2.0.3 (2024-06-15)
 
 - Fix issue where larger results would sometimes have duplicates (#122).
 
