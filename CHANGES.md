@@ -1,5 +1,7 @@
 In next release ...
 
+- Fix issue where larger results would sometimes have duplicates (#122).
+
 - Fixed an issue where the result row array type would use the record generic
   as the value type instead of `any` which was incorrect.
 

@@ -301,6 +301,22 @@ describe('Query', () => {
         deepEqual(result.rows, [[1]]);
     });
 
+    test('Select many', async ({ client }) => {
+        const queryRunsCount = 10;
+        const idsCount = 10_000;
+        for (let i = 0; i < queryRunsCount; ++i) {
+            const result = await client.query(
+                'select id, id + 1, id + 2 from generate_series(1, $1) id',
+                [idsCount],
+            );
+            deepEqual(result.rows.length, idsCount);
+            for (const [i, j, k] of result.rows) {
+                deepEqual(i + 1, j);
+                deepEqual(i + 2, k);
+            }
+        }
+    });
+
     test('Stream', async ({ client }) => {
         const s = 'abcdefghijklmnopqrstuvxyz'.repeat(Math.pow(2, 17));
         const buffer = Buffer.from(s);
