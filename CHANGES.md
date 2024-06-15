@@ -1,13 +1,15 @@
 In next release ...
 
--
-
 ## v2.0.3 (2024-06-15)
 
 - Fix issue where larger results would sometimes have duplicates (#122).
 
 - Fixed an issue where the result row array type would use the record generic
   as the value type instead of `any` which was incorrect.
+
+- The `DatabaseError`, `ErrorLevel`, and `TransactionStatus` symbols
+  are no longer exported using `type` (which was incorrect given that you want
+  to be able to use `instanceof` and extract information).
 
 ## v2.0.2 (2024-04-12)
 
