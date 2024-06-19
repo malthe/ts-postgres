@@ -142,15 +142,17 @@ interface PreFlightQueue {
 
 const DEFAULTS = new Defaults(env as Record<string, string>);
 
-export type EventMap<
-    T = {
-        error: DatabaseError;
-        notice: ClientNotice;
-        notification: Notification;
-    },
-> = {
-    [K in keyof T]: [T[K]];
-};
+
+export interface EventMap {
+    /** The connection has ended, possibly due to a network error. */
+    end: [NodeJS.ErrnoException | null];
+    /** A database error has occurred. */
+    error: [DatabaseError];
+    /** A client notice (typically a warning) has been received. */
+    notice: [ClientNotice];
+    /** A client notification has been received. */
+    notification: [Notification];
+}
 
 type Resolve<T> = (value?: T) => void;
 
@@ -209,6 +211,7 @@ export class ClientImpl {
 
         this.stream.on('close', () => {
             this.closed = true;
+            this.events.emit('end', null);
             this.ending?.();
         });
 
@@ -233,10 +236,12 @@ export class ClientImpl {
             } else {
                 // Don't raise ECONNRESET errors - they can & should be
                 // ignored during disconnect.
+                if (error.errno === constants.errno.ECONNRESET) return;
+
                 if (this.ending) {
-                    if (error.errno === constants.errno.ECONNRESET) return;
-                    this.ending();
+                    this.ending(error);
                 }
+                this.events.emit('end', error);
             }
         });
 
@@ -286,7 +291,8 @@ export class ClientImpl {
 
             const abort = (error: Error) => {
                 this.handleError(error);
-                this.connecting?.(error);
+                if (!this.connecting) throw error;
+                this.connecting(error);
             };
 
             const startup = (stream?: Socket) => {

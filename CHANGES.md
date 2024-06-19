@@ -1,5 +1,10 @@
 In next release ...
 
+- Added "end" event which was removed in v1.8.0.
+
+- The `end` method now correctly throws an error if a network error
+  occurred during the resulting protocol traffic.
+
 ## v2.0.3 (2024-06-15)
 
 - Fix issue where larger results would sometimes have duplicates (#122).

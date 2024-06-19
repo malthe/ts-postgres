@@ -287,9 +287,12 @@ describe('Query', () => {
             idleInTransactionSessionTimeout: 500,
         });
         const errors: string[] = [];
+        let error: NodeJS.ErrnoException | null = null;
+        client.on('end', (isError) => error = isError);
         client.on('error', (error) => errors.push(error.code));
         await new Promise((resolve) => setTimeout(resolve, 625));
         equal(client.closed, true);
+        equal(error, null);
         deepEqual(errors, ['57P05']);
     });
 
