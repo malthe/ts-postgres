@@ -1,4 +1,4 @@
-In next release ...
+## v2.0.4 (2024-06-19)
 
 - Added "end" event which was removed in v1.8.0.
 
