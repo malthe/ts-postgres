@@ -62,7 +62,7 @@
         ]
     },
     "devDependencies": {
-        "@types/node": "^20.11.21",
+        "@types/node": "^22.10.1",
         "@typescript-eslint/eslint-plugin": "^6",
         "@typescript-eslint/parser": "^6",
         "colors": "^1",
@@ -80,6 +80,6 @@
         "typescript": "~5.2"
     },
     "peerDependencies": {
-        "@types/node": "^20"
+        "@types/node": "^22"
     }
 }
