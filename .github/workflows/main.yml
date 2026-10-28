@@ -8,9 +8,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-env:
-  PGDATADIR: /var/lib/postgresql/data
-
 permissions:
   contents: read
   pages: write
@@ -33,7 +30,7 @@ jobs:
           exit "$code"
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v7
       - name: NPM
@@ -83,7 +80,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
-          --mount type=tmpfs,destination=/var/lib/postgresql/data
+          --mount type=tmpfs,destination=/var/lib/postgresql
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -100,7 +97,7 @@ jobs:
     steps:
       - run: |
           function set() {
-              docker exec ${{ job.services.postgres.id }} sh -c "echo $1=\'$2\' >> $PGDATADIR/postgresql.conf"
+              docker exec ${{ job.services.postgres.id }} sh -c 'printf "%s = '\''%s'\''\n" "$1" "$2" >> "$PGDATA/postgresql.conf"' _ "$1" "$2"
           }
           set ssl on
           set ssl_cert_file /etc/ssl/certs/ssl-cert-snakeoil.pem
