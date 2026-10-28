@@ -20,8 +20,8 @@ jobs:
   style:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
       - name: Prettier
         run: |
           npm i -D
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: NPM
         run: |
           set -ex
@@ -66,11 +66,11 @@ jobs:
           <link rel='canonical' href='$url/{}'>
           EOF
           " \;
-      - uses: actions/upload-pages-artifact@v2
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: ./docs
       - name: Package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pkg
           path: dest
@@ -110,10 +110,10 @@ jobs:
           set synchronous_commit off
           docker kill --signal=SIGHUP ${{ job.services.postgres.id }}
       - name: Use Node.js ${{ matrix.version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.version }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install dependencies
         run: npm i
       - name: Run tests
@@ -132,7 +132,7 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports[5432] }}
           PGUSER: postgres
           PGPASSWORD: postgres
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
       - name: 'Example: Connect'
         run: |
           pkg_path=`ls $PWD/pkg/ts-postgres-*.tgz`
@@ -175,4 +175,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v5
