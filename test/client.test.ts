@@ -445,7 +445,7 @@ describe('Query', () => {
         (client: Client) => {
             return {
                 query: client.query('select $1::internal as l', ['']),
-                expectation: /2281/,
+                expectation: /cannot cast type unknown to internal/,
             };
         },
         (client: Client, seed: number) => {
@@ -538,7 +538,10 @@ describe('Query', () => {
 
     test('Unsupported type', async ({ client }) => {
         const text = 'select $1::internal';
-        await rejects(client.query(text, ['']), /2281/);
+        await rejects(
+            client.query(text, ['']),
+            /cannot cast type unknown to internal/,
+        );
     });
 
     test('Prepare and execute (SELECT)', async ({ client }) => {
