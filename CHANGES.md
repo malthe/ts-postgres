@@ -1,6 +1,6 @@
 In next release ...
 
--
+- Fixed issue where empty arrays would throw an error (#129).
 
 ## v2.0.4 (2024-06-19)
 
