@@ -512,7 +512,9 @@ export function readRowData(
 
                         offset += 4;
 
-                        if (dimCount === 0) {
+                        if (dimCount < 0) {
+                            value = [];
+                        } else if (dimCount === 0) {
                             const size = buffer.readInt32BE(offset);
                             offset += 8;
                             value = readArray(size);

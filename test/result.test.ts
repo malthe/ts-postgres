@@ -77,6 +77,11 @@ describe('Result', () => {
         deepEqual(row.a, [null]);
     });
 
+    test('Parse empty array', async ({ client }) => {
+        const row = await client.query("select '{}'::text[] as a").one();
+        deepEqual(row.a, []);
+    });
+
     test('Format array containing null value', async ({ client }) => {
         const row = await client
             .query('select $1::text[] as a', [[null]])
