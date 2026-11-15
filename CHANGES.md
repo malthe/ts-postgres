@@ -1,5 +1,13 @@
 In next release ...
 
+- Fixed issue where empty string and bytea values were decoded as null
+  (#133).
+
+- Added support for `bool[]` (#133).
+
+- Fixed issue where timestamps before 1970 with sub-millisecond precision
+  were rounded up instead of truncated (#133).
+
 ## v2.0.5 (2026-10-30)
 
 - Fixed issue where empty arrays would throw an error (#129).
