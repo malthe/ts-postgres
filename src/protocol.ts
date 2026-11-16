@@ -336,11 +336,11 @@ export function readRowData(
 
         let value: any = null;
 
-        if (start < end) {
+        if (length >= 0) {
             const spec = columnSpecification[j];
             let skip = false;
 
-            if (streams && spec === DataType.Bytea) {
+            if (streams && spec === DataType.Bytea && start < end) {
                 const stream = streams[j];
                 if (stream) {
                     const slice = buffer.subarray(start, end);
@@ -383,8 +383,6 @@ export function readRowData(
                     }
                 } else {
                     const read = (t: DataType, start: number, end: number) => {
-                        if (start === end) return null;
-
                         /* Cutoff for system object OIDs;
                            see comments in src/include/access/transam.h
 
@@ -414,7 +412,8 @@ export function readRowData(
                                     return -infinity;
 
                                 return new Date(
-                                    (lo + hi * 4294967296) / 1000 + timeshift,
+                                    Math.floor((lo + hi * 4294967296) / 1000) +
+                                        timeshift,
                                 );
                             }
                             case DataType.Int2:

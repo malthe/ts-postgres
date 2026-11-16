@@ -90,8 +90,10 @@ describe('Types', () => {
     testType<boolean>(DataType.Bool, 'false', false);
     testType<string>(DataType.Bpchar, "'abc'::char(3)", 'abc');
     testType<Buffer>(DataType.Bytea, "'abc'::bytea", Buffer.from('abc'));
+    testType<Buffer>(DataType.Bytea, "''::bytea", Buffer.alloc(0));
     testType<string>(DataType.Char, "'a'::char(1)", 'a');
     testType<string>(DataType.Text, "'a'::text", 'a');
+    testType<string>(DataType.Text, "''::text", '');
     testType<number>(DataType.Int2, '1::int2', 1);
     testType<number>(DataType.Int4, '1::int4', 1);
     testType<bigint>(DataType.Int8, '1::int8', BigInt(1));
@@ -157,6 +159,15 @@ describe('Types', () => {
         "'0002-12-31 BC'::date",
         utc_date(-1, 11, 31),
     );
+    test('Timestamp before 1970 truncates microseconds', async ({ client }) => {
+        const result = await client.query(
+            "select '1960-06-15 23:59:59.999999'::timestamp at time zone 'utc'",
+        );
+        assert.deepEqual(
+            result.rows[0][0],
+            utc_date(1960, 5, 15, 23, 59, 59, 999),
+        );
+    });
     testType<(Date | null)[]>(
         DataType.ArrayTimestamptz,
         "ARRAY[null,'1999-12-31 23:59:59Z']::timestamptz[]",
@@ -238,6 +249,16 @@ describe('Types', () => {
     testType<string[]>(DataType.ArrayText, '\'{"a,"}\'::text[]', ['a,']);
     testType<(string | null)[]>(DataType.ArrayText, 'ARRAY[null]::text[]', [
         null,
+    ]);
+    testType<string[]>(
+        DataType.ArrayText,
+        "ARRAY['a', '']::text[]",
+        ['a', ''],
+        true,
+    );
+    testType<boolean[]>(DataType.ArrayBool, 'ARRAY[true, false]', [
+        true,
+        false,
     ]);
     testType<(string | null)[]>(
         DataType.ArrayText,
