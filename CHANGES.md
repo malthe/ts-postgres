@@ -1,3 +1,7 @@
+In next release ...
+
+...
+
 ## v2.0.6 (2026-11-17)
 
 - Fixed issue where empty string and bytea values were decoded as null
