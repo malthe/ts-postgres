@@ -316,7 +316,7 @@ ts-postgres is free software. If you encounter a bug with the library please ope
 
 ## License
 
-Copyright (c) 2018-2024 Malthe Borch (mborch@gmail.com)
+Copyright (c) 2018-2026 Malthe Borch (mborch@gmail.com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
